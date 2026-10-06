@@ -25,7 +25,7 @@ const EnvSchema = z.object({
   PUBLIC_BASE_URL: optionalString.transform((v) => v?.replace(/\/+$/, '')),
   /**
    * Comma-separated browser origins allowed to call the API cross-origin (the hosted UI).
-   * Default: any https://<name>.github.io plus local dev servers.
+   * Default: any https://<name>.github.io or <name>.pages.dev, plus local dev servers.
    */
   CORS_ORIGINS: optionalString,
   /** Shared password protecting the UI and API (Bearer token, or basic auth with any username). */
@@ -90,7 +90,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   };
 }
 
-const DEFAULT_ORIGIN = /^(https:\/\/[a-z0-9-]+\.github\.io|https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?)$/i;
+const DEFAULT_ORIGIN = /^(https:\/\/[a-z0-9-]+\.(github\.io|pages\.dev)|https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?)$/i;
 
 export function isAllowedOrigin(origin: string, allowed: string[] | null): boolean {
   return allowed ? allowed.includes(origin) : DEFAULT_ORIGIN.test(origin);

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { PublicConfig } from '../../shared/types';
 import { getConfig } from './api';
-import { isStaticHost, type Settings } from './settings';
+import { DEFAULT_SERVER_URL, isStaticHost, type Settings } from './settings';
 
 interface Props {
   settings: Settings;
@@ -54,7 +54,7 @@ export function SettingsSheet({ settings, onSave, onClose }: Props) {
             inputMode="url"
             autoCapitalize="off"
             autoCorrect="off"
-            placeholder={staticHost ? 'https://your-tunnel.ngrok.app' : 'Same as this page'}
+            placeholder={staticHost ? DEFAULT_SERVER_URL || 'https://callbridge-api.example.com' : 'Same as this page'}
             value={draft.serverUrl}
             onChange={(e) => setDraft({ ...draft, serverUrl: e.target.value.trim() })}
           />

@@ -1,0 +1,11 @@
+# Cloudflare Tunnel for the CallBridge server.
+# Copy to ~/.cloudflared/config.yml (or pass with --config) and replace <TUNNEL-ID>.
+# Setup steps: see README → "Hosting on Cloudflare".
+tunnel: <TUNNEL-ID>
+credentials-file: /home/<you>/.cloudflared/<TUNNEL-ID>.json
+
+ingress:
+  # API, Twilio webhooks and the Twilio media WebSocket all go to the local server.
+  - hostname: callbridge-api.byte2bite.tech
+    service: http://localhost:3000
+  - service: http_status:404

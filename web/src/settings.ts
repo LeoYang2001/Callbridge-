@@ -9,11 +9,14 @@ export interface Settings {
   demo: boolean;
 }
 
-/** On GitHub Pages there is no server at the same origin. */
-export const isStaticHost = () => location.hostname.endsWith('github.io');
+/** Set at build time for hosted deployments (Cloudflare Pages, GitHub Pages). */
+export const DEFAULT_SERVER_URL = (import.meta.env.VITE_DEFAULT_SERVER_URL ?? '').trim().replace(/\/+$/, '');
+
+/** True when the UI is hosted separately from the call server (no API at the same origin). */
+export const isStaticHost = () => DEFAULT_SERVER_URL !== '' || /\.(github\.io|pages\.dev)$/.test(location.hostname);
 
 export function loadSettings(): Settings {
-  const fallback: Settings = { serverUrl: '', accessKey: '', demo: isStaticHost() };
+  const fallback: Settings = { serverUrl: DEFAULT_SERVER_URL, accessKey: '', demo: isStaticHost() && !DEFAULT_SERVER_URL };
   try {
     const raw = localStorage.getItem(KEY);
     if (raw) return { ...fallback, ...(JSON.parse(raw) as Partial<Settings>) };

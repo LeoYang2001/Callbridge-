@@ -16,17 +16,59 @@ Browser (React) ──HTTP/SSE──▶ Node + TypeScript server ──REST─�
 
 ---
 
-## Try it on your phone
+## Hosting on Cloudflare (byte2bite.tech)
 
-The web UI is published to GitHub Pages: **https://leoyang2001.github.io/Callbridge-/**
+| Piece | URL | Runs on |
+| --- | --- | --- |
+| Web app (phone UI) | `https://callbridge.byte2bite.tech` | Cloudflare Pages: static, always up, rebuilt on every push |
+| Call server (API, Twilio webhooks, live audio) | `https://callbridge-api.byte2bite.tech` | Your machine (or any server) through a Cloudflare Tunnel |
 
-- It opens in **demo mode**, which plays a simulated dentist call in the browser. Nothing is dialed, so you can try the whole flow (form → live call → result) right away.
-- To install it like an app, open it in Safari and choose *Share → Add to Home Screen* (Android: *Install app*).
-- To place **real** calls, run the server (below), then open ⚙︎ Settings in the app. Enter the server's public URL (e.g. your ngrok URL) and the server's `APP_PASSWORD` as the access key, then turn demo mode off.
+The call server needs a long-running Node process that holds the phone audio stream open, so it can't run on Pages. The tunnel gives it a permanent HTTPS address on your domain without opening ports, replacing ngrok. The API host is `callbridge-api`, not `api.callbridge`, because Cloudflare's free certificate covers only one subdomain level.
 
-GitHub Pages only hosts the static UI. The call server needs a long-running Node process with a public URL, so it runs on your machine (with a tunnel) or on a host such as Render, Railway or Fly.io.
+### 1. Web app on Cloudflare Pages (one-time)
 
-The workflow `.github/workflows/pages.yml` rebuilds the site on every push that touches `web/` or `shared/`, and publishes it to the `gh-pages` branch. If the URL returns 404 after the first deploy, enable Pages once: **Settings → Pages → Build and deployment → Deploy from a branch → `gh-pages` / (root)**.
+1. Cloudflare dashboard → **Workers & Pages → Create → Pages → Connect to Git** → choose `LeoYang2001/Callbridge-`.
+2. **Production branch:** `claude/ai-phone-assistant-mvp-kmdkvx` (the repo's current default branch).
+3. **Build settings:** Framework preset *None* · Build command `npm run build -w web` · Build output directory `web/dist` · Root directory empty. The Node version comes from `.node-version`.
+4. **Environment variable:** `VITE_DEFAULT_SERVER_URL` = `https://callbridge-api.byte2bite.tech`
+5. **Save and Deploy.** Then open the project → **Custom domains → Set up a custom domain** → `callbridge.byte2bite.tech`. The domain is already on Cloudflare, so the DNS record is created for you.
+
+After that, every push rebuilds the site. Other branches get preview URLs on `*.pages.dev`.
+
+### 2. Call server through a Cloudflare Tunnel
+
+On the machine that runs the server (install `cloudflared` first, e.g. `brew install cloudflared`):
+
+```bash
+cloudflared tunnel login                     # choose byte2bite.tech
+cloudflared tunnel create callbridge         # prints the tunnel ID and writes a credentials file
+cloudflared tunnel route dns callbridge callbridge-api.byte2bite.tech
+cp deploy/cloudflared/config.example.yml ~/.cloudflared/config.yml   # fill in the tunnel ID and credentials path
+```
+
+In `.env`, set `PUBLIC_BASE_URL=https://callbridge-api.byte2bite.tech`, `CORS_ORIGINS=https://callbridge.byte2bite.tech`, a long random `APP_PASSWORD`, plus the Twilio and OpenAI keys. Then:
+
+```bash
+npm run build && npm start        # terminal 1: the server on :3000
+cloudflared tunnel run callbridge # terminal 2: the tunnel
+```
+
+To check it from anywhere, open `https://callbridge-api.byte2bite.tech/api/health`, which should return `{"ok":true,…}`. To keep the tunnel running after reboots, use `sudo cloudflared service install`.
+
+**Cloudflare settings that can break calls:**
+- **Bot Fight Mode** (Security → Bots) can challenge Twilio's webhook requests, leaving calls stuck at *Dialing*. Turn it off, or add a WAF custom rule that skips security checks for hostname `callbridge-api.byte2bite.tech` with a path starting `/twilio/`.
+- **Don't put Cloudflare Access in front of `callbridge-api`.** Twilio can't sign in. The API is protected by `APP_PASSWORD`, and the Twilio routes by signatures and per-call tokens.
+- **WebSockets** (Network tab) must stay on. It's on by default.
+
+For a quick test without DNS setup, `cloudflared tunnel --url http://localhost:3000` gives a temporary `*.trycloudflare.com` URL. Put it in `PUBLIC_BASE_URL` and in the app's Settings.
+
+### 3. On your phone
+
+1. Open `https://callbridge.byte2bite.tech`. In Safari, use *Share → Add to Home Screen* to install it like an app (Android: *Install app*).
+2. Tap ⚙︎ **Settings** → Access key = your `APP_PASSWORD` → **Test connection** → Save.
+3. **Demo mode** (toggle in Settings) plays a simulated dentist call in the browser and dials nothing. Use it any time the server is off; the app also offers it when it can't reach the server.
+
+GitHub Pages is still available as a fallback (`.github/workflows/pages.yml`, run manually from the Actions tab). It serves the UI at `https://leoyang2001.github.io/Callbridge-/` in demo mode until a server URL is entered in Settings.
 
 ## Quick start
 
@@ -35,7 +77,7 @@ The workflow `.github/workflows/pages.yml` rebuilds the site on every push that 
 - Node.js 20+
 - A **Twilio** account with a voice-capable phone number. Trial accounts can only call verified numbers, and they play a trial notice before connecting.
 - An **OpenAI** API key with access to the Realtime API (`gpt-realtime-2.1`)
-- A public HTTPS tunnel to your machine, e.g. [ngrok](https://ngrok.com/): `ngrok http 3000`
+- A public HTTPS tunnel to your machine: Cloudflare Tunnel (see above) or [ngrok](https://ngrok.com/) (`ngrok http 3000`)
 
 ### Run
 
@@ -49,7 +91,7 @@ You don't need to configure any webhook in the Twilio console. Each call passes 
 
 For a single-process setup (for example, behind the tunnel), run `npm run build && npm start` and open `PUBLIC_BASE_URL`.
 
-**Always set `APP_PASSWORD` when the server is reachable from the internet.** Otherwise anyone with the URL can place calls on your account. The hosted UI sends it as `Authorization: Bearer …`; a browser opening the server directly gets a basic-auth prompt (any username). Cross-origin requests are allowed from any `https://*.github.io` origin and localhost by default; narrow that with `CORS_ORIGINS`.
+**Always set `APP_PASSWORD` when the server is reachable from the internet.** Otherwise anyone with the URL can place calls on your account. The hosted UI sends it as `Authorization: Bearer …`; a browser opening the server directly gets a basic-auth prompt (any username). Cross-origin requests are allowed from any `https://*.github.io` or `*.pages.dev` origin and localhost by default; set `CORS_ORIGINS` (e.g. `https://callbridge.byte2bite.tech`) to allow exactly your app.
 
 ### Scripts
 

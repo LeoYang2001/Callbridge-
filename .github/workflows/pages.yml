@@ -3,10 +3,8 @@
 # (Twilio + OpenAI) must run elsewhere and is configured in the app's Settings.
 name: Deploy web UI to GitHub Pages
 
+# Manual only: the primary host is Cloudflare Pages (see README). Run from the Actions tab.
 on:
-  push:
-    branches: [main, claude/ai-phone-assistant-mvp-kmdkvx]
-    paths: ['web/**', 'shared/**', 'package-lock.json', '.github/workflows/pages.yml']
   workflow_dispatch:
 
 permissions:

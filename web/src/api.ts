@@ -17,7 +17,6 @@ function headers(s: Settings, extra: Record<string, string> = {}) {
 async function json<T>(res: Response): Promise<T> {
   const body = await res.json().catch(() => ({}));
   if (!res.ok) {
-    if (res.status === 401) throw new Error('The server rejected the access key. Check Settings.');
     throw new Error((body as { error?: string }).error ?? `Request failed (${res.status})`);
   }
   return body as T;
@@ -29,6 +28,9 @@ async function request<T>(s: Settings, path: string, init: RequestInit = {}): Pr
     res = await fetch(endpoint(s, path), { ...init, headers: headers(s, init.headers as Record<string, string>) });
   } catch {
     throw new Error(`Can't reach the server${s.serverUrl ? ` at ${s.serverUrl}` : ''}. Check Settings and that the server is running.`);
+  }
+  if (res.status === 401) {
+    throw new Error(s.accessKey ? 'The server rejected the access key. Check Settings.' : 'Enter your access key in Settings to connect.');
   }
   return json<T>(res);
 }

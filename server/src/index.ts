@@ -50,7 +50,7 @@ if (config.APP_PASSWORD) {
     return c.length === expected.length && timingSafeEqual(c, expected);
   };
   app.addHook('onRequest', async (req: FastifyRequest, reply) => {
-    if (req.method === 'OPTIONS' || req.url.startsWith('/twilio/')) return;
+    if (req.method === 'OPTIONS' || req.url.startsWith('/twilio/') || req.url === '/api/health') return;
     const [scheme, value = ''] = (req.headers.authorization ?? '').split(' ');
     const password =
       scheme === 'Bearer' ? value : scheme === 'Basic' ? Buffer.from(value, 'base64').toString().split(':').slice(1).join(':') : '';

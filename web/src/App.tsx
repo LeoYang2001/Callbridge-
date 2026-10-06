@@ -54,6 +54,11 @@ export function App() {
     }
   };
 
+  const updateSettings = (s: Settings) => {
+    setSettings(s);
+    saveSettings(s);
+  };
+
   const reset = () => {
     stopRef.current?.();
     stopRef.current = null;
@@ -72,7 +77,7 @@ export function App() {
         </div>
         <div className="topbar-right">
           <button type="button" className={`mode-pill ${demo ? 'demo' : config ? 'live' : ''}`} onClick={() => setShowSettings(true)}>
-            {demo ? 'Demo' : config ? 'Live' : configError ? 'Offline' : '…'}
+            {demo ? 'Demo' : config ? 'Live' : configError ? 'Not connected' : '…'}
           </button>
           <button type="button" className="icon-btn" aria-label="Settings" onClick={() => setShowSettings(true)}>
             ⚙︎
@@ -91,6 +96,20 @@ export function App() {
           </div>
         )}
 
+        {!call && !demo && configError && (
+          <div className="notice">
+            <b>Can't use the call server.</b> {configError}
+            <div className="notice-actions">
+              <button type="button" className="secondary-btn small" onClick={() => setShowSettings(true)}>
+                Settings
+              </button>
+              <button type="button" className="secondary-btn small" onClick={() => updateSettings({ ...settings, demo: true })}>
+                Try demo instead
+              </button>
+            </div>
+          </div>
+        )}
+
         {call ? (
           <CallScreen call={call} demo={call.id.startsWith('demo-')} error={error} onDone={reset} />
         ) : (
@@ -102,10 +121,7 @@ export function App() {
         <SettingsSheet
           settings={settings}
           onClose={() => setShowSettings(false)}
-          onSave={(s) => {
-            setSettings(s);
-            saveSettings(s);
-          }}
+          onSave={updateSettings}
         />
       )}
     </div>
