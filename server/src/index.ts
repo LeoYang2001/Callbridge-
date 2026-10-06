@@ -1,13 +1,15 @@
+import { timingSafeEqual } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import cors from '@fastify/cors';
 import formbody from '@fastify/formbody';
 import fastifyStatic from '@fastify/static';
 import websocket from '@fastify/websocket';
 import Fastify, { type FastifyRequest } from 'fastify';
 import { CallManager } from './calls/callManager';
 import { CallStore } from './calls/store';
-import { loadConfig } from './config';
+import { isAllowedOrigin, loadConfig } from './config';
 import { OpenAIAnalyzer } from './providers/analysis/openaiAnalyzer';
 import { TwilioTelephony } from './providers/telephony/twilio';
 import { OpenAIRealtimeAgent } from './providers/voice/openaiRealtime';
@@ -29,17 +31,33 @@ const app = Fastify({
 await app.register(formbody);
 await app.register(websocket);
 
-// Optional shared-password gate for the UI and API. Twilio routes authenticate separately
-// (webhook signatures + a per-call stream token).
+// The hosted UI (GitHub Pages) calls this server cross-origin. CORS is not the security boundary
+// (APP_PASSWORD is); it only lets browsers on the allowed origins read responses.
+await app.register(cors, {
+  origin: (origin, cb) => cb(null, !origin || isAllowedOrigin(origin, config.corsOrigins)),
+  allowedHeaders: ['Content-Type', 'Authorization', 'ngrok-skip-browser-warning'],
+  methods: ['GET', 'POST', 'OPTIONS'],
+  maxAge: 600,
+});
+
+// Optional shared-password gate for the UI and API: `Authorization: Bearer <APP_PASSWORD>` from the
+// hosted UI, or HTTP basic auth (any username) when the UI is served by this server. Twilio routes
+// authenticate separately (webhook signatures + a per-call stream token).
 if (config.APP_PASSWORD) {
-  const expected = config.APP_PASSWORD;
+  const expected = Buffer.from(config.APP_PASSWORD);
+  const matches = (candidate: string) => {
+    const c = Buffer.from(candidate);
+    return c.length === expected.length && timingSafeEqual(c, expected);
+  };
   app.addHook('onRequest', async (req: FastifyRequest, reply) => {
-    if (req.url.startsWith('/twilio/')) return;
-    const header = req.headers.authorization ?? '';
-    const [scheme, encoded] = header.split(' ');
-    const password = scheme === 'Basic' && encoded ? Buffer.from(encoded, 'base64').toString().split(':').slice(1).join(':') : '';
-    if (password !== expected) {
-      reply.header('WWW-Authenticate', 'Basic realm="CallBridge"').code(401).send('Authentication required');
+    if (req.method === 'OPTIONS' || req.url.startsWith('/twilio/')) return;
+    const [scheme, value = ''] = (req.headers.authorization ?? '').split(' ');
+    const password =
+      scheme === 'Bearer' ? value : scheme === 'Basic' ? Buffer.from(value, 'base64').toString().split(':').slice(1).join(':') : '';
+    if (!matches(password)) {
+      // Only prompt for basic auth on same-origin page loads; API clients get a plain 401.
+      if (!req.url.startsWith('/api/')) reply.header('WWW-Authenticate', 'Basic realm="CallBridge"');
+      return reply.code(401).send({ error: 'Authentication required' });
     }
   });
 }
@@ -101,4 +119,5 @@ await app.listen({ port: config.PORT, host: config.HOST });
 
 if (!config.telephonyConfigured) app.log.warn('Twilio is not configured (TWILIO_* and PUBLIC_BASE_URL). Calls are disabled.');
 if (!config.voiceConfigured) app.log.warn('OPENAI_API_KEY is not set. Calls are disabled.');
+if (!config.APP_PASSWORD) app.log.warn('APP_PASSWORD is not set: anyone who can reach this server can place calls. Set it before exposing the server.');
 if (!config.allowedDestinations) app.log.warn('ALLOWED_DESTINATIONS is not set: any valid number can be called. Set it while testing.');

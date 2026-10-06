@@ -23,7 +23,12 @@ const EnvSchema = z.object({
   HOST: z.string().default('0.0.0.0'),
   /** Public https URL that Twilio can reach, e.g. an ngrok tunnel. No trailing slash. */
   PUBLIC_BASE_URL: optionalString.transform((v) => v?.replace(/\/+$/, '')),
-  /** Optional shared password protecting the UI and API (HTTP basic auth, any username). */
+  /**
+   * Comma-separated browser origins allowed to call the API cross-origin (the hosted UI).
+   * Default: any https://<name>.github.io plus local dev servers.
+   */
+  CORS_ORIGINS: optionalString,
+  /** Shared password protecting the UI and API (Bearer token, or basic auth with any username). */
   APP_PASSWORD: optionalString,
 
   TWILIO_ACCOUNT_SID: optionalString,
@@ -54,6 +59,7 @@ const EnvSchema = z.object({
 
 export type AppConfig = z.infer<typeof EnvSchema> & {
   allowedDestinations: string[] | null;
+  corsOrigins: string[] | null;
   telephonyConfigured: boolean;
   voiceConfigured: boolean;
 };
@@ -72,9 +78,20 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
           .map((s) => s.trim())
           .filter(Boolean)
       : null,
+    corsOrigins: c.CORS_ORIGINS
+      ? c.CORS_ORIGINS.split(',')
+          .map((s) => s.trim().replace(/\/+$/, ''))
+          .filter(Boolean)
+      : null,
     telephonyConfigured: Boolean(
       c.TWILIO_ACCOUNT_SID && c.TWILIO_AUTH_TOKEN && c.TWILIO_FROM_NUMBER && c.PUBLIC_BASE_URL,
     ),
     voiceConfigured: Boolean(c.OPENAI_API_KEY),
   };
+}
+
+const DEFAULT_ORIGIN = /^(https:\/\/[a-z0-9-]+\.github\.io|https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?)$/i;
+
+export function isAllowedOrigin(origin: string, allowed: string[] | null): boolean {
+  return allowed ? allowed.includes(origin) : DEFAULT_ORIGIN.test(origin);
 }

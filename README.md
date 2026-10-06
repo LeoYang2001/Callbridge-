@@ -16,6 +16,18 @@ Browser (React) ──HTTP/SSE──▶ Node + TypeScript server ──REST─�
 
 ---
 
+## Try it on your phone
+
+The web UI is published to GitHub Pages: **https://leoyang2001.github.io/Callbridge-/**
+
+- It opens in **demo mode**, which plays a simulated dentist call in the browser. Nothing is dialed, so you can try the whole flow (form → live call → result) right away.
+- To install it like an app, open it in Safari and choose *Share → Add to Home Screen* (Android: *Install app*).
+- To place **real** calls, run the server (below), then open ⚙︎ Settings in the app. Enter the server's public URL (e.g. your ngrok URL) and the server's `APP_PASSWORD` as the access key, then turn demo mode off.
+
+GitHub Pages only hosts the static UI. The call server needs a long-running Node process with a public URL, so it runs on your machine (with a tunnel) or on a host such as Render, Railway or Fly.io.
+
+The workflow `.github/workflows/pages.yml` rebuilds the site on every push that touches `web/` or `shared/`, and publishes it to the `gh-pages` branch. If the URL returns 404 after the first deploy, enable Pages once: **Settings → Pages → Build and deployment → Deploy from a branch → `gh-pages` / (root)**.
+
 ## Quick start
 
 ### Prerequisites
@@ -35,7 +47,9 @@ npm run dev                 # server on :3000, UI on http://localhost:5173
 
 You don't need to configure any webhook in the Twilio console. Each call passes its own TwiML and status-callback URL.
 
-For a single-process setup (for example, behind the tunnel), run `npm run build && npm start` and open `PUBLIC_BASE_URL`. Set `APP_PASSWORD` whenever the server is reachable from the internet. Otherwise anyone with the URL can place calls on your account.
+For a single-process setup (for example, behind the tunnel), run `npm run build && npm start` and open `PUBLIC_BASE_URL`.
+
+**Always set `APP_PASSWORD` when the server is reachable from the internet.** Otherwise anyone with the URL can place calls on your account. The hosted UI sends it as `Authorization: Bearer …`; a browser opening the server directly gets a basic-auth prompt (any username). Cross-origin requests are allowed from any `https://*.github.io` origin and localhost by default; narrow that with `CORS_ORIGINS`.
 
 ### Scripts
 
@@ -84,7 +98,7 @@ The **Developer details** panel shows the policy decisions, latency (answer → 
    - Tool calls go to the policy engine.
 6. **End:** the model calls `end_call` after saying goodbye. The server waits until the goodbye has *finished playing* (marks again), then hangs up through the Twilio REST API. A remote hangup, a timeout, or an AI disconnect also ends the call.
 7. **Wrapping up:** the server waits for late transcripts. A structured-output model then reads the transcript plus the policy ledger, and the server **merges** the result. Backend facts win (see below).
-8. **Completed / Failed:** the UI receives every state change over server-sent events.
+8. **Completed / Failed:** the UI polls the call record once a second. Polling works through tunnels and proxies and survives a phone backgrounding the tab. A server-sent-events endpoint (`/api/calls/:id/stream`) is also available.
 
 ### Code map
 
@@ -102,7 +116,7 @@ server/src/
   providers/voice/                  VoiceAgent interface; OpenAI Realtime implementation
   providers/analysis/               CallAnalyzer interface; OpenAI structured-output implementation
   routes/api.ts, routes/twilio.ts   HTTP API, SSE, Twilio webhooks, media WebSocket
-web/src/                            React UI (form, live status and transcript, result)
+web/src/                            Mobile-first React UI: 3-step form, live call, result, settings, demo simulator
 ```
 
 Each provider sits behind an interface (`TelephonyProvider`, `MediaTransport`, `VoiceAgent`, `CallAnalyzer`). `CallSession` depends only on these interfaces, which is why the end-to-end test can run the whole flow with fakes.
@@ -152,7 +166,7 @@ Alternatives considered:
 - **Managed voice-agent platforms (Vapi, Retell, ElevenLabs Agents, Twilio ConversationRelay):** fastest to a demo, but they own the conversation loop. The backend-authority policy layer and same-call human-in-the-loop need deep control, and these platforms add a per-minute markup and lock-in.
 - **Other carriers (Telnyx, Plivo, Vonage):** often cheaper per minute, and Telnyx offers similar media streaming. Swap them in by implementing `TelephonyProvider` and `MediaTransport`.
 
-**Web: Vite + React instead of Next.js.** The app is one screen with no server-side rendering needs. The Twilio media WebSocket needs a long-lived Node server, and keeping that in one Fastify process with a simple static UI avoids custom-server workarounds in Next.js. Live updates use server-sent events.
+**Web: Vite + React instead of Next.js.** The app is a single mobile-first screen flow with no server-side rendering needs, and it builds to static files that GitHub Pages can host. The Twilio media WebSocket needs a long-lived Node server anyway, so the API lives in one Fastify process.
 
 > **Verification note:** the Realtime session shape and event names are checked against the type definitions in the official `openai` SDK (v7.30.0, `resources/realtime/realtime.d.ts`). OpenAI and Twilio docs and pricing pages weren't reachable from the development sandbox. Check current per-minute pricing for Twilio and Realtime audio tokens before budgeting, and do one live test call first.
 

@@ -1,29 +1,52 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { CallRecord, CallRequest, PublicConfig } from '../../shared/types';
 import { getConfig, startCall, watchCall } from './api';
-import { CallForm } from './CallForm';
-import { CallView } from './CallView';
+import { CallScreen } from './CallScreen';
+import { simulateCall } from './demo';
+import { NewCall } from './NewCall';
+import { effectiveDemo, isStaticHost, loadSettings, saveSettings, type Settings } from './settings';
+import { SettingsSheet } from './SettingsSheet';
 
 export function App() {
+  const [settings, setSettings] = useState<Settings>(loadSettings);
+  const [showSettings, setShowSettings] = useState(false);
   const [config, setConfig] = useState<PublicConfig | null>(null);
+  const [configError, setConfigError] = useState<string | null>(null);
   const [call, setCall] = useState<CallRecord | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const stopRef = useRef<(() => void) | null>(null);
+
+  const demo = effectiveDemo(settings);
 
   useEffect(() => {
-    getConfig().then(setConfig, (e: Error) => setError(e.message));
-  }, []);
+    setConfig(null);
+    setConfigError(null);
+    if (demo) return;
+    getConfig(settings).then(setConfig, (e: Error) => setConfigError(e.message));
+  }, [demo, settings]);
 
-  useEffect(() => {
-    if (!call?.id) return;
-    return watchCall(call.id, setCall, setError);
-  }, [call?.id]);
+  useEffect(() => () => stopRef.current?.(), []);
+
+  const blockedReason = demo
+    ? null
+    : configError
+      ? configError
+      : config && !(config.telephonyConfigured && config.voiceConfigured)
+        ? 'The server is missing Twilio or OpenAI configuration.'
+        : null;
 
   const onSubmit = async (req: CallRequest) => {
-    setSubmitting(true);
     setError(null);
+    if (demo) {
+      stopRef.current = simulateCall(req, setCall);
+      return;
+    }
+    setSubmitting(true);
     try {
-      setCall(await startCall(req));
+      const created = await startCall(settings, req);
+      setCall(created);
+      stopRef.current = watchCall(settings, created.id, setCall, setError);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -31,41 +54,60 @@ export function App() {
     }
   };
 
-  const ready = config?.telephonyConfigured && config.voiceConfigured;
+  const reset = () => {
+    stopRef.current?.();
+    stopRef.current = null;
+    setCall(null);
+    setError(null);
+  };
 
   return (
-    <main>
-      <header>
-        <h1>CallBridge</h1>
-        <p className="muted">An AI language assistant that phones a business for you and reports back.</p>
+    <div className="app">
+      <header className="topbar">
+        <div className="brand">
+          <span className="brand-mark" aria-hidden>
+            📞
+          </span>
+          CallBridge
+        </div>
+        <div className="topbar-right">
+          <button type="button" className={`mode-pill ${demo ? 'demo' : config ? 'live' : ''}`} onClick={() => setShowSettings(true)}>
+            {demo ? 'Demo' : config ? 'Live' : configError ? 'Offline' : '…'}
+          </button>
+          <button type="button" className="icon-btn" aria-label="Settings" onClick={() => setShowSettings(true)}>
+            ⚙︎
+          </button>
+        </div>
       </header>
 
-      {config && !ready && (
-        <div className="banner">
-          The server is not fully configured
-          {!config.telephonyConfigured && ' — Twilio credentials or PUBLIC_BASE_URL are missing'}
-          {!config.voiceConfigured && ' — OPENAI_API_KEY is missing'}. See the README to set up <code>.env</code>.
-        </div>
-      )}
+      <main className="content">
+        {!call && demo && isStaticHost() && !settings.serverUrl && (
+          <div className="notice">
+            You're in <b>demo mode</b>: calls are simulated so you can try the app. To place real calls, run the server and add its URL in{' '}
+            <button type="button" className="inline-link" onClick={() => setShowSettings(true)}>
+              Settings
+            </button>
+            .
+          </div>
+        )}
 
-      {call && error && <div className="error">{error}</div>}
+        {call ? (
+          <CallScreen call={call} demo={call.id.startsWith('demo-')} error={error} onDone={reset} />
+        ) : (
+          <NewCall demo={demo} blockedReason={blockedReason} submitting={submitting} error={error} onSubmit={onSubmit} />
+        )}
+      </main>
 
-      {call ? (
-        <CallView
-          call={call}
-          onReset={() => {
-            setCall(null);
-            setError(null);
+      {showSettings && (
+        <SettingsSheet
+          settings={settings}
+          onClose={() => setShowSettings(false)}
+          onSave={(s) => {
+            setSettings(s);
+            saveSettings(s);
           }}
         />
-      ) : (
-        <CallForm disabled={!ready} submitting={submitting} error={error} onSubmit={onSubmit} />
       )}
-
-      <footer className="muted small">
-        Phase 0 prototype · voice model {config?.realtimeModel ?? '…'}
-        {config?.allowlistActive && ' · allowlist on'}
-      </footer>
-    </main>
+    </div>
   );
 }
