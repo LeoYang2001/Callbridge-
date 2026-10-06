@@ -40,9 +40,10 @@ await app.register(cors, {
   maxAge: 600,
 });
 
-// Optional shared-password gate for the UI and API: `Authorization: Bearer <APP_PASSWORD>` from the
-// hosted UI, or HTTP basic auth (any username) when the UI is served by this server. Twilio routes
-// authenticate separately (webhook signatures + a per-call stream token).
+// Shared-password gate for the API: `Authorization: Bearer <APP_PASSWORD>` (the app's access key),
+// or basic auth with any username. The static UI itself holds no secrets, so it loads without a
+// password and asks for the key in Settings. Twilio routes authenticate separately (webhook
+// signatures + a per-call stream token).
 if (config.APP_PASSWORD) {
   const expected = Buffer.from(config.APP_PASSWORD);
   const matches = (candidate: string) => {
@@ -50,15 +51,11 @@ if (config.APP_PASSWORD) {
     return c.length === expected.length && timingSafeEqual(c, expected);
   };
   app.addHook('onRequest', async (req: FastifyRequest, reply) => {
-    if (req.method === 'OPTIONS' || req.url.startsWith('/twilio/') || req.url === '/api/health') return;
+    if (req.method === 'OPTIONS' || !req.url.startsWith('/api/') || req.url === '/api/health') return;
     const [scheme, value = ''] = (req.headers.authorization ?? '').split(' ');
     const password =
       scheme === 'Bearer' ? value : scheme === 'Basic' ? Buffer.from(value, 'base64').toString().split(':').slice(1).join(':') : '';
-    if (!matches(password)) {
-      // Only prompt for basic auth on same-origin page loads; API clients get a plain 401.
-      if (!req.url.startsWith('/api/')) reply.header('WWW-Authenticate', 'Basic realm="CallBridge"');
-      return reply.code(401).send({ error: 'Authentication required' });
-    }
+    if (!matches(password)) return reply.code(401).send({ error: 'Authentication required' });
   });
 }
 

@@ -16,6 +16,22 @@ Browser (React) ──HTTP/SSE──▶ Node + TypeScript server ──REST─�
 
 ---
 
+## Run it on your laptop (fastest way to test)
+
+```bash
+brew install cloudflared      # once (Windows: winget install --id Cloudflare.cloudflared)
+npm install                   # once
+npm run laptop
+```
+
+On the first run it asks for your OpenAI key, Twilio SID, auth token and number, and your own mobile number, which is the only number allowed for test calls. It saves them to `.env` with a generated access key. Each run then:
+
+1. builds the app;
+2. opens a free Cloudflare quick tunnel (`https://<random>.trycloudflare.com`, no account needed) and points the server at it, so Twilio can reach your laptop;
+3. starts the server and prints the phone URL as a **QR code**, plus your access key.
+
+Scan the QR code, enter the access key in ⚙︎ Settings, enter your own number and start a call. Answer it and play the receptionist. Ctrl+C stops everything. Without `cloudflared` the app still runs on your laptop and Wi-Fi in demo mode.
+
 ## Hosting on Cloudflare (byte2bite.tech)
 
 | Piece | URL | Runs on |
@@ -91,7 +107,7 @@ You don't need to configure any webhook in the Twilio console. Each call passes 
 
 For a single-process setup (for example, behind the tunnel), run `npm run build && npm start` and open `PUBLIC_BASE_URL`.
 
-**Always set `APP_PASSWORD` when the server is reachable from the internet.** Otherwise anyone with the URL can place calls on your account. The hosted UI sends it as `Authorization: Bearer …`; a browser opening the server directly gets a basic-auth prompt (any username). Cross-origin requests are allowed from any `https://*.github.io` or `*.pages.dev` origin and localhost by default; set `CORS_ORIGINS` (e.g. `https://callbridge.byte2bite.tech`) to allow exactly your app.
+**Always set `APP_PASSWORD` when the server is reachable from the internet.** Otherwise anyone with the URL can place calls on your account. The app sends it as `Authorization: Bearer …` once you enter it as the access key in Settings. Only `/api/*` is protected; the static UI holds no secrets and loads without it. Cross-origin requests are allowed from any `https://*.github.io` or `*.pages.dev` origin and localhost by default; add your own domain with `CORS_ORIGINS` (e.g. `https://callbridge.byte2bite.tech`).
 
 ### Scripts
 
