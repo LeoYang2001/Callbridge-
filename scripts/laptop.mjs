@@ -207,11 +207,13 @@ ${c.green('━━━━━━━━━━━━━━━━━━━━━━━
 
    On this laptop:  ${c.cyan(`http://localhost:${PORT}`)}
    On your phone:   ${c.cyan(phoneUrl)}   ${c.dim('(scan the QR code)')}
-   Access key:      ${env.APP_PASSWORD ? c.bold(env.APP_PASSWORD) : c.yellow('none set')}   ${c.dim('→ app ⚙︎ Settings')}
+   Access key:      ${env.APP_PASSWORD ? c.bold(env.APP_PASSWORD) : c.yellow('none set')}   ${c.dim('(the QR code fills it in for you)')}
 `);
 try {
   const { default: qr } = await import('qrcode-terminal');
-  qr.generate(phoneUrl, { small: true }, (code) => console.log(code.replace(/^/gm, '   ')));
+  // The key rides in the URL fragment (never sent to the server), so scanning connects the app.
+  const qrUrl = env.APP_PASSWORD ? `${phoneUrl}/#key=${encodeURIComponent(env.APP_PASSWORD)}` : phoneUrl;
+  qr.generate(qrUrl, { small: true }, (code) => console.log(code.replace(/^/gm, '   ')));
 } catch {
   /* QR code is optional */
 }

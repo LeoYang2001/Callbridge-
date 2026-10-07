@@ -127,6 +127,9 @@ button { font: inherit; color: inherit; }
 .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px; min-width: 0; }
 .field.compact { margin-bottom: 0; }
 .field-label { font-size: 14px; font-weight: 600; }
+.field-error { font-size: 13px; color: var(--bad); }
+input.masked { -webkit-text-security: disc; text-security: disc; }
+input[aria-invalid='true'] { border-color: var(--bad); }
 .field-help { font-size: 13px; color: var(--muted); font-weight: 400; }
 input, textarea {
   font: inherit; font-size: 16px; /* ≥16px prevents iOS zoom on focus */
