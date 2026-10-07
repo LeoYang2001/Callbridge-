@@ -5,6 +5,7 @@ import { executeTool, TOOL_DEFINITIONS } from '../agent/tools';
 import { PolicyEngine } from '../policy/policyEngine';
 import type { CallAnalyzer, TranscriptAnalysis } from '../providers/analysis/types';
 import type { MediaTransport, TelephonyCallState, TelephonyProvider } from '../providers/telephony/types';
+import type { Translator } from '../providers/translation/openaiTranslator';
 import type { VoiceAgent } from '../providers/voice/types';
 import { localToday } from '../util/time';
 import { languageCode } from '../../../shared/languages';
@@ -15,6 +16,8 @@ export interface CallSessionDeps {
   store: CallStore;
   telephony: TelephonyProvider;
   createAgent: (voice?: string) => VoiceAgent;
+  /** Live transcript translation into the user's language; null disables it. */
+  translator?: Translator | null;
   analyzer: CallAnalyzer | null;
   maxCallSeconds: number;
   introDelayMs: number;
@@ -44,6 +47,7 @@ const MIN_TURN_SPEECH_MS = 160;
 /** Speech just before the model's speech-started event that still belongs to the turn. */
 const TURN_LEAD_IN_MS = 300;
 
+const sameLanguage = (a: string, b: string) => (languageCode(a) ?? a.toLowerCase()) === (languageCode(b) ?? b.toLowerCase());
 const hasWords = (text: string) => /[\p{L}\p{N}]/u.test(text);
 /** More than an acknowledgment: three or more words, or four or more CJK characters. */
 const isSubstantive = (text: string) =>
@@ -346,6 +350,7 @@ export class CallSession {
         return;
       }
       this.upsertTranscript(itemId, speaker, clean, false);
+      this.translateLine(itemId, clean);
     });
 
     agent.on('toolCall', (callId, name, args) => this.handleToolCall(callId, name, args));
@@ -429,6 +434,29 @@ export class CallSession {
     // Twilio echoes marks for cleared audio; forgetting the items makes those echoes no-ops.
     this.unplayed.clear();
     this.currentItemId = null;
+  }
+
+  /** Adds the user's-language version of a finished line, unless the call is in their language. */
+  private translateLine(itemId: string, text: string) {
+    const { translator } = this.deps;
+    const req = this.record.request;
+    const to = req.user.preferredLanguage;
+    if (!translator || !hasWords(text) || sameLanguage(req.callLanguage, to)) return;
+    const context = this.record.transcript
+      .filter((t) => t.id !== itemId && !t.pending && t.text && t.speaker !== 'system')
+      .slice(-2)
+      .map((t) => `${t.speaker === 'assistant' ? 'AI' : 'THEM'}: ${t.text}`);
+    translator
+      .translate(text, to, context)
+      .then((translation) => {
+        if (!translation) return;
+        this.update((r) => {
+          const entry = r.transcript.find((t) => t.id === itemId);
+          // Skip if the line changed while we were translating; its newer text gets its own pass.
+          if (entry && entry.text === text) entry.translation = translation;
+        });
+      })
+      .catch((err) => this.log('translate.error', (err as Error).message));
   }
 
   private upsertTranscript(itemId: string, speaker: Speaker, text: string, pending: boolean) {

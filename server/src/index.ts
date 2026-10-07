@@ -12,6 +12,7 @@ import { CallStore } from './calls/store';
 import { isAllowedOrigin, loadConfig } from './config';
 import { OpenAITaskClassifier } from './policy/taskClassifier';
 import { OpenAIAnalyzer } from './providers/analysis/openaiAnalyzer';
+import { OpenAITranslator } from './providers/translation/openaiTranslator';
 import { TwilioTelephony } from './providers/telephony/twilio';
 import { OpenAIRealtimeAgent } from './providers/voice/openaiRealtime';
 import { registerApiRoutes } from './routes/api';
@@ -72,6 +73,7 @@ const telephony = config.telephonyConfigured
     }, undefined, (msg) => app.log.warn(msg))
   : null;
 const analyzer = config.OPENAI_API_KEY ? new OpenAIAnalyzer(config.OPENAI_API_KEY, config.ANALYSIS_MODEL) : null;
+const translator = config.OPENAI_API_KEY ? new OpenAITranslator(config.OPENAI_API_KEY, config.TRANSLATION_MODEL) : null;
 
 const logCallEvent = (callId: string, type: string, detail?: string) => {
   app.log.info({ callId, event: type, detail }, type);
@@ -93,6 +95,7 @@ const manager = new CallManager(
         log: (type, detail) => app.log.debug({ event: type, detail }, type),
       }),
     analyzer,
+    translator,
     maxCallSeconds: config.MAX_CALL_SECONDS,
     introDelayMs: config.INTRO_DELAY_MS,
     log: logCallEvent,

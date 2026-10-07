@@ -121,6 +121,8 @@ const waitFor = async (pred: () => boolean, ms = 3000) => {
   }
 };
 
+const translator = { translate: async (text: string, to: string) => `[${to}] ${text}` };
+
 function setup(opts: { failConnect?: boolean; analyzer?: CallAnalyzer | null } = {}) {
   const store = new CallStore(null);
   const agent = new FakeAgent(opts.failConnect);
@@ -130,6 +132,7 @@ function setup(opts: { failConnect?: boolean; analyzer?: CallAnalyzer | null } =
     () => ({
       telephony,
       createAgent: () => agent,
+      translator,
       analyzer: opts.analyzer === undefined ? { analyze: async () => analysis } : opts.analyzer,
       maxCallSeconds: 600,
       introDelayMs: 50,
@@ -317,6 +320,19 @@ describe('CallSession (simulated dentist call)', () => {
       c.agent.emit('transcript', 'c3', 'counterpart', 'Yes.');
       expect(c.agent.responses).toBe(c.responses + 1);
     });
+  });
+
+  it("translates finished lines into the user's language, unless the call is in it", async () => {
+    for (const [callLanguage, expected] of [['English', '[Chinese (Mandarin)] Can I help you?'], ['Chinese (Mandarin)', undefined]] as const) {
+      const { store, agent, telephony, manager } = setup();
+      const created = manager.startCall(dentistRequest({ callLanguage }));
+      await waitFor(() => telephony.placed.length === 1);
+      agent.emit('utteranceStarted', 'c1', 'counterpart');
+      agent.emit('transcript', 'c1', 'counterpart', 'Can I help you?');
+      await new Promise((r) => setTimeout(r, 20));
+      expect(store.get(created.id)!.transcript[0]!.translation).toBe(expected);
+      manager.endCall(created.id);
+    }
   });
 
   it('hangs up when the user taps End call', async () => {

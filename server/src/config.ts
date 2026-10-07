@@ -47,6 +47,8 @@ const EnvSchema = z.object({
   REALTIME_TURN_DETECTION: z.enum(['semantic_vad', 'server_vad']).default('semantic_vad'),
   TRANSCRIPTION_MODEL: z.string().default('gpt-4o-transcribe'),
   ANALYSIS_MODEL: z.string().default('gpt-5.4-mini'),
+  /** Translates the live transcript into the user's language, one line at a time. */
+  TRANSLATION_MODEL: z.string().default('gpt-5.4-mini'),
 
   /** Comma-separated E.164 numbers. When set, only these numbers can be called. */
   ALLOWED_DESTINATIONS: optionalString,

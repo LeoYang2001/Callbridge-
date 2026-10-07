@@ -115,6 +115,8 @@ export interface TranscriptEntry {
   pending?: boolean;
   /** true if the assistant was interrupted mid-utterance */
   interrupted?: boolean;
+  /** The line in the user's language, added shortly after it's final (calls in another language). */
+  translation?: string;
 }
 
 export type DecisionOutcome =

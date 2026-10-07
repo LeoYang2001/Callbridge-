@@ -114,16 +114,23 @@ function Transcript({ call, live }: { call: CallRecord; live: boolean }) {
   const last = entries.at(-1);
   useEffect(() => {
     if (live) end.current?.scrollIntoView({ block: 'end', behavior: 'smooth' });
-  }, [entries.length, last?.text, live]);
+  }, [entries.length, last?.text, last?.translation, live]);
+  const them = call.request.counterpartName || 'Them';
 
   return (
     <div className="chat" aria-live={live ? 'polite' : undefined}>
       {entries.length === 0 && <div className="chat-empty">The conversation will appear here.</div>}
       {entries.map((t) => (
         <div key={t.id} className={`msg ${t.speaker}`}>
-          <div className="msg-who">{t.speaker === 'assistant' ? 'Your assistant' : 'Business'}</div>
+          <div className="msg-who">{t.speaker === 'assistant' ? 'Your assistant' : them}</div>
           <div className="msg-bubble">
-            {t.text || (
+            {/* In your language first; the original (what was actually said) underneath. */}
+            {t.translation ? (
+              <>
+                {t.translation}
+                <span className="msg-original">{t.text}</span>
+              </>
+            ) : t.text || (
               <span className="typing" aria-label="speaking">
                 <i />
                 <i />
