@@ -36,7 +36,7 @@ const fail = (msg) => {
 
 // ── 0. Node version ─────────────────────────────────────────────────────────
 const [major] = process.versions.node.split('.').map(Number);
-if (major < 20) fail(`Node.js 20 or newer is required (you have ${process.versions.node}). Install it from https://nodejs.org`);
+if (major < 22) fail(`Node.js 22.13 or newer is required (you have ${process.versions.node}). Install it from https://nodejs.org`);
 
 // ── 1. .env ─────────────────────────────────────────────────────────────────
 function parseEnv(text) {
