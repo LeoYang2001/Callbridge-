@@ -39,6 +39,15 @@ export const NEVER_AUTHORIZE: ReadonlySet<DecisionCategory> = new Set([
   'legal_matter',
 ]);
 
+/** A decision the call assistant may put to the user live, while the other party holds. */
+export interface AskUser {
+  category: DecisionCategory;
+  question: string;
+  amountUsd?: number;
+  date?: string;
+  startTime?: string;
+}
+
 export interface PolicyRuling {
   /** JSON-serializable payload returned to the model as the tool output. */
   output: Record<string, unknown>;
@@ -46,6 +55,8 @@ export interface PolicyRuling {
   commitment?: ValidatedCommitment;
   /** An earlier commitment this one replaces (a rescheduled appointment). */
   replacesCommitmentId?: string;
+  /** Put this to the user now (human in the loop) instead of deciding. */
+  askUser?: AskUser;
   /** A question that needs the user's input after the call. */
   unresolvedQuestion?: string;
 }
@@ -54,6 +65,9 @@ export interface DecisionInput {
   category: DecisionCategory;
   question: string;
   amountUsd?: number;
+  /** For schedule_outside_constraints: the time they offered. */
+  date?: string;
+  startTime?: string;
 }
 
 export interface AgreementInput {
@@ -66,6 +80,9 @@ export interface AgreementInput {
 
 export class PolicyEngine {
   private readonly commitments: ValidatedCommitment[] = [];
+  /** What the user approved live during this call (human in the loop). */
+  private approvedExtraCostUsd = 0;
+  private readonly approvedSlots = new Set<string>();
 
   constructor(
     private readonly request: CallRequest,
@@ -78,24 +95,37 @@ export class PolicyEngine {
   }
 
   private get maxCost() {
-    return Math.max(0, this.request.constraints.maxAdditionalCostUsd || 0);
+    return Math.max(0, this.request.constraints.maxAdditionalCostUsd || 0, this.approvedExtraCostUsd);
+  }
+
+  /** The availability check, plus any exact slot the user approved during the call. */
+  private slot(date: string, startTime: string) {
+    const check = checkSlot(this.request.constraints, date, startTime, this.today);
+    if (!check.allowed && this.approvedSlots.has(`${date} ${startTime}`) && date >= this.today) {
+      return { allowed: true, reason: `${this.name} approved this exact time during the call.` };
+    }
+    return check;
   }
 
   checkAppointmentSlot(date: string, startTime: string): PolicyRuling {
-    const check = checkSlot(this.request.constraints, date, startTime, this.today);
+    const check = this.slot(date, startTime);
     return {
       output: {
         allowed: check.allowed,
         reason: check.reason,
         guidance: check.allowed
           ? 'You may propose or accept this time. Call confirm_agreement before confirming it verbally.'
-          : 'Do not accept this time. Politely ask for another option within the availability.',
+          : `Do not accept this time yet. Ask for another option within the availability, or, if they can't offer one, call request_decision with category "schedule_outside_constraints", this date and start_time, to check with ${this.name}.`,
       },
       decision: this.decision('check_appointment_slot', `${date} ${startTime}`, 'schedule', check.allowed ? 'accepted' : 'rejected', check.reason),
     };
   }
 
-  requestDecision({ category, question, amountUsd }: DecisionInput): PolicyRuling {
+  /**
+   * @param canAskUser the user can be asked right now (live call): instead of refusing, the
+   *   ruling asks the assistant to put the other party on hold while the user decides.
+   */
+  requestDecision({ category, question, amountUsd, date, startTime }: DecisionInput, canAskUser = false): PolicyRuling {
     let outcome: DecisionOutcome;
     let reason: string;
     let say: string;
@@ -128,6 +158,17 @@ export class PolicyEngine {
     }
 
     const needsUser = outcome === 'requires_user_approval' || outcome === 'unknown_information';
+    if (needsUser && canAskUser) {
+      return {
+        output: {
+          decision: 'waiting_for_user',
+          reason,
+          instructions: `Say you'll quickly check with ${this.name}, and ask them to hold for a moment. Do not agree, decline, or guess in the meantime. ${this.name}'s answer will arrive as a system message; continue from there.`,
+        },
+        decision: this.decision('request_decision', question, category, 'requires_user_approval', `${reason} Asked ${this.name} during the call.`),
+        askUser: { category, question, amountUsd, date, startTime },
+      };
+    }
     return {
       output: {
         decision: outcome,
@@ -165,7 +206,7 @@ export class PolicyEngine {
 
     if (input.type === 'appointment') {
       if (!input.date || !input.startTime) return reject('Appointments need both date (YYYY-MM-DD) and start_time (HH:MM).');
-      const slot = checkSlot(this.request.constraints, input.date, input.startTime, this.today);
+      const slot = this.slot(input.date, input.startTime);
       if (!slot.allowed) return reject(slot.reason);
     }
     // One appointment per call: a new time inside the user's window replaces the earlier one
@@ -198,6 +239,30 @@ export class PolicyEngine {
       commitment,
       replacesCommitmentId: previous?.id,
     };
+  }
+
+  /**
+   * Records the user's live answer. An approval only widens what this call may agree to, in
+   * the narrowest form: the approved amount, the exact slot, or a fact they typed.
+   */
+  applyUserAnswer(ask: AskUser, approved: boolean, text?: string): PolicyDecision {
+    if (NEVER_AUTHORIZE.has(ask.category)) {
+      return this.decision('user_answer', ask.question, ask.category, 'never_authorized', 'This can never be authorized through the assistant.');
+    }
+    if (!approved) {
+      return this.decision('user_answer', ask.question, ask.category, 'rejected', `${this.name} declined.`);
+    }
+    let reason = `${this.name} approved during the call.`;
+    if (ask.category === 'additional_cost' && ask.amountUsd !== undefined) {
+      this.approvedExtraCostUsd = Math.max(this.approvedExtraCostUsd, ask.amountUsd);
+      reason = `${this.name} approved up to $${ask.amountUsd} in additional charges.`;
+    } else if (ask.category === 'schedule_outside_constraints' && ask.date && ask.startTime) {
+      this.approvedSlots.add(`${ask.date} ${ask.startTime}`);
+      reason = `${this.name} approved ${ask.date} at ${ask.startTime}.`;
+    } else if (text) {
+      reason = `${this.name} provided: ${text}`;
+    }
+    return this.decision('user_answer', ask.question, ask.category, 'authorized', reason);
   }
 
   private decision(

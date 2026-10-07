@@ -33,6 +33,14 @@ function containsCardNumber(text: string): boolean {
   });
 }
 
+/** Why a free-text answer can't be passed to the assistant, or null if it can. */
+export function sensitiveTextReason(text: string): string | null {
+  if (SSN.test(text)) return 'it looks like a Social Security number';
+  if (containsCardNumber(text)) return 'it looks like a payment card number';
+  if (SENSITIVE_LABEL.test(text)) return 'it mentions a password, code, or account number';
+  return null;
+}
+
 export interface SensitiveFinding {
   field: string;
   reason: string;

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { PolicyDecision, ValidatedCommitment } from '../../../shared/types';
-import { DECISION_CATEGORIES, type PolicyEngine } from '../policy/policyEngine';
+import { DECISION_CATEGORIES, type AskUser, type PolicyEngine } from '../policy/policyEngine';
 
 export interface ToolDefinition {
   name: string;
@@ -46,6 +46,8 @@ export const TOOL_DEFINITIONS: ToolDefinition[] = [
           description: 'What the other party asked or offered, in plain English, including any specifics (amounts, names, dates).',
         },
         amount_usd: { type: 'number', description: 'Dollar amount involved, if any.' },
+        date: { type: 'string', description: 'For schedule_outside_constraints: the offered date, YYYY-MM-DD.' },
+        start_time: { type: 'string', description: 'For schedule_outside_constraints: the offered start time, 24h HH:MM.' },
       },
       required: ['category', 'question'],
       additionalProperties: false,
@@ -91,6 +93,8 @@ const DecisionArgs = z.object({
   category: z.enum(DECISION_CATEGORIES).catch('other'),
   question: z.string().min(1),
   amount_usd: z.number().optional(),
+  date: z.string().optional(),
+  start_time: z.string().optional(),
 });
 const AgreementArgs = z.object({
   type: z.enum(['appointment', 'task_outcome']),
@@ -109,11 +113,12 @@ export interface ToolExecution {
   decision?: PolicyDecision;
   commitment?: ValidatedCommitment;
   replacesCommitmentId?: string;
+  askUser?: AskUser;
   unresolvedQuestion?: string;
   endCall?: z.infer<typeof EndCallArgs>;
 }
 
-export function executeTool(name: string, rawArgs: string, policy: PolicyEngine): ToolExecution {
+export function executeTool(name: string, rawArgs: string, policy: PolicyEngine, canAskUser = false): ToolExecution {
   let json: unknown;
   try {
     json = rawArgs ? JSON.parse(rawArgs) : {};
@@ -134,7 +139,10 @@ export function executeTool(name: string, rawArgs: string, policy: PolicyEngine)
     case 'request_decision': {
       const a = DecisionArgs.safeParse(json);
       if (!a.success) return invalid(a.error);
-      return policy.requestDecision({ category: a.data.category, question: a.data.question, amountUsd: a.data.amount_usd });
+      return policy.requestDecision(
+        { category: a.data.category, question: a.data.question, amountUsd: a.data.amount_usd, date: a.data.date, startTime: a.data.start_time },
+        canAskUser,
+      );
     }
     case 'confirm_agreement': {
       const a = AgreementArgs.safeParse(json);

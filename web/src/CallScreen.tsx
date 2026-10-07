@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { CallRecord, CallStatus } from '../../shared/types';
+import type { CallRecord, CallStatus, UserAnswer, UserQuestion } from '../../shared/types';
 import { displayPhone } from '../../shared/phone';
 
 const STATUS_TEXT: Record<CallStatus, string> = {
@@ -46,14 +46,16 @@ interface Props {
   onFollowUp?: () => void;
   /** Hang up the call in progress. */
   onEnd?: () => Promise<void>;
+  /** Answer a question the assistant is holding the line for. */
+  onAnswer?: (questionId: string, answer: UserAnswer) => Promise<void>;
 }
 
-export function CallScreen({ call, demo, error, onDone, onFollowUp, onEnd }: Props) {
+export function CallScreen({ call, demo, error, onDone, onFollowUp, onEnd, onAnswer }: Props) {
   const finished = call.status === 'completed' || call.status === 'failed';
-  return finished && call.result ? <ResultScreen call={call} demo={demo} onDone={onDone} onFollowUp={onFollowUp} /> : <LiveCall call={call} demo={demo} error={error} onDone={onDone} onEnd={onEnd} />;
+  return finished && call.result ? <ResultScreen call={call} demo={demo} onDone={onDone} onFollowUp={onFollowUp} /> : <LiveCall call={call} demo={demo} error={error} onDone={onDone} onEnd={onEnd} onAnswer={onAnswer} />;
 }
 
-function LiveCall({ call, demo, error, onDone, onEnd }: Props) {
+function LiveCall({ call, demo, error, onDone, onEnd, onAnswer }: Props) {
   const now = useNow(true);
   const [ending, setEnding] = useState(false);
   const canEnd = Boolean(onEnd) && !demo && ['preparing', 'dialing', 'connected', 'in_progress'].includes(call.status);
@@ -82,6 +84,8 @@ function LiveCall({ call, demo, error, onDone, onEnd }: Props) {
 
       {(error || call.status === 'failed') && <div className="alert">{error ?? call.failureReason ?? 'The call failed.'}</div>}
 
+      <Questions call={call} onAnswer={onAnswer} />
+
       <Transcript call={call} live />
 
       <div className="bottom-bar">
@@ -105,6 +109,111 @@ function LiveCall({ call, demo, error, onDone, onEnd }: Props) {
         </div>
       </div>
     </>
+  );
+}
+
+const fmtSlot = (date?: string, time?: string) =>
+  date && time ? `${new Date(`${date}T${time}:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} ${time}` : null;
+
+/** Questions the assistant is holding the line for, newest first; answered ones collapse. */
+function Questions({ call, onAnswer }: { call: CallRecord; onAnswer?: Props['onAnswer'] }) {
+  const questions = call.questions ?? [];
+  const pending = questions.filter((q) => q.status === 'pending');
+  const pendingIds = pending.map((q) => q.id).join(',');
+  useEffect(() => {
+    if (pendingIds) navigator.vibrate?.([200, 100, 200]);
+  }, [pendingIds]);
+  if (questions.length === 0) return null;
+  const them = call.request.counterpartName || 'They';
+  return (
+    <div className="questions">
+      {[...questions].reverse().map((q) =>
+        q.status === 'pending' ? (
+          <QuestionCard key={q.id} q={q} them={them} onAnswer={onAnswer} />
+        ) : (
+          <div key={q.id} className="question-done">
+            {q.status === 'expired'
+              ? '⏱ No answer in time; they were told you will follow up'
+              : q.answer?.decision === 'approve'
+                ? '✓ You approved'
+                : q.answer?.decision === 'decline'
+                  ? '✕ You declined'
+                  : `↩ You answered "${q.answer?.text}"`}
+            : <span className="muted">{q.questionInUserLanguage ?? q.question}</span>
+          </div>
+        ),
+      )}
+    </div>
+  );
+}
+
+function QuestionCard({ q, them, onAnswer }: { q: UserQuestion; them: string; onAnswer?: Props['onAnswer'] }) {
+  const now = useNow(true);
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const needsInfo = q.category === 'information_not_provided';
+  const [replying, setReplying] = useState(needsInfo);
+  const [text, setText] = useState('');
+  const left = Math.max(0, Math.ceil((q.expiresAt - now) / 1000));
+  const slot = fmtSlot(q.date, q.startTime);
+
+  const send = async (answer: UserAnswer) => {
+    if (!onAnswer) return;
+    setSending(true);
+    setError(null);
+    try {
+      await onAnswer(q.id, answer);
+    } catch (e) {
+      setError((e as Error).message);
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="question-card" role="alert">
+      <div className="question-head">
+        <span>{them} is on hold</span>
+        <span className="question-timer">{left}s</span>
+      </div>
+      <div className="question-text">{q.questionInUserLanguage ?? q.question}</div>
+      {q.questionInUserLanguage && <div className="question-original">{q.question}</div>}
+      {(q.amountUsd !== undefined || slot) && (
+        <div className="question-chips">
+          {q.amountUsd !== undefined && <span>${q.amountUsd}</span>}
+          {slot && <span>{slot}</span>}
+        </div>
+      )}
+      {replying ? (
+        <form
+          className="composer"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (text.trim()) void send({ decision: 'reply', text: text.trim() });
+          }}
+        >
+          <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Your answer (no card or ID numbers)" maxLength={300} autoFocus={!needsInfo} />
+          <button type="submit" className="send-btn" disabled={!text.trim() || sending} aria-label="Send answer">
+            ↑
+          </button>
+        </form>
+      ) : null}
+      <div className="question-actions">
+        {!needsInfo && (
+          <button type="button" className="primary-btn call" disabled={sending} onClick={() => void send({ decision: 'approve' })}>
+            Approve
+          </button>
+        )}
+        <button type="button" className="secondary-btn" disabled={sending} onClick={() => void send({ decision: 'decline' })}>
+          {needsInfo ? "Don't share" : 'Decline'}
+        </button>
+        {!needsInfo && !replying && (
+          <button type="button" className="text-btn" onClick={() => setReplying(true)}>
+            Reply…
+          </button>
+        )}
+      </div>
+      {error && <div className="field-error">{error}</div>}
+    </div>
   );
 }
 

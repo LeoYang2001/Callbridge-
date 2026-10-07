@@ -123,7 +123,7 @@ const waitFor = async (pred: () => boolean, ms = 3000) => {
 
 const translator = { translate: async (text: string, to: string) => `[${to}] ${text}` };
 
-function setup(opts: { failConnect?: boolean; analyzer?: CallAnalyzer | null } = {}) {
+function setup(opts: { failConnect?: boolean; analyzer?: CallAnalyzer | null; holdTimeoutMs?: number } = {}) {
   const store = new CallStore(null);
   const agent = new FakeAgent(opts.failConnect);
   const telephony = new FakeTelephony();
@@ -136,6 +136,7 @@ function setup(opts: { failConnect?: boolean; analyzer?: CallAnalyzer | null } =
       analyzer: opts.analyzer === undefined ? { analyze: async () => analysis } : opts.analyzer,
       maxCallSeconds: 600,
       introDelayMs: 50,
+      holdTimeoutMs: opts.holdTimeoutMs,
       log: (callId, type, detail) => store.update(callId, (r) => r.events.push({ at: Date.now(), type, detail })),
     }),
     { allowedDestinations: null, maxCallsPerHour: 10, maxConcurrentCalls: 1 },
@@ -189,7 +190,9 @@ describe('CallSession (simulated dentist call)', () => {
     agent.emit('toolCall', 't1', 'check_appointment_slot', '{"date":"2026-10-09","start_time":"15:00"}');
     expect(agent.toolResults.at(-1)).toMatchObject({ callId: 't1', respond: true, output: { allowed: false } });
     agent.emit('toolCall', 't2', 'request_decision', '{"category":"additional_cost","question":"Add an $80 X-ray?","amount_usd":80}');
-    expect(agent.toolResults.at(-1)?.output.decision).toBe('requires_user_approval');
+    // Mid-call, an unauthorized charge goes to the user instead of being refused outright.
+    expect(agent.toolResults.at(-1)?.output.decision).toBe('waiting_for_user');
+    expect(get().questions).toMatchObject([{ category: 'additional_cost', amountUsd: 80, status: 'pending' }]);
     agent.emit('toolCall', 't3', 'confirm_agreement', '{"type":"appointment","description":"Dental cleaning","date":"2026-10-08","start_time":"15:30"}');
     expect(agent.toolResults.at(-1)?.output.accepted).toBe(true);
 
@@ -333,6 +336,74 @@ describe('CallSession (simulated dentist call)', () => {
       expect(store.get(created.id)!.transcript[0]!.translation).toBe(expected);
       manager.endCall(created.id);
     }
+  });
+
+  describe('human in the loop', () => {
+    async function live(holdTimeoutMs?: number) {
+      const ctx = setup({ holdTimeoutMs });
+      const created = ctx.manager.startCall(dentistRequest());
+      await waitFor(() => ctx.telephony.placed.length === 1);
+      ctx.manager.handleTelephonyState(created.id, 'answered');
+      const get = () => ctx.store.get(created.id)!;
+      const ask = (args: object) => ctx.agent.emit('toolCall', `t${Math.random()}`, 'request_decision', JSON.stringify(args));
+      return { ...ctx, id: created.id, get, ask };
+    }
+
+    it('asks the user, and an approved charge lets the booking through', async () => {
+      const c = await live();
+      const booking = { type: 'appointment', description: 'Cleaning + X-ray', date: '2026-10-08', start_time: '15:30', additional_cost_usd: 80 };
+      c.agent.emit('toolCall', 'b1', 'confirm_agreement', JSON.stringify(booking));
+      expect(c.agent.toolResults.at(-1)?.output.accepted).toBe(false);
+
+      c.ask({ category: 'additional_cost', question: 'Add an $80 X-ray?', amount_usd: 80 });
+      const q = c.get().questions![0]!;
+      await waitFor(() => c.get().questions![0]!.questionInUserLanguage !== undefined);
+      expect(c.get().questions![0]!.questionInUserLanguage).toBe('[Chinese (Mandarin)] Add an $80 X-ray?');
+
+      expect(c.manager.answerQuestion(c.id, q.id, { decision: 'approve' })).toBeNull();
+      expect(c.agent.prompts.at(-1)).toContain('approved');
+      expect(c.get().questions![0]).toMatchObject({ status: 'answered', answer: { decision: 'approve' } });
+      c.agent.emit('toolCall', 'b2', 'confirm_agreement', JSON.stringify(booking));
+      expect(c.agent.toolResults.at(-1)?.output.accepted).toBe(true);
+      expect(c.manager.answerQuestion(c.id, q.id, { decision: 'decline' })).toMatchObject({ status: 409 });
+    });
+
+    it('approving an offered time allows exactly that slot', async () => {
+      const c = await live();
+      c.ask({ category: 'schedule_outside_constraints', question: 'They offered Friday 10 am.', date: '2026-10-09', start_time: '10:00' });
+      c.manager.answerQuestion(c.id, c.get().questions![0]!.id, { decision: 'approve' });
+      const confirm = (date: string, time: string) => {
+        c.agent.emit('toolCall', 'x', 'confirm_agreement', JSON.stringify({ type: 'appointment', description: 'Cleaning', date, start_time: time }));
+        return c.agent.toolResults.at(-1)?.output.accepted;
+      };
+      expect(confirm('2026-10-09', '11:00')).toBe(false);
+      expect(confirm('2026-10-09', '10:00')).toBe(true);
+    });
+
+    it('passes on a typed answer, but never sensitive data', async () => {
+      const c = await live();
+      c.ask({ category: 'information_not_provided', question: 'Do you have dental insurance?' });
+      const qid = c.get().questions![0]!.id;
+      expect(c.manager.answerQuestion(c.id, qid, { decision: 'reply', text: 'Card 4111 1111 1111 1111' })).toMatchObject({ status: 422 });
+      expect(c.get().questions![0]!.status).toBe('pending');
+      expect(c.manager.answerQuestion(c.id, qid, { decision: 'reply', text: 'Yes, Delta Dental' })).toBeNull();
+      expect(c.agent.prompts.at(-1)).toContain('"Yes, Delta Dental"');
+    });
+
+    it('moves on without agreeing when the user does not answer in time', async () => {
+      const c = await live(100);
+      c.ask({ category: 'additional_service', question: 'Add a fluoride treatment?' });
+      await waitFor(() => c.get().questions![0]!.status === 'expired');
+      expect(c.agent.prompts.at(-1)).toContain("didn't answer in time");
+      expect(c.get().unresolvedQuestions).toContain('Add a fluoride treatment?');
+    });
+
+    it('never asks the user about categories that can never be authorized', async () => {
+      const c = await live();
+      c.ask({ category: 'payment_information', question: 'Card number on file?' });
+      expect(c.agent.toolResults.at(-1)?.output.decision).toBe('never_authorized');
+      expect(c.get().questions ?? []).toHaveLength(0);
+    });
   });
 
   it('hangs up when the user taps End call', async () => {

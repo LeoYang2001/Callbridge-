@@ -174,6 +174,33 @@ export interface CallResult {
   policyWarnings: string[];
 }
 
+/**
+ * A question the call assistant put to the user mid-call (human in the loop). The other party
+ * is on hold until the user answers in the app or the hold times out.
+ */
+export interface UserQuestion {
+  id: string;
+  askedAt: number;
+  /** When the assistant stops waiting and moves on without an answer. */
+  expiresAt: number;
+  /** Policy decision category, e.g. additional_cost, schedule_outside_constraints. */
+  category: string;
+  /** What the other party asked or offered, in English. */
+  question: string;
+  questionInUserLanguage?: string;
+  amountUsd?: number;
+  date?: string;
+  startTime?: string;
+  status: 'pending' | 'answered' | 'expired';
+  answer?: UserAnswer & { at: number };
+}
+
+export interface UserAnswer {
+  decision: 'approve' | 'decline' | 'reply';
+  /** For "reply": the information to give them (screened for sensitive data first). */
+  text?: string;
+}
+
 export interface CallMetrics {
   dialedAt?: number;
   answeredAt?: number;
@@ -202,6 +229,8 @@ export interface CallRecord {
   transcript: TranscriptEntry[];
   decisions: PolicyDecision[];
   commitments: ValidatedCommitment[];
+  /** Questions asked of the user during the call (human in the loop). */
+  questions?: UserQuestion[];
   /** Questions the policy layer said need the user's input. */
   unresolvedQuestions: string[];
   /** Why the call ended (end_call outcome, remote hangup, timeout, error…). */

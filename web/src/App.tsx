@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CallRecord, CallRequest, PublicConfig } from '../../shared/types';
-import { endCall, getConfig, startCall, watchCall } from './api';
+import { answerQuestion, endCall, getConfig, startCall, watchCall } from './api';
 import { draftToRequest, requestToDraft } from '../../shared/intake';
 import type { IntakeDraft, RealtimeVoice } from '../../shared/types';
 import { CallScreen } from './CallScreen';
@@ -161,6 +161,9 @@ export function App() {
             error={error}
             onDone={reset}
             onFollowUp={canTalk && !call.id.startsWith('demo-') ? () => followUpOn(call) : undefined}
+            onAnswer={async (questionId, answer) => {
+              await answerQuestion(settings, call.id, questionId, answer);
+            }}
             onEnd={async () => {
               try {
                 await endCall(settings, call.id);

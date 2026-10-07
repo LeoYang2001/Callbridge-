@@ -1,4 +1,5 @@
 import type { FastifyInstance } from 'fastify';
+import { z } from 'zod';
 import type { CallRecord, CallRequest, PublicConfig } from '../../../shared/types';
 import { checkRequest, type CheckDeps } from '../agent/intake';
 import { CallRejectedError, type CallManager } from '../calls/callManager';
@@ -48,6 +49,16 @@ export function registerApiRoutes(
       if (err instanceof CallRejectedError) return reply.code(err.statusCode).send({ error: err.message });
       throw err;
     }
+  });
+
+  app.post<{ Params: { id: string; qid: string } }>('/api/calls/:id/questions/:qid', async (req, reply) => {
+    const parsed = z
+      .object({ decision: z.enum(['approve', 'decline', 'reply']), text: z.string().trim().max(300).optional() })
+      .safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send({ error: 'Send decision approve, decline, or reply (with text).' });
+    const failed = manager.answerQuestion(req.params.id, req.params.qid, parsed.data);
+    if (failed) return reply.code(failed.status).send({ error: failed.error });
+    return { ok: true };
   });
 
   app.post<{ Params: { id: string } }>('/api/calls/:id/hangup', async (req, reply) => {

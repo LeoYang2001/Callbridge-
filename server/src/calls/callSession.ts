@@ -1,8 +1,8 @@
 import { randomBytes, randomUUID } from 'node:crypto';
-import type { CallRecord, CallResult, CallStatus, Speaker } from '../../../shared/types';
+import type { CallRecord, CallResult, CallStatus, Speaker, UserAnswer, UserQuestion } from '../../../shared/types';
 import { buildInstructions, INTRO_NUDGE } from '../agent/prompt';
 import { executeTool, TOOL_DEFINITIONS } from '../agent/tools';
-import { PolicyEngine } from '../policy/policyEngine';
+import { PolicyEngine, type AskUser } from '../policy/policyEngine';
 import type { CallAnalyzer, TranscriptAnalysis } from '../providers/analysis/types';
 import type { MediaTransport, TelephonyCallState, TelephonyProvider } from '../providers/telephony/types';
 import type { Translator } from '../providers/translation/openaiTranslator';
@@ -21,6 +21,8 @@ export interface CallSessionDeps {
   analyzer: CallAnalyzer | null;
   maxCallSeconds: number;
   introDelayMs: number;
+  /** How long the other party is kept on hold while the user answers a question. */
+  holdTimeoutMs?: number;
   log: (callId: string, type: string, detail?: string) => void;
   /** Called exactly once, when the session is fully finished. */
   onFinished: (callId: string) => void;
@@ -35,6 +37,9 @@ const TERMINAL_FAILURES: Partial<Record<TelephonyCallState, CallResult['status']
 
 /** μ-law at 8 kHz: one byte per sample → 8 bytes per millisecond. */
 const ULAW_BYTES_PER_MS = 8;
+
+/** Default hold while the user answers a question in the app. */
+const DEFAULT_HOLD_MS = 60_000;
 
 /** Sustained speech (within the last BARGE_IN_WINDOW_MS) that counts as interrupting us. */
 const BARGE_IN_SPEECH_MS = 400;
@@ -436,6 +441,97 @@ export class CallSession {
     this.currentItemId = null;
   }
 
+  // ───────────────────────────── human in the loop ─────────────────────────────
+
+  /** The user can be asked mid-call only while the other party is on the line. */
+  private canAskUser() {
+    return this.answered && !this.finalizing && !this.hangupRequested;
+  }
+
+  private readonly asks = new Map<string, AskUser>();
+  private readonly holdTimers = new Map<string, NodeJS.Timeout>();
+
+  /** Puts a decision to the user in the app; the other party holds until they answer or time runs out. */
+  private askUser(ask: AskUser) {
+    const id = randomUUID();
+    const now = Date.now();
+    const holdMs = this.deps.holdTimeoutMs ?? DEFAULT_HOLD_MS;
+    const question: UserQuestion = { id, askedAt: now, expiresAt: now + holdMs, status: 'pending', ...ask };
+    this.asks.set(id, ask);
+    this.update((r) => (r.questions ??= []).push(question));
+    this.log('user.asked', `${ask.category}: ${ask.question}`);
+    this.holdTimers.set(id, this.timer(holdMs, () => this.expireQuestion(id)));
+
+    const req = this.record.request;
+    const to = req.user.preferredLanguage;
+    if (this.deps.translator && !sameLanguage('English', to)) {
+      this.deps.translator
+        .translate(ask.question, to, [])
+        .then((t) => this.update((r) => {
+          const q = r.questions?.find((x) => x.id === id);
+          if (q && t) q.questionInUserLanguage = t;
+        }))
+        .catch((err) => this.log('translate.error', (err as Error).message));
+    }
+  }
+
+  /** The user's answer from the app. Returns an error message if it can't be applied. */
+  answerQuestion(questionId: string, answer: UserAnswer): string | null {
+    const q = this.record.questions?.find((x) => x.id === questionId);
+    const ask = this.asks.get(questionId);
+    if (!q || !ask) return 'That question is not part of this call.';
+    if (q.status !== 'pending') return q.status === 'expired' ? 'Too late: the assistant already moved on.' : 'Already answered.';
+    if (answer.decision === 'reply' && !answer.text?.trim()) return 'Type a reply first.';
+
+    this.clearTimer(this.holdTimers.get(questionId));
+    const approved = answer.decision !== 'decline';
+    const text = answer.decision === 'reply' ? answer.text!.trim() : undefined;
+    const decision = this.policy.applyUserAnswer(ask, approved, text);
+    this.update((r) => {
+      r.decisions.push(decision);
+      const entry = r.questions!.find((x) => x.id === questionId)!;
+      entry.status = 'answered';
+      entry.answer = { ...answer, text, at: Date.now() };
+    });
+    this.log('user.answered', `${answer.decision}${text ? `: ${text}` : ''}`);
+    if (this.finalizing) return null;
+
+    const name = this.record.request.user.name;
+    const about = `"${ask.question}"`;
+    let note: string;
+    if (decision.outcome !== 'authorized') {
+      note = `${name} declined ${about}. Thank them for holding, politely say no to it, and continue with the rest of the task.`;
+    } else if (ask.category === 'additional_cost' && ask.amountUsd !== undefined) {
+      note = `${name} approved ${about}: you may now accept up to $${ask.amountUsd} in additional charges. Thank them for holding, and call confirm_agreement (with additional_cost_usd) before confirming.`;
+    } else if (ask.category === 'schedule_outside_constraints' && ask.date && ask.startTime) {
+      note = `${name} approved ${ask.date} at ${ask.startTime}. Thank them for holding, then call confirm_agreement for that exact time before confirming it.`;
+    } else if (text) {
+      note = `${name} answered ${about} with: "${text}". Thank them for holding and share that answer; you may share it from now on.`;
+    } else {
+      note = `${name} approved ${about}. Thank them for holding and continue; call confirm_agreement before confirming anything.`;
+    }
+    this.responding = true;
+    this.agent?.prompt(`${note} (This message is from ${name}'s app, not from the other party.)`);
+    return null;
+  }
+
+  private expireQuestion(questionId: string) {
+    const q = this.record.questions?.find((x) => x.id === questionId);
+    if (!q || q.status !== 'pending') return;
+    this.update((r) => {
+      const entry = r.questions!.find((x) => x.id === questionId)!;
+      entry.status = 'expired';
+      if (!r.unresolvedQuestions.includes(entry.question)) r.unresolvedQuestions.push(entry.question);
+    });
+    this.log('user.no_answer', q.question);
+    if (this.finalizing) return;
+    const name = this.record.request.user.name;
+    this.responding = true;
+    this.agent?.prompt(
+      `${name} didn't answer in time about "${q.question}". Thank them for holding, say you couldn't reach ${name} just now and that ${name} will follow up about it, and continue without agreeing to it.`,
+    );
+  }
+
   /** Adds the user's-language version of a finished line, unless the call is in their language. */
   private translateLine(itemId: string, text: string) {
     const { translator } = this.deps;
@@ -472,7 +568,7 @@ export class CallSession {
   }
 
   private handleToolCall(callId: string, name: string, args: string) {
-    const exec = executeTool(name, args, this.policy);
+    const exec = executeTool(name, args, this.policy, this.canAskUser());
     this.log('ai.tool_call', `${name} ${args}`);
     this.log('policy.result', `${name} → ${JSON.stringify(exec.output)}`);
     this.update((r) => {
@@ -484,6 +580,8 @@ export class CallSession {
         r.unresolvedQuestions.push(exec.unresolvedQuestion);
       }
     });
+
+    if (exec.askUser) this.askUser(exec.askUser);
 
     if (exec.endCall) {
       this.agent?.sendToolResult(callId, exec.output, false);
@@ -553,6 +651,14 @@ export class CallSession {
     this.finalizing = true;
     for (const t of this.timers) clearTimeout(t);
     this.timers.clear();
+    // Questions still waiting when the call ends become follow-ups for the user.
+    this.update((r) => {
+      for (const q of r.questions ?? []) {
+        if (q.status !== 'pending') continue;
+        q.status = 'expired';
+        if (!r.unresolvedQuestions.includes(q.question)) r.unresolvedQuestions.push(q.question);
+      }
+    });
     this.update((r) => (r.metrics.endedAt = Date.now()));
     this.log('call.ended', this.record.endReason ?? failure);
 

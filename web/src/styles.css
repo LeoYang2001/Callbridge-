@@ -375,3 +375,17 @@ pre { background: var(--surface); border: 1px solid var(--border); border-radius
 .summary-headline { font-size: 19px; font-weight: 700; line-height: 1.35; margin: 0 0 8px; }
 .primary-btn.end-call { background: var(--bad); color: #fff; }
 .msg-original { display: block; margin-top: 4px; font-size: 13px; line-height: 1.35; opacity: 0.7; }
+
+/* Human in the loop: the assistant is holding the line for the user's answer. */
+.questions { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; }
+.question-card { background: var(--ask-soft); border: 2px solid var(--ask); border-radius: var(--radius); padding: 14px; }
+.question-head { display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; color: var(--ask); margin-bottom: 6px; }
+.question-timer { font-variant-numeric: tabular-nums; }
+.question-text { font-size: 18px; font-weight: 700; line-height: 1.35; }
+.question-original { font-size: 13px; opacity: 0.7; margin-top: 4px; }
+.question-chips { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.question-chips span { background: var(--surface); border-radius: 999px; padding: 4px 10px; font-size: 14px; font-weight: 600; }
+.question-card .composer { margin: 12px 0 0; }
+.question-actions { display: flex; gap: 8px; align-items: center; margin-top: 12px; }
+.question-actions .primary-btn, .question-actions .secondary-btn { min-height: 46px; font-size: 16px; }
+.question-done { font-size: 14px; padding: 8px 12px; background: var(--surface-2); border-radius: 10px; }

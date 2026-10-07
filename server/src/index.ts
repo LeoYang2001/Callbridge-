@@ -98,6 +98,7 @@ const manager = new CallManager(
     translator,
     maxCallSeconds: config.MAX_CALL_SECONDS,
     introDelayMs: config.INTRO_DELAY_MS,
+    holdTimeoutMs: config.HOLD_TIMEOUT_SECONDS * 1000,
     log: logCallEvent,
   }),
   {

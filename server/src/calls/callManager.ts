@@ -1,7 +1,7 @@
 import { timingSafeEqual } from 'node:crypto';
-import type { CallRecord, CallRequest } from '../../../shared/types';
+import type { CallRecord, CallRequest, UserAnswer } from '../../../shared/types';
 import { displayPhone } from '../../../shared/phone';
-import { findSensitiveData } from '../policy/sensitive';
+import { findSensitiveData, sensitiveTextReason } from '../policy/sensitive';
 import type { MediaTransport, TelephonyCallState } from '../providers/telephony/types';
 import { blockedReason, normalizePhone } from '../util/phone';
 import { CallSession, newCallId, newCallRecord, type CallSessionDeps } from './callSession';
@@ -78,6 +78,18 @@ export class CallManager {
 
   handleTelephonyState(callId: string, state: TelephonyCallState) {
     this.sessions.get(callId)?.handleTelephonyState(state);
+  }
+
+  /** The user's answer to a question asked mid-call. Returns an error message, or null. */
+  answerQuestion(callId: string, questionId: string, answer: UserAnswer): { error: string; status: number } | null {
+    const session = this.sessions.get(callId);
+    if (!session) return { error: 'That call is no longer in progress.', status: 404 };
+    if (answer.text) {
+      const sensitive = sensitiveTextReason(answer.text);
+      if (sensitive) return { error: `Not sent: ${sensitive}. The assistant must never be given that.`, status: 422 };
+    }
+    const error = session.answerQuestion(questionId, answer);
+    return error ? { error, status: 409 } : null;
   }
 
   /** Hangs up a live call at the user's request. Returns false if it isn't live. */

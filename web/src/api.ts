@@ -1,5 +1,5 @@
 import type { IntakeContext } from '../../shared/intake';
-import type { CallRecord, CallRequest, IntakeCheckResult, IntakeDraft, IntakeSession, PublicConfig } from '../../shared/types';
+import type { CallRecord, CallRequest, IntakeCheckResult, IntakeDraft, IntakeSession, PublicConfig, UserAnswer } from '../../shared/types';
 import type { Settings } from './settings';
 
 function endpoint(s: Settings, path: string) {
@@ -53,6 +53,9 @@ export const createIntakeSession = (s: Settings, context: IntakeContext & { foll
 
 export const checkIntake = (s: Settings, context: IntakeContext, draft: IntakeDraft) =>
   postJson<IntakeCheckResult>(s, '/api/intake/check', { context, draft });
+
+export const answerQuestion = (s: Settings, callId: string, questionId: string, answer: UserAnswer) =>
+  postJson<{ ok: boolean }>(s, `/api/calls/${callId}/questions/${questionId}`, answer);
 
 export const endCall = (s: Settings, id: string) => postJson<{ ok: boolean }>(s, `/api/calls/${id}/hangup`, {});
 
