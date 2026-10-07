@@ -18,6 +18,8 @@ interface Props {
   onType: (draft: IntakeDraft) => void;
   /** Coming back after a call: the assistant reports on it first, with its request loaded. */
   followUp?: { callId: string; draft: IntakeDraft; headline?: string };
+  /** Calling someone from the phone book: their details are filled in and this is said first. */
+  seed?: { draft: IntakeDraft; text: string };
   /** The profile interview instead of setting up a call. */
   profile?: { me: Me; onSaved: (me: Me) => void; onDone: () => void; onSkip: () => void };
 }
@@ -33,17 +35,18 @@ const STATUS_TEXT: Record<IntakeStatus, string> = {
 
 const TIER_TEXT = { allowed: 'Allowed', limited: 'Allowed with limits', refused: 'Not allowed' } as const;
 
-export function Intake({ settings, context, languages, onLanguageChange, voice, onVoiceChange, onReview, onType, followUp, profile }: Props) {
+export function Intake({ settings, context, languages, onLanguageChange, voice, onVoiceChange, onReview, onType, followUp, profile, seed }: Props) {
   const [status, setStatus] = useState<IntakeStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lines, setLines] = useState<IntakeLine[]>([]);
-  const [draft, setDraft] = useState<IntakeDraft>(() => followUp?.draft ?? {});
+  const [draft, setDraft] = useState<IntakeDraft>(() => followUp?.draft ?? seed?.draft ?? {});
   const [check, setCheck] = useState<IntakeCheckResult | null>(null);
   const [ready, setReady] = useState(false);
   const [micOn, setMicOn] = useState(false);
   const [speakerOn, setSpeakerOn] = useState(true);
   const [text, setText] = useState('');
   const sessionRef = useRef<IntakeSessionControls | null>(null);
+  const seededRef = useRef(false);
   const live = status !== null && status !== 'ended' && status !== 'error';
 
   useEffect(() => () => sessionRef.current?.stop(), []);
@@ -75,8 +78,13 @@ export function Intake({ settings, context, languages, onLanguageChange, voice, 
           onReady: () => setReady(true),
           onProfile: profile?.onSaved,
         },
-        { mic: withMic, mode: profile ? 'profile' : 'call', followUpOf: followUp?.callId, initialDraft: followUp?.draft },
+        { mic: withMic, mode: profile ? 'profile' : 'call', followUpOf: followUp?.callId, initialDraft: followUp?.draft ?? seed?.draft },
       );
+      // From the phone book: say who to call first (once), so the assistant only asks what for.
+      if (seed && !seededRef.current) {
+        seededRef.current = true;
+        session.sendText(seed.text);
+      }
       session.setSpeaker(speakerOn);
       sessionRef.current = session;
       setMicOn(withMic);

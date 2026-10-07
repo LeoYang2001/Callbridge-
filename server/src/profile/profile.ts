@@ -4,6 +4,7 @@ import { displayPhone } from '../../../shared/phone';
 import { REALTIME_VOICES, WEEKDAYS, type CallRecord, type Contact, type UserProfile } from '../../../shared/types';
 import { describeAvailability, isValidDate, isValidTime } from '../policy/availability';
 import { sensitiveTextReason } from '../policy/sensitive';
+import { blockedReason, normalizePhone } from '../util/phone';
 import { isValidTimeZone, localToday } from '../util/time';
 
 export const emptyProfile = (): UserProfile => ({
@@ -76,6 +77,39 @@ export function applyProfilePatch(profile: UserProfile, patch: ProfilePatch): { 
   return { profile: next };
 }
 
+export const ContactInputSchema = z.object({
+  name: text(80).min(1, 'Enter a name'),
+  phone: z.string().max(32),
+  relationship: text(60).optional(),
+  language: text(60).optional(),
+  notes: z.array(text(200)).max(10).optional(),
+});
+export type ContactInput = z.infer<typeof ContactInputSchema>;
+
+/** Adds or edits a phone book entry (id given = edit). Returns the new profile or an error. */
+export function saveContact(profile: UserProfile, input: ContactInput, id?: string): { profile: UserProfile; contact: Contact } | { error: string } {
+  const phone = normalizePhone(input.phone);
+  if (!phone || blockedReason(phone)) return { error: 'Enter a valid phone number.' };
+  for (const note of input.notes ?? []) {
+    const reason = sensitiveTextReason(note);
+    if (reason) return { error: `Not saved: a note — ${reason}.` };
+  }
+  const duplicate = profile.contacts.find((c) => c.phone === phone && c.id !== id);
+  if (duplicate) return { error: `${duplicate.name} already has this number.` };
+  const existing = id ? profile.contacts.find((c) => c.id === id) : undefined;
+  if (id && !existing) return { error: 'That contact no longer exists.' };
+  const contact: Contact = {
+    ...(existing ?? { id: randomUUID(), notes: [], callCount: 0 }),
+    name: input.name,
+    phone,
+    relationship: input.relationship || undefined,
+    language: input.language || undefined,
+    notes: input.notes ?? existing?.notes ?? [],
+  };
+  const contacts = existing ? profile.contacts.map((c) => (c.id === id ? contact : c)) : [...profile.contacts, contact];
+  return { profile: { ...profile, contacts }, contact };
+}
+
 const KIND: Record<string, string> = {
   healthcare_appointment: 'clinic',
   reservation: 'restaurant',
@@ -98,7 +132,9 @@ export function learnFromCall(profile: UserProfile, record: CallRecord): UserPro
   const previous: Contact = i >= 0 ? contacts[i]! : { id: randomUUID(), name, phone: req.to, notes: [], callCount: 0 };
   const contact: Contact = {
     ...previous,
-    name: req.counterpartName?.trim() || previous.name,
+    // A name the user gave the contact (or an earlier call) sticks; a new contact takes this call's.
+    name: i >= 0 ? previous.name : name,
+    relationship: previous.relationship ?? req.counterpartRelationship?.trim(),
     kind: previous.kind ?? (req.category ? KIND[req.category] : undefined),
     language: req.callLanguage || previous.language,
     notes: dedupe([...previous.notes, ...(r?.counterpartNotes ?? [])]).slice(-10),
@@ -143,11 +179,11 @@ export function profileForPrompt(profile: UserProfile): string {
   if (profile.usualAvailability.length) lines.push(`- Usually available: ${describeAvailability(profile.usualAvailability)}`);
   if (profile.shareable.length) lines.push(`- Has said these may be shared when relevant: ${profile.shareable.map((f) => `${f.label}: ${f.value}`).join('; ')}`);
   if (profile.preferences.length) lines.push(`- Preferences: ${profile.preferences.join('; ')}`);
-  const contacts = [...profile.contacts].sort((a, b) => (b.lastCalledAt ?? 0) - (a.lastCalledAt ?? 0)).slice(0, 15);
+  const contacts = [...profile.contacts].sort((a, b) => (b.lastCalledAt ?? 0) - (a.lastCalledAt ?? 0)).slice(0, 50);
   if (contacts.length) {
-    lines.push('- Contacts from earlier calls:');
+    lines.push('- Phone book:');
     for (const c of contacts) {
-      lines.push(`  - ${c.name}${c.kind ? ` (${c.kind})` : ''}: ${displayPhone(c.phone)}${c.language ? `; calls in ${c.language}` : ''}${c.notes.length ? `; notes: ${c.notes.join(' ')}` : ''}${c.lastOutcome ? `; last call: ${c.lastOutcome}` : ''}`);
+      lines.push(`  - ${c.name}${c.relationship ? ` (${c.relationship})` : c.kind ? ` (${c.kind})` : ''}: ${displayPhone(c.phone)}${c.language ? `; calls in ${c.language}` : ''}${c.notes.length ? `; notes: ${c.notes.join(' ')}` : ''}${c.lastOutcome ? `; last call: ${c.lastOutcome}` : ''}`);
     }
   }
   if (profile.appointments.length) {

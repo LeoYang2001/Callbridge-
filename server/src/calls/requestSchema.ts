@@ -14,6 +14,7 @@ export const CallRequestSchema = z
     to: text(32).min(1),
     voice: z.enum(REALTIME_VOICES).optional(),
     counterpartName: text(120).optional(),
+    counterpartRelationship: text(60).optional(),
     taskInUserLanguage: text(500).optional(),
     user: z.object({
       name: text(80).min(1, 'Name is required'),

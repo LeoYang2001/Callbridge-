@@ -403,3 +403,14 @@ pre { background: var(--surface); border: 1px solid var(--border); border-radius
 .profile-item { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 15px; }
 .profile-item:last-child { border-bottom: 0; }
 .profile-danger { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin: 24px 0 8px; font-size: 14px; }
+
+/* Phone book */
+.search { width: 100%; margin-bottom: 12px; }
+.contact { display: flex; justify-content: space-between; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.contact:last-child { border-bottom: 0; }
+.contact-main { min-width: 0; flex: 1; }
+.contact-rel { margin-left: 8px; font-size: 12px; font-weight: 600; color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 2px 8px; }
+.contact-last { font-size: 13px; margin-top: 2px; }
+.contact-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex: none; }
+.primary-btn.small-call { min-height: 36px; font-size: 15px; padding: 0 16px; flex: none; }
+.contact-confirm { margin-top: 6px; font-size: 14px; }

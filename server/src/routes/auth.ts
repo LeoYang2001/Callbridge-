@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { AuthResult, Me } from '../../../shared/types';
 import type { OtpRateLimit, OtpSender } from '../auth/otp';
 import type { Database, UserRow } from '../db/database';
-import { applyProfilePatch, emptyProfile, ProfilePatchSchema } from '../profile/profile';
+import { applyProfilePatch, ContactInputSchema, emptyProfile, ProfilePatchSchema, saveContact } from '../profile/profile';
 import { blockedReason, normalizePhone } from '../util/phone';
 import { isValidTimeZone } from '../util/time';
 
@@ -91,6 +91,31 @@ export function registerAuthRoutes(
     if ('error' in result) return reply.code(422).send({ error: result.error });
     db.saveProfile(req.user!.id, result.profile);
     return toMe({ ...req.user!, profile: result.profile });
+  });
+
+  // ── phone book ──
+  app.post('/api/me/contacts', async (req, reply) => {
+    const parsed = ContactInputSchema.safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send({ error: parsed.error.issues[0]?.message ?? 'Check the contact.' });
+    const result = saveContact(req.user!.profile, parsed.data);
+    if ('error' in result) return reply.code(422).send({ error: result.error });
+    db.saveProfile(req.user!.id, result.profile);
+    return toMe({ ...req.user!, profile: result.profile });
+  });
+
+  app.patch<{ Params: { id: string } }>('/api/me/contacts/:id', async (req, reply) => {
+    const parsed = ContactInputSchema.safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send({ error: parsed.error.issues[0]?.message ?? 'Check the contact.' });
+    const result = saveContact(req.user!.profile, parsed.data, req.params.id);
+    if ('error' in result) return reply.code(422).send({ error: result.error });
+    db.saveProfile(req.user!.id, result.profile);
+    return toMe({ ...req.user!, profile: result.profile });
+  });
+
+  app.delete<{ Params: { id: string } }>('/api/me/contacts/:id', async (req) => {
+    const profile = { ...req.user!.profile, contacts: req.user!.profile.contacts.filter((c) => c.id !== req.params.id) };
+    db.saveProfile(req.user!.id, profile);
+    return toMe({ ...req.user!, profile });
   });
 
   /** Deletes the account, its profile, and its call history. */

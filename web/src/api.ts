@@ -53,6 +53,13 @@ export const signOut = (s: Settings) => postJson<{ ok: boolean }>(s, '/api/auth/
 export const getMe = (s: Settings) => request<Me>(s, '/api/me');
 export const updateProfile = (s: Settings, patch: Record<string, unknown>) =>
   request<Me>(s, '/api/me/profile', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) });
+export const saveContact = (s: Settings, contact: { name: string; phone: string; relationship?: string; language?: string }, id?: string) =>
+  request<Me>(s, id ? `/api/me/contacts/${id}` : '/api/me/contacts', {
+    method: id ? 'PATCH' : 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(contact),
+  });
+export const deleteContact = (s: Settings, id: string) => request<Me>(s, `/api/me/contacts/${id}`, { method: 'DELETE' });
 export const deleteAccount = (s: Settings) => request<{ ok: boolean }>(s, '/api/me', { method: 'DELETE' });
 
 export const startCall = (s: Settings, req: CallRequest) =>

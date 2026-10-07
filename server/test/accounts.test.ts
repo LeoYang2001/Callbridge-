@@ -120,3 +120,34 @@ describe('learning from calls', () => {
     expect(summary).toContain('2099-10-08 15:30 with Smile Dental');
   });
 });
+
+describe('phone book', () => {
+  it('adds, edits, and deletes contacts; rejects bad numbers, duplicates, and sensitive notes', async () => {
+    const { server, signIn } = app();
+    const { body } = await signIn();
+    const auth = { authorization: `Bearer ${body.token}` };
+    const add = await server.inject({ method: 'POST', url: '/api/me/contacts', headers: auth, payload: { name: 'Maria', phone: '747-283-6440', relationship: 'girlfriend', language: 'Tagalog' } });
+    const maria = (add.json() as Me).profile.contacts[0]!;
+    expect(maria).toMatchObject({ name: 'Maria', phone: '+17472836440', relationship: 'girlfriend', language: 'Tagalog' });
+
+    expect((await server.inject({ method: 'POST', url: '/api/me/contacts', headers: auth, payload: { name: 'Dup', phone: '+1 (747) 283-6440' } })).statusCode).toBe(422);
+    expect((await server.inject({ method: 'POST', url: '/api/me/contacts', headers: auth, payload: { name: 'Bad', phone: '911' } })).statusCode).toBe(422);
+    expect((await server.inject({ method: 'POST', url: '/api/me/contacts', headers: auth, payload: { name: 'X', phone: '4155550100', notes: ['card 4111 1111 1111 1111'] } })).statusCode).toBe(422);
+
+    const edited = await server.inject({ method: 'PATCH', url: `/api/me/contacts/${maria.id}`, headers: auth, payload: { name: 'Maria Santos', phone: '7472836440', relationship: 'girlfriend' } });
+    const after = (edited.json() as Me).profile.contacts[0]!;
+    expect(after).toMatchObject({ id: maria.id, name: 'Maria Santos' });
+    expect(after.language).toBeUndefined(); // cleared by the edit
+
+    const del = await server.inject({ method: 'DELETE', url: `/api/me/contacts/${maria.id}`, headers: auth });
+    expect((del.json() as Me).profile.contacts).toHaveLength(0);
+  });
+
+  it("keeps the user's name for a contact and fills in the relationship from calls", () => {
+    const profile = { ...emptyProfile(), contacts: [{ id: 'm', name: 'Maria', phone: '+14155550123', notes: [], callCount: 1 }] };
+    const r = newCallRecord('11111111-2222-3333-4444-555555555555', dentistRequest({ counterpartName: 'my girlfriend', counterpartRelationship: 'girlfriend', callLanguage: 'Tagalog' }));
+    const next = learnFromCall(profile, r);
+    expect(next.contacts).toMatchObject([{ id: 'm', name: 'Maria', relationship: 'girlfriend', language: 'Tagalog', callCount: 2 }]);
+    expect(profileForPrompt(next)).toContain('Maria (girlfriend): +1 (415)-555-0123; calls in Tagalog');
+  });
+});

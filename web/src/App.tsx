@@ -8,6 +8,7 @@ import { CallScreen } from './CallScreen';
 import { simulateCall } from './demo';
 import { Intake } from './Intake';
 import { LANGUAGES, loadSaved, NewCall } from './NewCall';
+import { PhoneBook } from './PhoneBook';
 import { ProfileScreen } from './ProfileScreen';
 import { SignIn } from './SignIn';
 import { effectiveDemo, isStaticHost, loadSettings, saveSettings, type Settings } from './settings';
@@ -27,7 +28,9 @@ export function App() {
   const [userLanguage, setUserLanguage] = useState(() => loadSaved().user.preferredLanguage);
   /** Signed-in user; undefined while checking the saved session, null when signed out. */
   const [me, setMe] = useState<Me | null | undefined>(undefined);
-  const [screen, setScreen] = useState<'home' | 'profile' | 'profileTalk'>('home');
+  const [screen, setScreen] = useState<'home' | 'profile' | 'profileTalk' | 'contacts'>('home');
+  /** Calling someone from the phone book. */
+  const [callSeed, setCallSeed] = useState<{ draft: IntakeDraft; text: string; key: number } | null>(null);
   const [pickedVoice, setPickedVoice] = useState<RealtimeVoice | null>(loadVoice);
   const voice = pickedVoice ?? me?.profile.voice ?? ((config?.defaultVoice as RealtimeVoice | undefined) || 'marin');
   const changeVoice = (v: RealtimeVoice) => {
@@ -154,6 +157,7 @@ export function App() {
     setError(null);
     setFollowUp(null);
     setFromIntake(null);
+    setCallSeed(null);
   };
 
   const followUpOn = (finished: CallRecord) => {
@@ -173,9 +177,14 @@ export function App() {
         </div>
         <div className="topbar-right">
           {me && (
-            <button type="button" className="icon-btn" aria-label="Profile" onClick={() => setScreen('profile')}>
-              👤
-            </button>
+            <>
+              <button type="button" className="icon-btn" aria-label="Phone book" onClick={() => setScreen('contacts')}>
+                📒
+              </button>
+              <button type="button" className="icon-btn" aria-label="Profile" onClick={() => setScreen('profile')}>
+                👤
+              </button>
+            </>
           )}
           <button type="button" className={`mode-pill ${demo ? 'demo' : config ? 'live' : ''}`} onClick={() => setShowSettings(true)}>
             {demo ? 'Demo' : config ? 'Live' : configError ? 'Not connected' : '…'}
@@ -215,6 +224,30 @@ export function App() {
           <div className="muted">Loading…</div>
         ) : !demo && me === null ? (
           <SignIn settings={settings} languages={LANGUAGES} language={userLanguage} onLanguageChange={setUserLanguage} onSignedIn={onSignedIn} />
+        ) : me && screen === 'contacts' && !call ? (
+          <PhoneBook
+            settings={settings}
+            me={me}
+            languages={LANGUAGES}
+            onChange={setMe}
+            onClose={() => setScreen('home')}
+            onCall={(c) => {
+              reset();
+              const who = c.relationship ? `${c.name} (my ${c.relationship})` : c.name;
+              setCallSeed({
+                draft: {
+                  counterpartName: c.name,
+                  counterpartRelationship: c.relationship,
+                  phoneNumber: c.phone.replace(/^\+1(?=\d{10}$)/, ''),
+                  callLanguage: c.language,
+                },
+                text: `(Call ${who} at ${c.phone}${c.language ? `, in ${c.language}` : ''}.)`,
+                key: Date.now(),
+              });
+              setScreen('home');
+              setMode('talk');
+            }}
+          />
         ) : me && screen === 'profile' && !call ? (
           <ProfileScreen
             settings={settings}
@@ -266,8 +299,9 @@ export function App() {
         ) : (
           canTalk && mode === 'talk' ? (
             <Intake
-              key={followUp?.callId ?? 'new'}
+              key={followUp?.callId ?? (callSeed ? `seed-${callSeed.key}` : 'new')}
               followUp={followUp ?? undefined}
+              seed={callSeed ?? undefined}
               settings={settings}
               context={intakeContext}
               languages={LANGUAGES}

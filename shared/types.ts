@@ -63,8 +63,10 @@ export interface CallRequest {
   to: string;
   /** Voice for the call assistant; the server's REALTIME_VOICE when omitted. */
   voice?: RealtimeVoice;
-  /** Who is being called, e.g. "Smile Dental". */
+  /** Who is being called, e.g. "Smile Dental" or "Maria". */
   counterpartName?: string;
+  /** Who they are to the user, e.g. "girlfriend" (saved in the phone book). */
+  counterpartRelationship?: string;
   /** The task as the user described it, in the user's language (shown on the review card). */
   taskInUserLanguage?: string;
   /** Set by the server's task review; never trusted from the client. */
@@ -249,6 +251,7 @@ export interface CallRecord {
 /** What the voice intake has gathered so far. Everything is optional until the review. */
 export interface IntakeDraft {
   counterpartName?: string;
+  counterpartRelationship?: string;
   phoneNumber?: string;
   task?: string;
   taskInUserLanguage?: string;
@@ -293,6 +296,8 @@ export interface Contact {
   phone: string;
   /** e.g. "dentist", "restaurant", "personal" */
   kind?: string;
+  /** Who they are to the user, e.g. "girlfriend", "mom", "dentist". */
+  relationship?: string;
   /** Language the last call to them was in, e.g. "Tagalog". */
   language?: string;
   /** Things learned on calls, e.g. "Asks for the insurance card at check-in." */

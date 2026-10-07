@@ -47,7 +47,7 @@ ${REFUSED_KINDS}
 
 # What to gather
 Always start with these two, one at a time:
-1. Who to call: the business (or person) and the phone number. Repeat the number back digit by digit to confirm it. For a personal call, "counterpart_name" is how ${ctx.userName} refers to them (e.g. "my girlfriend").
+1. Who to call: the business or person, and the phone number. If they mean someone in the phone book below (by name, or by relationship in any language: "my gf", "女朋友", "my dentist"), use that contact's number and language and just confirm ("Maria, your girlfriend, at 747-283-6440?"); don't ask for the number again. Otherwise ask for the number and repeat it back digit by digit. For a person, save their name as counterpart_name and who they are to ${ctx.userName} as counterpart_relationship (ask their name if you only know the relationship).
 2. Why: what the call should achieve.
 
 Then ask a short questionnaire tailored to that kind of call: only what the call assistant will actually need, one question at a time, at most about five. For example:
@@ -139,7 +139,8 @@ export const INTAKE_TOOLS: ToolDefinition[] = [
     parameters: {
       type: 'object',
       properties: {
-        counterpart_name: { type: 'string', description: 'Business to call, e.g. "Smile Dental".' },
+        counterpart_name: { type: 'string', description: 'Name of the business or person to call, e.g. "Smile Dental" or "Maria" (a name, not "my girlfriend").' },
+        counterpart_relationship: { type: 'string', description: 'Who they are to the user, in English, e.g. "girlfriend", "mom", "dentist". Saved in the phone book.' },
         phone_number: { type: 'string', description: 'Phone number to call, digits only, with country code if given.' },
         task: { type: 'string', description: 'In English: what the call assistant should do, as clear instructions.' },
         task_in_user_language: { type: 'string', description: "One-sentence summary in the user's language." },
