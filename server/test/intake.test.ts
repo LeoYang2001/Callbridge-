@@ -158,6 +158,12 @@ describe('appointments need a time window', () => {
     expect(booking.missing).toEqual(['which days and times work (at least one time window)']);
     expect((await checkRequest(noWindows, deps('business_inquiry'))).ok).toBe(true);
   });
+
+  it('lets the user skip the times when the call only asks what is available', async () => {
+    const askOnly = dentistRequest({ instructions: 'Ask Smile Dental which cleaning times are available and report back. Do not book.', constraints: { availability: [], maxAdditionalCostUsd: 0 } });
+    const classifier = { review: async () => reviewTask('healthcare_appointment', '', false) };
+    expect((await checkRequest(askOnly, { classifier, allowedDestinations: null })).ok).toBe(true);
+  });
 });
 
 describe('follow-up after a call', () => {

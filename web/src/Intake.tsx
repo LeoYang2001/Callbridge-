@@ -99,13 +99,17 @@ export function Intake({ settings, context, languages, onLanguageChange, voice, 
     }
   };
 
+  const say = async (t: string) => {
+    const session = live ? sessionRef.current : await connect(false);
+    session?.sendText(t);
+  };
+
   const sendText = async (e: FormEvent) => {
     e.preventDefault();
     const t = text.trim();
     if (!t) return;
     setText('');
-    const session = live ? sessionRef.current : await connect(false);
-    session?.sendText(t);
+    await say(t);
   };
 
   const toggleSpeaker = () => {
@@ -235,6 +239,16 @@ export function Intake({ settings, context, languages, onLanguageChange, voice, 
 
       <div className="bottom-bar">
         {error && <div className="bar-error">{error}</div>}
+        {live && lines.length > 0 && (
+          <div className="chips skip-chips">
+            <button type="button" className="chip" onClick={() => void say('(Skip this question.)')}>
+              Skip this question
+            </button>
+            <button type="button" className="chip" onClick={() => void say("(That's all. Skip the remaining questions and check the request.)")}>
+              That's all
+            </button>
+          </div>
+        )}
         <form className="composer" onSubmit={sendText}>
           <input
             value={text}

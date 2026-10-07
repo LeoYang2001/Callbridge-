@@ -389,3 +389,4 @@ pre { background: var(--surface); border: 1px solid var(--border); border-radius
 .question-actions { display: flex; gap: 8px; align-items: center; margin-top: 12px; }
 .question-actions .primary-btn, .question-actions .secondary-btn { min-height: 46px; font-size: 16px; }
 .question-done { font-size: 14px; padding: 8px 12px; background: var(--surface-2); border-radius: 10px; }
+.skip-chips { margin-bottom: 8px; flex-wrap: nowrap; }

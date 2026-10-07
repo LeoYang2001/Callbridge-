@@ -19,12 +19,16 @@ export class TaskReviewUnavailableError extends Error {}
 const SCHEMA = {
   type: 'object',
   additionalProperties: false,
-  required: ['category', 'counterpartIsBusiness', 'reasonInUserLanguage'],
+  required: ['category', 'counterpartIsBusiness', 'booksATime', 'reasonInUserLanguage'],
   properties: {
     category: { type: 'string', enum: [...TASK_CATEGORIES] },
     counterpartIsBusiness: {
       type: 'boolean',
       description: 'True only if the call goes to a business or organization, not a private person.',
+    },
+    booksATime: {
+      type: 'boolean',
+      description: 'True if the call should commit to a specific time (book, reschedule, reserve). False if it only asks about availability or other information.',
     },
     reasonInUserLanguage: {
       type: 'string',
@@ -53,7 +57,7 @@ export class OpenAITaskClassifier implements TaskClassifier {
   }
 
   async review(input: TaskToClassify): Promise<TaskReview> {
-    let parsed: { category: TaskCategory; counterpartIsBusiness: boolean; reasonInUserLanguage: string };
+    let parsed: { category: TaskCategory; counterpartIsBusiness: boolean; booksATime: boolean; reasonInUserLanguage: string };
     try {
       const response = await this.client.responses.create({
         model: this.model,
@@ -87,6 +91,6 @@ Set reasonInUserLanguage to the ruling text of the category you picked, translat
     // business-style tasks like bookings don't apply, and harmful ones stay harmful.
     const category: TaskCategory =
       parsed.counterpartIsBusiness || TASK_RULES[parsed.category]?.tier === 'refused' ? parsed.category : 'personal_call';
-    return reviewTask(category, category === parsed.category ? parsed.reasonInUserLanguage : '');
+    return reviewTask(category, category === parsed.category ? parsed.reasonInUserLanguage : '', parsed.booksATime);
   }
 }

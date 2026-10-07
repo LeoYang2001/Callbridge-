@@ -50,6 +50,8 @@ export interface TaskReview {
   reasonInUserLanguage: string;
   /** Extra rules the call assistant must follow for this category. */
   rules: string[];
+  /** Whether the call is meant to commit to a time (book, reschedule), not just ask about times. */
+  booksATime?: boolean;
 }
 
 /** Voices the OpenAI Realtime API offers. `marin` and `cedar` are its most natural ones. */

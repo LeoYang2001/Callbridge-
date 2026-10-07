@@ -102,7 +102,7 @@ export const TASK_RULES: Record<TaskCategory, CategoryRule> = {
   },
 };
 
-export function reviewTask(category: TaskCategory, reasonInUserLanguage: string): TaskReview {
+export function reviewTask(category: TaskCategory, reasonInUserLanguage: string, booksATime?: boolean): TaskReview {
   const rule = TASK_RULES[category] ?? TASK_RULES.other;
   return {
     category: TASK_RULES[category] ? category : 'other',
@@ -110,5 +110,6 @@ export function reviewTask(category: TaskCategory, reasonInUserLanguage: string)
     reason: rule.reason,
     reasonInUserLanguage,
     rules: rule.rules,
+    booksATime,
   };
 }

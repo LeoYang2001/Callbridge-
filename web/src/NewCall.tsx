@@ -10,30 +10,15 @@ const DAY_LONG: Record<Weekday, string> = { mon: 'Mon', tue: 'Tue', wed: 'Wed', 
 export const LANGUAGES = ['Chinese (Mandarin)', 'Chinese (Cantonese)', 'Spanish', 'Vietnamese', 'Korean', 'Tagalog', 'Russian', 'Arabic', 'Hindi', 'Japanese', 'English'];
 const STORAGE_KEY = 'callbridge.form.v1';
 
-const TEMPLATES: { label: string; text: string }[] = [
-  {
-    label: '🦷 Dentist',
-    text: "Schedule a teeth cleaning. Do not agree to additional procedures or charges. If asked something you don't know, say you need to confirm rather than guessing.",
-  },
-  {
-    label: '🍽 Restaurant',
-    text: 'Book a dinner table for 2 people. Ask if they have a quiet table. Do not give any credit card details.',
-  },
-  {
-    label: '❓ Question',
-    text: "Ask whether they are open this Saturday and until what time. Don't make any booking or commitment.",
-  },
-];
-
 export const defaultRequest = (): CallRequest => ({
   to: '',
   user: { name: 'Leo', pronouns: '', preferredLanguage: 'Chinese (Mandarin)' },
   callLanguage: 'English',
   timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Los_Angeles',
-  authorizedInfo: [{ label: 'Callback phone number', value: '' }],
-  instructions: TEMPLATES[0]!.text,
+  authorizedInfo: [],
+  instructions: '',
   constraints: {
-    availability: [{ days: ['wed', 'thu'], start: '14:00', end: '18:00' }],
+    availability: [],
     maxAdditionalCostUsd: 0,
   },
 });
@@ -208,18 +193,11 @@ export function NewCall({ demo, blockedReason, submitting, error, onSubmit, init
 
           <div className="field">
             <span className="field-label">What should the assistant do?</span>
-            <div className="chips">
-              {TEMPLATES.map((t) => (
-                <button key={t.label} type="button" className={`chip ${req.instructions === t.text ? 'on' : ''}`} onClick={() => set('instructions', t.text)}>
-                  {t.label}
-                </button>
-              ))}
-            </div>
             <textarea
               rows={6}
               value={req.instructions}
               onChange={(e) => set('instructions', e.target.value)}
-              placeholder="e.g. Schedule a teeth cleaning. Don't agree to extra charges."
+              placeholder="Who you're calling and what you need, e.g. book a teeth cleaning at Smile Dental next week."
             />
           </div>
 
@@ -272,7 +250,7 @@ export function NewCall({ demo, blockedReason, submitting, error, onSubmit, init
             </div>
           ))}
           <button type="button" className="ghost-btn" onClick={() => setConstraints({ availability: [...windows, { days: [], start: '09:00', end: '17:00' }] })}>
-            + Add another time window
+            {windows.length ? '+ Add another time window' : '+ Add a time window (needed for bookings)'}
           </button>
 
           <div className="field">
