@@ -19,9 +19,48 @@ export interface AuthorizedFact {
   value: string;
 }
 
+/**
+ * What kind of call this is. The server classifies every request before dialing, and
+ * `server/src/policy/taskPolicy.ts` decides in code which categories may be called at all.
+ */
+export const TASK_CATEGORIES = [
+  'appointment',
+  'healthcare_appointment',
+  'reservation',
+  'business_inquiry',
+  'service_request',
+  'financial',
+  'identity_verification',
+  'legal',
+  'emergency',
+  'personal_call',
+  'sales_or_marketing',
+  'deceptive_or_harmful',
+  'other',
+] as const;
+export type TaskCategory = (typeof TASK_CATEGORIES)[number];
+
+/** The server's ruling on a request, shown to the user before any call is placed. */
+export interface TaskReview {
+  category: TaskCategory;
+  tier: 'allowed' | 'limited' | 'refused';
+  /** English explanation, for the call record and logs. */
+  reason: string;
+  /** The same explanation in the user's language. */
+  reasonInUserLanguage: string;
+  /** Extra rules the call assistant must follow for this category. */
+  rules: string[];
+}
+
 export interface CallRequest {
   /** Destination in E.164 format, e.g. +14155550123 */
   to: string;
+  /** Who is being called, e.g. "Smile Dental". */
+  counterpartName?: string;
+  /** The task as the user described it, in the user's language (shown on the review card). */
+  taskInUserLanguage?: string;
+  /** Set by the server's task review; never trusted from the client. */
+  category?: TaskCategory;
   user: {
     name: string;
     /** Optional, e.g. "she/her". When empty the assistant refers to the user by name. */
@@ -157,6 +196,35 @@ export interface CallRecord {
   result?: CallResult;
   metrics: CallMetrics;
   events: CallLogEvent[];
+}
+
+/** What the voice intake has gathered so far. Everything is optional until the review. */
+export interface IntakeDraft {
+  counterpartName?: string;
+  phoneNumber?: string;
+  task?: string;
+  taskInUserLanguage?: string;
+  callLanguage?: string;
+  userName?: string;
+  availability?: AvailabilityWindow[];
+  earliestDate?: string;
+  latestDate?: string;
+  maxAdditionalCostUsd?: number;
+  shareableInfo?: AuthorizedFact[];
+}
+
+/** Server response to an intake check: what's still missing, and the task ruling. */
+export interface IntakeCheckResult {
+  ok: boolean;
+  missing: string[];
+  problems: string[];
+  review: TaskReview | null;
+}
+
+export interface IntakeSession {
+  clientSecret: string;
+  expiresAt: number;
+  model: string;
 }
 
 export interface PublicConfig {

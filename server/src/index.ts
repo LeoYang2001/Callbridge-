@@ -10,10 +10,12 @@ import Fastify, { type FastifyRequest } from 'fastify';
 import { CallManager } from './calls/callManager';
 import { CallStore } from './calls/store';
 import { isAllowedOrigin, loadConfig } from './config';
+import { OpenAITaskClassifier } from './policy/taskClassifier';
 import { OpenAIAnalyzer } from './providers/analysis/openaiAnalyzer';
 import { TwilioTelephony } from './providers/telephony/twilio';
 import { OpenAIRealtimeAgent } from './providers/voice/openaiRealtime';
 import { registerApiRoutes } from './routes/api';
+import { registerIntakeRoutes } from './routes/intake';
 import { registerTwilioRoutes } from './routes/twilio';
 
 const config = loadConfig();
@@ -102,7 +104,12 @@ const manager = new CallManager(
   },
 );
 
-registerApiRoutes(app, { config, manager, store });
+const checkDeps = {
+  classifier: config.OPENAI_API_KEY ? new OpenAITaskClassifier(config.OPENAI_API_KEY, config.ANALYSIS_MODEL) : null,
+  allowedDestinations: config.allowedDestinations,
+};
+registerApiRoutes(app, { config, manager, store, checkDeps });
+registerIntakeRoutes(app, { config, checkDeps });
 if (telephony) registerTwilioRoutes(app, { config, manager, telephony });
 
 const webDist = path.join(root, 'web', 'dist');

@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { CallRecord, CallRequest, PublicConfig } from '../../../shared/types';
 import { WEEKDAYS } from '../../../shared/types';
+import { checkRequest, type CheckDeps } from '../agent/intake';
 import { CallRejectedError, type CallManager } from '../calls/callManager';
 import type { CallStore } from '../calls/store';
 import type { AppConfig } from '../config';
@@ -13,6 +14,8 @@ const text = (max: number) => z.string().trim().max(max);
 const CallRequestSchema = z
   .object({
     to: text(32).min(1),
+    counterpartName: text(120).optional(),
+    taskInUserLanguage: text(500).optional(),
     user: z.object({
       name: text(80).min(1, 'Name is required'),
       pronouns: text(40).optional(),
@@ -44,9 +47,9 @@ const CallRequestSchema = z
 
 export function registerApiRoutes(
   app: FastifyInstance,
-  deps: { config: AppConfig; manager: CallManager; store: CallStore },
+  deps: { config: AppConfig; manager: CallManager; store: CallStore; checkDeps: CheckDeps },
 ) {
-  const { config, manager, store } = deps;
+  const { config, manager, store, checkDeps } = deps;
 
   app.get('/api/health', async () => ({ ok: true, activeCalls: manager.activeCount }));
 
@@ -67,8 +70,17 @@ export function registerApiRoutes(
         error: parsed.error.issues.map((i) => `${i.path.join('.') || 'request'}: ${i.message}`).join('; '),
       });
     }
+    // Every call, typed or from the voice intake, passes the same ground rules. The category
+    // is set here from the server's own review; the client can't supply it.
+    const request = parsed.data as CallRequest;
+    const check = await checkRequest(request, checkDeps);
+    if (!check.ok) {
+      const reasons = [...check.missing.map((m) => `Missing: ${m}.`), ...check.problems];
+      const translated = check.review?.tier === 'refused' ? check.review.reasonInUserLanguage : '';
+      return reply.code(422).send({ error: [...reasons, translated].filter(Boolean).join(' '), review: check.review });
+    }
     try {
-      const record = manager.startCall(parsed.data as CallRequest);
+      const record = manager.startCall({ ...request, category: check.review!.category });
       return reply.code(201).send(record);
     } catch (err) {
       if (err instanceof CallRejectedError) return reply.code(err.statusCode).send({ error: err.message });

@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CallRecord, CallRequest, PublicConfig } from '../../shared/types';
 import { getConfig, startCall, watchCall } from './api';
+import { draftToRequest } from '../../shared/intake';
+import type { IntakeDraft } from '../../shared/types';
 import { CallScreen } from './CallScreen';
 import { simulateCall } from './demo';
-import { NewCall } from './NewCall';
+import { Intake } from './Intake';
+import { LANGUAGES, loadSaved, NewCall } from './NewCall';
 import { effectiveDemo, isStaticHost, loadSettings, saveSettings, type Settings } from './settings';
 import { SettingsSheet } from './SettingsSheet';
 
@@ -16,8 +19,22 @@ export function App() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const stopRef = useRef<(() => void) | null>(null);
+  const [mode, setMode] = useState<'talk' | 'type'>('talk');
+  const [userLanguage, setUserLanguage] = useState(() => loadSaved().user.preferredLanguage);
+  /** The form prefilled from the voice intake, opened at the review step. */
+  const [fromIntake, setFromIntake] = useState<{ request: CallRequest; key: number } | null>(null);
 
   const demo = effectiveDemo(settings);
+  // The voice intake needs the live server (it mints the OpenAI session key).
+  const canTalk = !demo && Boolean(config?.voiceConfigured);
+  const saved = loadSaved();
+  const intakeContext = { userName: saved.user.name || 'me', userLanguage, timezone: saved.timezone };
+
+  const reviewDraft = (draft: IntakeDraft) => {
+    const request = draftToRequest(draft, intakeContext);
+    setFromIntake({ request: { ...request, user: { ...saved.user, ...request.user } }, key: Date.now() });
+    setMode('type');
+  };
 
   useEffect(() => {
     setConfig(null);
@@ -113,7 +130,31 @@ export function App() {
         {call ? (
           <CallScreen call={call} demo={call.id.startsWith('demo-')} error={error} onDone={reset} />
         ) : (
-          <NewCall demo={demo} blockedReason={blockedReason} submitting={submitting} error={error} onSubmit={onSubmit} />
+          canTalk && mode === 'talk' ? (
+            <Intake
+              settings={settings}
+              context={intakeContext}
+              languages={LANGUAGES}
+              onLanguageChange={setUserLanguage}
+              onReview={reviewDraft}
+              onType={() => {
+                setFromIntake(null);
+                setMode('type');
+              }}
+            />
+          ) : (
+            <NewCall
+              key={fromIntake?.key ?? 'saved'}
+              demo={demo}
+              blockedReason={blockedReason}
+              submitting={submitting}
+              error={error}
+              onSubmit={onSubmit}
+              initial={fromIntake?.request}
+              initialStep={fromIntake ? 2 : 0}
+              onTalk={canTalk ? () => setMode('talk') : undefined}
+            />
+          )
         )}
       </main>
 

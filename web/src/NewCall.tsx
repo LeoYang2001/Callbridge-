@@ -6,7 +6,7 @@ import { WEEKDAYS } from '../../shared/types';
 
 const DAY_SHORT: Record<Weekday, string> = { mon: 'M', tue: 'T', wed: 'W', thu: 'T', fri: 'F', sat: 'S', sun: 'S' };
 const DAY_LONG: Record<Weekday, string> = { mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun' };
-const LANGUAGES = ['Chinese (Mandarin)', 'Chinese (Cantonese)', 'Spanish', 'Vietnamese', 'Korean', 'Tagalog', 'Russian', 'Arabic', 'Hindi', 'Japanese', 'English'];
+export const LANGUAGES = ['Chinese (Mandarin)', 'Chinese (Cantonese)', 'Spanish', 'Vietnamese', 'Korean', 'Tagalog', 'Russian', 'Arabic', 'Hindi', 'Japanese', 'English'];
 const STORAGE_KEY = 'callbridge.form.v1';
 
 const TEMPLATES: { label: string; text: string }[] = [
@@ -37,7 +37,7 @@ export const defaultRequest = (): CallRequest => ({
   },
 });
 
-function loadSaved(): CallRequest {
+export function loadSaved(): CallRequest {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) return { ...defaultRequest(), ...(JSON.parse(raw) as CallRequest) };
@@ -60,13 +60,18 @@ interface Props {
   submitting: boolean;
   error: string | null;
   onSubmit: (req: CallRequest) => void;
+  /** Prefilled request (from the voice intake) instead of the saved form. */
+  initial?: CallRequest;
+  initialStep?: number;
+  /** Switch to the voice intake; omitted when it isn't available. */
+  onTalk?: () => void;
 }
 
 const STEPS = ['Call', 'Limits', 'You'] as const;
 
-export function NewCall({ demo, blockedReason, submitting, error, onSubmit }: Props) {
-  const [req, setReq] = useState<CallRequest>(loadSaved);
-  const [step, setStep] = useState(0);
+export function NewCall({ demo, blockedReason, submitting, error, onSubmit, initial, initialStep = 0, onTalk }: Props) {
+  const [req, setReq] = useState<CallRequest>(() => initial ?? loadSaved());
+  const [step, setStep] = useState(initialStep);
   const [confirmed, setConfirmed] = useState(false);
   const [stepError, setStepError] = useState<string | null>(null);
 
@@ -167,6 +172,11 @@ export function NewCall({ demo, blockedReason, submitting, error, onSubmit }: Pr
       {step === 0 && (
         <div className="screen">
           <h1 className="title">Who should I call?</h1>
+          {onTalk && (
+            <button type="button" className="ghost-btn talk-btn" onClick={onTalk}>
+              🎙 Tell me instead
+            </button>
+          )}
           <label className="field">
             <span className="field-label">Phone number</span>
             <span className="phone-input">
@@ -339,8 +349,17 @@ export function NewCall({ demo, blockedReason, submitting, error, onSubmit }: Pr
           <div className="review">
             <div className="review-row">
               <span>Calling</span>
-              <b>{req.to ? displayPhone(req.to) : demo ? 'Demo number' : '—'}</b>
+              <b>
+                {req.counterpartName ? `${req.counterpartName} · ` : ''}
+                {req.to ? displayPhone(req.to) : demo ? 'Demo number' : '—'}
+              </b>
             </div>
+            {(req.taskInUserLanguage || initial) && (
+              <div className="review-row">
+                <span>Task</span>
+                <b>{req.taskInUserLanguage || req.instructions}</b>
+              </div>
+            )}
             <div className="review-row">
               <span>Speaks</span>
               <b>{req.callLanguage}</b>

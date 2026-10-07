@@ -131,7 +131,7 @@ button { font: inherit; color: inherit; }
 input.masked { -webkit-text-security: disc; text-security: disc; }
 input[aria-invalid='true'] { border-color: var(--bad); }
 .field-help { font-size: 13px; color: var(--muted); font-weight: 400; }
-input, textarea {
+input, textarea, select {
   font: inherit; font-size: 16px; /* ≥16px prevents iOS zoom on focus */
   color: var(--text); background: var(--surface);
   border: 1px solid var(--border); border-radius: 12px;
@@ -335,3 +335,30 @@ pre { background: var(--surface); border: 1px solid var(--border); border-radius
   .content { padding-top: 16px; }
   .title { font-size: 30px; }
 }
+
+/* Voice intake */
+.talk-btn { margin: -4px 0 16px; }
+.intake-lang { max-width: 240px; margin-bottom: 8px; }
+.mic-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; margin: 20px 0 16px; }
+.mic-btn {
+  width: 96px; height: 96px; border-radius: 50%; border: 0; font-size: 36px; cursor: pointer;
+  background: var(--accent); color: var(--accent-text); box-shadow: 0 0 0 0 var(--accent-soft);
+  transition: transform 0.15s, box-shadow 0.3s;
+}
+.mic-btn:disabled { opacity: 0.6; }
+.mic-btn:active:not(:disabled) { transform: scale(0.96); }
+.mic-btn.live { background: var(--bad); font-size: 28px; }
+.mic-btn.live.listening { box-shadow: 0 0 0 10px var(--bad-soft); }
+.mic-btn.live.speaking { background: var(--accent); box-shadow: 0 0 0 14px var(--accent-soft); animation: mic-pulse 1.2s ease-in-out infinite; }
+.mic-btn.live.thinking { background: var(--ask); }
+@keyframes mic-pulse { 50% { box-shadow: 0 0 0 6px var(--accent-soft); } }
+@media (prefers-reduced-motion: reduce) { .mic-btn.live.speaking { animation: none; } }
+.mic-status { font-size: 15px; color: var(--muted); font-weight: 600; }
+.intake-lines { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+.bubble { max-width: 85%; padding: 10px 14px; border-radius: 16px; font-size: 15px; line-height: 1.4; overflow-wrap: anywhere; }
+.bubble.user { align-self: flex-end; background: var(--accent); color: var(--accent-text); border-bottom-right-radius: 4px; }
+.bubble.assistant { align-self: flex-start; background: var(--surface); border: 1px solid var(--border); border-bottom-left-radius: 4px; }
+.review-row.tier-allowed span { color: var(--ok); }
+.review-row.tier-limited span { color: var(--warn); }
+.review-row.tier-refused span { color: var(--bad); }
+.review-row.tier-refused b { color: var(--bad); }
