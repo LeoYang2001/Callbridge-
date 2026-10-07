@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CallRecord, CallStatus, UserAnswer, UserQuestion } from '../../shared/types';
 import { displayPhone } from '../../shared/phone';
+import { chime } from './alerts';
 
 const STATUS_TEXT: Record<CallStatus, string> = {
   preparing: 'Preparing…',
@@ -48,14 +49,16 @@ interface Props {
   onEnd?: () => Promise<void>;
   /** Answer a question the assistant is holding the line for. */
   onAnswer?: (questionId: string, answer: UserAnswer) => Promise<void>;
+  /** Send the assistant a message mid-call. */
+  onMessage?: (text: string) => Promise<void>;
 }
 
-export function CallScreen({ call, demo, error, onDone, onFollowUp, onEnd, onAnswer }: Props) {
+export function CallScreen({ call, demo, error, onDone, onFollowUp, onEnd, onAnswer, onMessage }: Props) {
   const finished = call.status === 'completed' || call.status === 'failed';
-  return finished && call.result ? <ResultScreen call={call} demo={demo} onDone={onDone} onFollowUp={onFollowUp} /> : <LiveCall call={call} demo={demo} error={error} onDone={onDone} onEnd={onEnd} onAnswer={onAnswer} />;
+  return finished && call.result ? <ResultScreen call={call} demo={demo} onDone={onDone} onFollowUp={onFollowUp} /> : <LiveCall call={call} demo={demo} error={error} onDone={onDone} onEnd={onEnd} onAnswer={onAnswer} onMessage={onMessage} />;
 }
 
-function LiveCall({ call, demo, error, onDone, onEnd, onAnswer }: Props) {
+function LiveCall({ call, demo, error, onDone, onEnd, onAnswer, onMessage }: Props) {
   const now = useNow(true);
   const [ending, setEnding] = useState(false);
   const canEnd = Boolean(onEnd) && !demo && ['preparing', 'dialing', 'connected', 'in_progress'].includes(call.status);
@@ -87,8 +90,11 @@ function LiveCall({ call, demo, error, onDone, onEnd, onAnswer }: Props) {
       <Questions call={call} onAnswer={onAnswer} />
 
       <Transcript call={call} live />
+      {/* Room for the message box, which makes the bottom bar taller. */}
+      {canEnd && onMessage && <div className="composer-spacer" aria-hidden />}
 
       <div className="bottom-bar">
+        {canEnd && onMessage && call.status !== 'preparing' && <MessageBox onMessage={onMessage} />}
         <div className="bar-row">
           <button type="button" className="secondary-btn" onClick={onDone}>
             {call.status === 'failed' || error ? 'Back' : demo ? 'End demo' : canEnd ? 'Leave' : 'Back'}
@@ -115,13 +121,60 @@ function LiveCall({ call, demo, error, onDone, onEnd, onAnswer }: Props) {
 const fmtSlot = (date?: string, time?: string) =>
   date && time ? `${new Date(`${date}T${time}:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} ${time}` : null;
 
+/** Lets the user steer mid-call: "tell them I'll be 10 minutes late". */
+function MessageBox({ onMessage }: { onMessage: (text: string) => Promise<void> }) {
+  const [text, setText] = useState('');
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  return (
+    <>
+      {error && <div className="bar-error">{error}</div>}
+      <form
+        className="composer"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          const t = text.trim();
+          if (!t) return;
+          setSending(true);
+          setError(null);
+          try {
+            await onMessage(t);
+            setText('');
+          } catch (err) {
+            setError((err as Error).message);
+          } finally {
+            setSending(false);
+          }
+        }}
+      >
+        <input value={text} onChange={(e) => setText(e.target.value)} placeholder="Message the assistant…" maxLength={500} aria-label="Message the assistant during the call" />
+        <button type="submit" className="send-btn" disabled={!text.trim() || sending} aria-label="Send to the assistant">
+          ↑
+        </button>
+      </form>
+    </>
+  );
+}
+
 /** Questions the assistant is holding the line for, newest first; answered ones collapse. */
 function Questions({ call, onAnswer }: { call: CallRecord; onAnswer?: Props['onAnswer'] }) {
   const questions = call.questions ?? [];
   const pending = questions.filter((q) => q.status === 'pending');
   const pendingIds = pending.map((q) => q.id).join(',');
   useEffect(() => {
-    if (pendingIds) navigator.vibrate?.([200, 100, 200]);
+    if (!pendingIds) return;
+    chime();
+    // Flag it in the tab title too, in case the page is in the background.
+    const original = document.title;
+    let on = false;
+    const flash = setInterval(() => {
+      on = !on;
+      document.title = on ? '● Your answer is needed' : original;
+    }, 1000);
+    return () => {
+      clearInterval(flash);
+      document.title = original;
+    };
   }, [pendingIds]);
   if (questions.length === 0) return null;
   const them = call.request.counterpartName || 'They';
@@ -231,7 +284,7 @@ function Transcript({ call, live }: { call: CallRecord; live: boolean }) {
       {entries.length === 0 && <div className="chat-empty">The conversation will appear here.</div>}
       {entries.map((t) => (
         <div key={t.id} className={`msg ${t.speaker}`}>
-          <div className="msg-who">{t.speaker === 'assistant' ? 'Your assistant' : them}</div>
+          <div className="msg-who">{t.speaker === 'assistant' ? 'Your assistant' : t.speaker === 'system' ? 'You → assistant (they can’t hear this)' : them}</div>
           <div className="msg-bubble">
             {/* In your language first; the original (what was actually said) underneath. */}
             {t.translation ? (
@@ -306,6 +359,12 @@ function ResultScreen({ call, demo, onDone, onFollowUp }: { call: CallRecord; de
         {r.summaryInUserLanguage !== r.summary && <p className="summary-alt">{r.summary}</p>}
       </div>
 
+      <Section
+        title="You decided during the call"
+        items={(call.questions ?? [])
+          .filter((q) => q.status === 'answered')
+          .map((q) => `${q.answer?.decision === 'approve' ? '✓' : q.answer?.decision === 'decline' ? '✕' : '↩'} ${q.questionInUserLanguage ?? q.question}${q.answer?.text ? ` → ${q.answer.text}` : ''}`)}
+      />
       <Section title="Needs your answer" items={r.unresolvedQuestions} tone="ask" />
       <Section title="The assistant declined" items={r.refusedDecisions.map((d) => d.request)} tone="no" />
       <Section title="Next steps" items={r.nextStepsInUserLanguage?.length ? r.nextStepsInUserLanguage : r.followUpsForUser} />

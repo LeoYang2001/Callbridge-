@@ -23,6 +23,8 @@ export interface CallSessionDeps {
   introDelayMs: number;
   /** How long the other party is kept on hold while the user answers a question. */
   holdTimeoutMs?: number;
+  /** How often the assistant thanks them for holding (default 20 s). */
+  holdCheckInMs?: number;
   log: (callId: string, type: string, detail?: string) => void;
   /** Called exactly once, when the session is fully finished. */
   onFinished: (callId: string) => void;
@@ -40,6 +42,8 @@ const ULAW_BYTES_PER_MS = 8;
 
 /** Default hold while the user answers a question in the app. */
 const DEFAULT_HOLD_MS = 60_000;
+/** While they hold, check in this often so the silence doesn't make them hang up. */
+const HOLD_CHECKIN_MS = 20_000;
 
 /** Sustained speech (within the last BARGE_IN_WINDOW_MS) that counts as interrupting us. */
 const BARGE_IN_SPEECH_MS = 400;
@@ -461,6 +465,7 @@ export class CallSession {
     this.update((r) => (r.questions ??= []).push(question));
     this.log('user.asked', `${ask.category}: ${ask.question}`);
     this.holdTimers.set(id, this.timer(holdMs, () => this.expireQuestion(id)));
+    this.scheduleHoldCheckIn(id);
 
     const req = this.record.request;
     const to = req.user.preferredLanguage;
@@ -473,6 +478,41 @@ export class CallSession {
         }))
         .catch((err) => this.log('translate.error', (err as Error).message));
     }
+  }
+
+  /**
+   * While the other party holds, a short "thanks for holding" every so often, so silence doesn't
+   * make them hang up. Skipped if someone is talking; stops once the question is settled.
+   */
+  private scheduleHoldCheckIn(questionId: string) {
+    this.timer(this.deps.holdCheckInMs ?? HOLD_CHECKIN_MS, () => {
+      const q = this.record.questions?.find((x) => x.id === questionId);
+      if (!q || q.status !== 'pending' || this.finalizing) return;
+      if (!this.aiSpeaking() && !this.turnActive) {
+        this.log('user.hold_checkin');
+        this.responding = true;
+        this.agent?.prompt(
+          `You're still waiting for ${this.record.request.user.name}'s answer. In one short sentence, thank them for holding and say it'll be just a moment longer. Vary the wording; don't decide anything. (This is an automatic note, not from the other party.)`,
+        );
+      }
+      this.scheduleHoldCheckIn(questionId);
+    });
+  }
+
+  /**
+   * A message the user typed in the app during the call ("tell them I'll be 10 minutes late").
+   * It steers the conversation; it doesn't widen what may be agreed: anything outside the limits
+   * still goes through request_decision, so the user approves it on a question card.
+   */
+  sendUserMessage(text: string) {
+    const name = this.record.request.user.name;
+    this.update((r) => r.transcript.push({ id: `user-${Date.now()}`, speaker: 'system', text, at: Date.now() }));
+    this.log('user.message', text);
+    if (this.finalizing) return;
+    this.responding = true;
+    this.agent?.prompt(
+      `Message from ${name}, typed in their app during this call: "${text}". Act on it when it fits the conversation (for example, pass it on or change what you ask for), within all your rules. If it would mean agreeing to something outside the limits, call request_decision so ${name} can approve it. (This message is from ${name}'s app, not from the other party.)`,
+    );
   }
 
   /** The user's answer from the app. Returns an error message if it can't be applied. */

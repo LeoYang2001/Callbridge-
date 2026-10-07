@@ -61,6 +61,14 @@ export function registerApiRoutes(
     return { ok: true };
   });
 
+  app.post<{ Params: { id: string } }>('/api/calls/:id/messages', async (req, reply) => {
+    const parsed = z.object({ text: z.string().trim().min(1).max(500) }).safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send({ error: 'Type a message first.' });
+    const failed = manager.sendUserMessage(req.params.id, parsed.data.text);
+    if (failed) return reply.code(failed.status).send({ error: failed.error });
+    return { ok: true };
+  });
+
   app.post<{ Params: { id: string } }>('/api/calls/:id/hangup', async (req, reply) => {
     if (!manager.endCall(req.params.id)) return reply.code(404).send({ error: 'That call is not in progress.' });
     return reply.code(202).send({ ok: true });

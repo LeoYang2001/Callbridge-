@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CallRecord, CallRequest, PublicConfig } from '../../shared/types';
-import { answerQuestion, endCall, getConfig, startCall, watchCall } from './api';
+import { answerQuestion, endCall, getConfig, sendCallMessage, startCall, watchCall } from './api';
+import { primeAlerts } from './alerts';
 import { draftToRequest, requestToDraft } from '../../shared/intake';
 import type { IntakeDraft, RealtimeVoice } from '../../shared/types';
 import { CallScreen } from './CallScreen';
@@ -66,6 +67,7 @@ export function App() {
 
   const onSubmit = async (req: CallRequest) => {
     setError(null);
+    primeAlerts(); // this tap is the gesture browsers require before the hold chime can play
     if (demo) {
       stopRef.current = simulateCall(req, setCall);
       return;
@@ -161,6 +163,9 @@ export function App() {
             error={error}
             onDone={reset}
             onFollowUp={canTalk && !call.id.startsWith('demo-') ? () => followUpOn(call) : undefined}
+            onMessage={async (text) => {
+              await sendCallMessage(settings, call.id, text);
+            }}
             onAnswer={async (questionId, answer) => {
               await answerQuestion(settings, call.id, questionId, answer);
             }}

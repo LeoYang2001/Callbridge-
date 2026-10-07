@@ -84,9 +84,10 @@ export class OpenAIAnalyzer implements CallAnalyzer {
   }
 
   async analyze(input: AnalysisInput): Promise<TranscriptAnalysis> {
+    // The user's own messages from the app (speaker "system") are context the AI acted on.
     const transcript = input.transcript
-      .filter((t) => t.speaker !== 'system' && t.text.trim())
-      .map((t) => `${t.speaker === 'assistant' ? 'AI ASSISTANT' : 'OTHER PARTY'}: ${t.text}${t.interrupted ? ' [interrupted]' : ''}`)
+      .filter((t) => t.text.trim())
+      .map((t) => `${t.speaker === 'assistant' ? 'AI ASSISTANT' : t.speaker === 'system' ? 'USER (via app, not heard by the other party)' : 'OTHER PARTY'}: ${t.text}${t.interrupted ? ' [interrupted]' : ''}`)
       .join('\n');
 
     const response = await this.client.responses.create({

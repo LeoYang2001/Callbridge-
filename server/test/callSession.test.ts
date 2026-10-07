@@ -123,7 +123,7 @@ const waitFor = async (pred: () => boolean, ms = 3000) => {
 
 const translator = { translate: async (text: string, to: string) => `[${to}] ${text}` };
 
-function setup(opts: { failConnect?: boolean; analyzer?: CallAnalyzer | null; holdTimeoutMs?: number } = {}) {
+function setup(opts: { failConnect?: boolean; analyzer?: CallAnalyzer | null; holdTimeoutMs?: number; holdCheckInMs?: number } = {}) {
   const store = new CallStore(null);
   const agent = new FakeAgent(opts.failConnect);
   const telephony = new FakeTelephony();
@@ -137,6 +137,7 @@ function setup(opts: { failConnect?: boolean; analyzer?: CallAnalyzer | null; ho
       maxCallSeconds: 600,
       introDelayMs: 50,
       holdTimeoutMs: opts.holdTimeoutMs,
+      holdCheckInMs: opts.holdCheckInMs,
       log: (callId, type, detail) => store.update(callId, (r) => r.events.push({ at: Date.now(), type, detail })),
     }),
     { allowedDestinations: null, maxCallsPerHour: 10, maxConcurrentCalls: 1 },
@@ -339,8 +340,8 @@ describe('CallSession (simulated dentist call)', () => {
   });
 
   describe('human in the loop', () => {
-    async function live(holdTimeoutMs?: number) {
-      const ctx = setup({ holdTimeoutMs });
+    async function live(holdTimeoutMs?: number, holdCheckInMs?: number) {
+      const ctx = setup({ holdTimeoutMs, holdCheckInMs });
       const created = ctx.manager.startCall(dentistRequest());
       await waitFor(() => ctx.telephony.placed.length === 1);
       ctx.manager.handleTelephonyState(created.id, 'answered');
@@ -396,6 +397,29 @@ describe('CallSession (simulated dentist call)', () => {
       await waitFor(() => c.get().questions![0]!.status === 'expired');
       expect(c.agent.prompts.at(-1)).toContain("didn't answer in time");
       expect(c.get().unresolvedQuestions).toContain('Add a fluoride treatment?');
+    });
+
+    it('thanks them for holding while the user decides, then stops', async () => {
+      const c = await live(undefined, 60);
+      c.ask({ category: 'additional_service', question: 'Add a fluoride treatment?' });
+      c.agent.emit('responseDone'); // "Let me check with Leo, one moment."
+      await waitFor(() => c.get().events.some((e) => e.type === 'user.hold_checkin'));
+      c.agent.emit('responseDone'); // "Thanks for holding."
+      await waitFor(() => c.get().events.filter((e) => e.type === 'user.hold_checkin').length >= 2);
+      expect(c.agent.prompts.at(-1)).toContain('thank them for holding');
+      c.manager.answerQuestion(c.id, c.get().questions![0]!.id, { decision: 'decline' });
+      const count = c.get().events.filter((e) => e.type === 'user.hold_checkin').length;
+      await new Promise((r) => setTimeout(r, 200));
+      expect(c.get().events.filter((e) => e.type === 'user.hold_checkin').length).toBe(count);
+    });
+
+    it('passes a message from the user to the assistant mid-call, but never sensitive data', async () => {
+      const c = await live();
+      expect(c.manager.sendUserMessage(c.id, "Tell them I'll be 10 minutes late")).toBeNull();
+      expect(c.agent.prompts.at(-1)).toContain(`"Tell them I'll be 10 minutes late"`);
+      expect(c.get().transcript.at(-1)).toMatchObject({ speaker: 'system', text: "Tell them I'll be 10 minutes late" });
+      expect(c.manager.sendUserMessage(c.id, 'my SSN is 123-45-6789')).toMatchObject({ status: 422 });
+      expect(c.manager.sendUserMessage('nope', 'hi')).toMatchObject({ status: 404 });
     });
 
     it('never asks the user about categories that can never be authorized', async () => {

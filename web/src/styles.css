@@ -390,3 +390,7 @@ pre { background: var(--surface); border: 1px solid var(--border); border-radius
 .question-actions .primary-btn, .question-actions .secondary-btn { min-height: 46px; font-size: 16px; }
 .question-done { font-size: 14px; padding: 8px 12px; background: var(--surface-2); border-radius: 10px; }
 .skip-chips { margin-bottom: 8px; flex-wrap: nowrap; }
+.msg.system { align-self: center; align-items: center; max-width: 90%; }
+.msg.system .msg-bubble { background: var(--ask-soft); color: var(--text); border: 1px dashed var(--ask); }
+.bottom-bar .composer { margin-bottom: 10px; }
+.composer-spacer { height: 64px; }

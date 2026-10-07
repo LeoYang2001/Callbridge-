@@ -92,6 +92,16 @@ export class CallManager {
     return error ? { error, status: 409 } : null;
   }
 
+  /** A message from the user to the assistant mid-call. Returns an error, or null. */
+  sendUserMessage(callId: string, text: string): { error: string; status: number } | null {
+    const session = this.sessions.get(callId);
+    if (!session) return { error: 'That call is no longer in progress.', status: 404 };
+    const sensitive = sensitiveTextReason(text);
+    if (sensitive) return { error: `Not sent: ${sensitive}. The assistant must never be given that.`, status: 422 };
+    session.sendUserMessage(text);
+    return null;
+  }
+
   /** Hangs up a live call at the user's request. Returns false if it isn't live. */
   endCall(callId: string): boolean {
     const session = this.sessions.get(callId);

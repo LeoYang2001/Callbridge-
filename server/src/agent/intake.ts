@@ -102,12 +102,13 @@ export function buildFollowUpSection(record: CallRecord, userName: string, userL
     assistantDeclined: r?.refusedDecisions.map((d) => d.request) ?? [],
     nextSteps: r?.nextStepsInUserLanguage ?? r?.followUpsForUser ?? [],
     pleaseDoubleCheck: r?.policyWarnings ?? [],
+    decidedDuringCall: (record.questions ?? []).map((q) => ({ question: q.question, status: q.status, answer: q.answer?.decision, text: q.answer?.text })),
     previousRequest: { task: req.instructions, availability: req.constraints.availability, maxAdditionalCostUsd: req.constraints.maxAdditionalCostUsd },
   };
   const transcript = record.transcript
-    .filter((t) => t.speaker !== 'system' && t.text.trim())
+    .filter((t) => t.text.trim())
     .slice(-40)
-    .map((t) => `${t.speaker === 'assistant' ? 'AI' : 'THEM'}: ${t.text}`)
+    .map((t) => `${t.speaker === 'assistant' ? 'AI' : t.speaker === 'system' ? `${userName.toUpperCase()} (app message)` : 'THEM'}: ${t.text}`)
     .join('\n');
   return `
 
