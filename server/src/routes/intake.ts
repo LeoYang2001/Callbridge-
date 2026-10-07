@@ -30,6 +30,7 @@ const DraftSchema = z
   .object({
     counterpartName: z.string().max(120),
     counterpartRelationship: z.string().max(60),
+    counterpartAddress: z.string().max(200),
     phoneNumber: z.string().max(40),
     task: z.string().max(2000),
     taskInUserLanguage: z.string().max(500),

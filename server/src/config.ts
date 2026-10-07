@@ -48,6 +48,11 @@ const EnvSchema = z.object({
   /** Translates the live transcript into the user's language, one line at a time. */
   TRANSLATION_MODEL: z.string().default('gpt-5.4-mini'),
 
+  /**
+   * Google Places API key for finding businesses ("the nearest Mexican restaurant"). Without it,
+   * OpenAI web search is used and its numbers are marked unverified.
+   */
+  GOOGLE_PLACES_API_KEY: optionalString,
   /** SQLite file for users, sessions, profiles, and call history. */
   DATABASE_FILE: z.string().default('data/callbridge.db'),
   /**

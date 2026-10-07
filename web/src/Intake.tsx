@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { draftToRequest, type IntakeContext } from '../../shared/intake';
 import { displayPhone } from '../../shared/phone';
-import type { IntakeCheckResult, IntakeDraft, Me, RealtimeVoice } from '../../shared/types';
+import type { IntakeCheckResult, IntakeDraft, Me, PlaceResult, RealtimeVoice } from '../../shared/types';
 import { startIntake, type IntakeLine, type IntakeSessionControls, type IntakeStatus } from './voiceIntake';
 import type { Settings } from './settings';
 import { VoicePicker } from './VoicePicker';
@@ -42,6 +42,7 @@ export function Intake({ settings, context, languages, onLanguageChange, voice, 
   const [draft, setDraft] = useState<IntakeDraft>(() => followUp?.draft ?? seed?.draft ?? {});
   const [check, setCheck] = useState<IntakeCheckResult | null>(null);
   const [ready, setReady] = useState(false);
+  const [places, setPlaces] = useState<PlaceResult[]>([]);
   const [micOn, setMicOn] = useState(false);
   const [speakerOn, setSpeakerOn] = useState(true);
   const [text, setText] = useState('');
@@ -77,6 +78,7 @@ export function Intake({ settings, context, languages, onLanguageChange, voice, 
           onCheck: setCheck,
           onReady: () => setReady(true),
           onProfile: profile?.onSaved,
+          onPlaces: setPlaces,
         },
         { mic: withMic, mode: profile ? 'profile' : 'call', followUpOf: followUp?.callId, initialDraft: followUp?.draft ?? seed?.draft },
       );
@@ -213,6 +215,38 @@ export function Intake({ settings, context, languages, onLanguageChange, voice, 
         )}
 
         {profile && <ProfileCard me={profile.me} />}
+
+        {!profile && places.length > 0 && (
+          <div className="places">
+            {places.map((p) => (
+              <button
+                key={p.phone}
+                type="button"
+                className={`place ${draft.phoneNumber && p.phone?.endsWith(draft.phoneNumber.replace(/\D/g, '').slice(-10)) ? 'on' : ''}`}
+                onClick={() => {
+                  void say(`(Call ${p.name}${p.address ? `, ${p.address}` : ''}, at ${p.phone}.)`);
+                }}
+              >
+                <b>{p.name}</b>
+                <span>
+                  {[
+                    p.distanceMeters != null ? `${(p.distanceMeters / 1609).toFixed(1)} mi` : null,
+                    p.openNow === true ? 'open now' : p.openNow === false ? 'closed now' : null,
+                    p.rating ? `${p.rating}★${p.ratingCount ? ` (${p.ratingCount})` : ''}` : null,
+                    p.inPhoneBookAs ? `in your phone book as ${p.inPhoneBookAs}` : null,
+                  ]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </span>
+                {p.address && <span>{p.address}</span>}
+                <span>
+                  {p.phone ? displayPhone(p.phone) : ''}
+                  {!p.verified && <em className="unverified"> · from a web search, double-check</em>}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
 
         {!profile && hasDraft && (
           <div className="review">

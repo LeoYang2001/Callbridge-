@@ -29,6 +29,7 @@ export function draftToRequest(draft: IntakeDraft, ctx: IntakeContext): CallRequ
     voice: ctx.voice,
     counterpartName: draft.counterpartName?.trim() || undefined,
     counterpartRelationship: draft.counterpartRelationship?.trim() || undefined,
+    counterpartAddress: draft.counterpartAddress?.trim() || undefined,
     taskInUserLanguage: draft.taskInUserLanguage?.trim() || undefined,
     user: { name: draft.userName?.trim() || ctx.userName, preferredLanguage: ctx.userLanguage },
     callLanguage: draft.callLanguage?.trim() || 'English',
@@ -49,6 +50,7 @@ export function requestToDraft(req: CallRequest): IntakeDraft {
   return {
     counterpartName: req.counterpartName,
     counterpartRelationship: req.counterpartRelationship,
+    counterpartAddress: req.counterpartAddress,
     phoneNumber: req.to.replace(/^\+1(?=\d{10}$)/, '').replace(/\D/g, ''),
     task: req.instructions,
     taskInUserLanguage: req.taskInUserLanguage,
@@ -67,6 +69,7 @@ export function draftPatchFromArgs(args: Record<string, unknown>): IntakeDraft {
   const map: Record<string, keyof IntakeDraft> = {
     counterpart_name: 'counterpartName',
     counterpart_relationship: 'counterpartRelationship',
+    counterpart_address: 'counterpartAddress',
     phone_number: 'phoneNumber',
     task: 'task',
     task_in_user_language: 'taskInUserLanguage',

@@ -81,6 +81,7 @@ export const ContactInputSchema = z.object({
   name: text(80).min(1, 'Enter a name'),
   phone: z.string().max(32),
   relationship: text(60).optional(),
+  address: text(200).optional(),
   language: text(60).optional(),
   notes: z.array(text(200)).max(10).optional(),
 });
@@ -103,6 +104,7 @@ export function saveContact(profile: UserProfile, input: ContactInput, id?: stri
     name: input.name,
     phone,
     relationship: input.relationship || undefined,
+    address: input.address ?? existing?.address,
     language: input.language || undefined,
     notes: input.notes ?? existing?.notes ?? [],
   };
@@ -135,6 +137,7 @@ export function learnFromCall(profile: UserProfile, record: CallRecord): UserPro
     // A name the user gave the contact (or an earlier call) sticks; a new contact takes this call's.
     name: i >= 0 ? previous.name : name,
     relationship: previous.relationship ?? req.counterpartRelationship?.trim(),
+    address: req.counterpartAddress?.trim() || previous.address,
     kind: previous.kind ?? (req.category ? KIND[req.category] : undefined),
     language: req.callLanguage || previous.language,
     notes: dedupe([...previous.notes, ...(r?.counterpartNotes ?? [])]).slice(-10),
@@ -183,7 +186,7 @@ export function profileForPrompt(profile: UserProfile): string {
   if (contacts.length) {
     lines.push('- Phone book:');
     for (const c of contacts) {
-      lines.push(`  - ${c.name}${c.relationship ? ` (${c.relationship})` : c.kind ? ` (${c.kind})` : ''}: ${displayPhone(c.phone)}${c.language ? `; calls in ${c.language}` : ''}${c.notes.length ? `; notes: ${c.notes.join(' ')}` : ''}${c.lastOutcome ? `; last call: ${c.lastOutcome}` : ''}`);
+      lines.push(`  - ${c.name}${c.relationship ? ` (${c.relationship})` : c.kind ? ` (${c.kind})` : ''}: ${displayPhone(c.phone)}${c.address ? `; ${c.address}` : ''}${c.language ? `; calls in ${c.language}` : ''}${c.notes.length ? `; notes: ${c.notes.join(' ')}` : ''}${c.lastOutcome ? `; last call: ${c.lastOutcome}` : ''}`);
     }
   }
   if (profile.appointments.length) {

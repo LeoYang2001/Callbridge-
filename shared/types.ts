@@ -72,6 +72,8 @@ export interface CallRequest {
   counterpartName?: string;
   /** Who they are to the user, e.g. "girlfriend" (saved in the phone book). */
   counterpartRelationship?: string;
+  /** Street address, e.g. from an online search (helps tell same-name places apart). */
+  counterpartAddress?: string;
   /** The task as the user described it, in the user's language (shown on the review card). */
   taskInUserLanguage?: string;
   /** Set by the server's task review; never trusted from the client. */
@@ -257,6 +259,7 @@ export interface CallRecord {
 export interface IntakeDraft {
   counterpartName?: string;
   counterpartRelationship?: string;
+  counterpartAddress?: string;
   phoneNumber?: string;
   task?: string;
   taskInUserLanguage?: string;
@@ -303,6 +306,8 @@ export interface Contact {
   kind?: string;
   /** Who they are to the user, e.g. "girlfriend", "mom", "dentist". */
   relationship?: string;
+  /** Street address, for businesses (tells same-name places apart). */
+  address?: string;
   /** Language the last call to them was in, e.g. "Tagalog". */
   language?: string;
   /** Things learned on calls, e.g. "Asks for the insurance card at check-in." */
@@ -362,4 +367,23 @@ export interface AuthResult {
   token: string;
   isNew: boolean;
   me: Me;
+}
+
+/** A business found online to call. */
+export interface PlaceResult {
+  name: string;
+  /** E.164 once cleaned; results without a dialable number are dropped. */
+  phone: string | null;
+  address?: string;
+  distanceMeters?: number;
+  rating?: number;
+  ratingCount?: number;
+  openNow?: boolean;
+  /** Google Maps link, or the page the number came from. */
+  url?: string;
+  source: 'google' | 'web';
+  /** Google data is verified; web-search numbers should be double-checked. */
+  verified: boolean;
+  /** Already in the user's phone book under this name. */
+  inPhoneBookAs?: string;
 }

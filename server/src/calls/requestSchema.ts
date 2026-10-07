@@ -16,6 +16,7 @@ export const CallRequestSchema = z
     involvement: z.enum(['supervised', 'handoff']).optional(),
     counterpartName: text(120).optional(),
     counterpartRelationship: text(60).optional(),
+    counterpartAddress: text(200).optional(),
     taskInUserLanguage: text(500).optional(),
     user: z.object({
       name: text(80).min(1, 'Name is required'),

@@ -135,6 +135,7 @@ export function PhoneBook({ settings, me, languages, onChange, onCall, onClose }
                   {c.language ? ` · ${c.language}` : ''}
                   {c.callCount ? ` · ${c.callCount} call${c.callCount > 1 ? 's' : ''}` : ''}
                 </div>
+                {c.address && <div className="muted contact-last">{c.address}</div>}
                 {c.lastOutcome && <div className="muted contact-last">{c.lastOutcome}</div>}
                 {confirmDelete === c.id && (
                   <div className="contact-confirm">

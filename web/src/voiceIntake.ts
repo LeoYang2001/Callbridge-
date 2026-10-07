@@ -1,8 +1,8 @@
 import { draftPatchFromArgs, type IntakeContext } from '../../shared/intake';
 import type { IntakeCheckResult, IntakeDraft } from '../../shared/types';
 import { profilePatchFromArgs } from '../../shared/profilePatch';
-import type { Me } from '../../shared/types';
-import { checkIntake, createIntakeSession, updateProfile } from './api';
+import type { Me, PlaceResult } from '../../shared/types';
+import { checkIntake, createIntakeSession, searchPlaces, updateProfile } from './api';
 import type { Settings } from './settings';
 
 /**
@@ -32,6 +32,25 @@ export interface IntakeHandlers {
   onReady: () => void;
   /** Profile interview: the saved profile after each update. */
   onProfile?: (me: Me) => void;
+  /** Businesses found online, to show as cards the user can tap. */
+  onPlaces?: (results: PlaceResult[]) => void;
+}
+
+/** The phone's location for "nearest …" searches; asked once, then reused for 10 minutes. */
+let lastFix: { lat: number; lng: number; at: number } | null = null;
+function currentLocation(): Promise<{ lat: number; lng: number } | null> {
+  if (lastFix && Date.now() - lastFix.at < 600_000) return Promise.resolve(lastFix);
+  if (!navigator.geolocation) return Promise.resolve(null);
+  return new Promise((resolve) =>
+    navigator.geolocation.getCurrentPosition(
+      (p) => {
+        lastFix = { lat: p.coords.latitude, lng: p.coords.longitude, at: Date.now() };
+        resolve(lastFix);
+      },
+      () => resolve(null),
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 600_000 },
+    ),
+  );
 }
 
 const REALTIME_CALLS_URL = 'https://api.openai.com/v1/realtime/calls';
@@ -123,6 +142,33 @@ export async function startIntake(
       h.onCheck(result);
       // The model gets the ruling, not just ok/not ok, so it can explain it in the user's language.
       return result;
+    }
+    if (name === 'search_places') {
+      const query = String(args.query ?? '').trim();
+      const near = typeof args.near === 'string' && args.near.trim() ? args.near.trim() : undefined;
+      const here = near ? null : await currentLocation();
+      if (!near && !here) {
+        return { error: "Location isn't available (the user didn't allow it). Ask which city or zip code to search near, then search again with near." };
+      }
+      try {
+        const { results } = await searchPlaces(settings, { query, near, ...(here ? { lat: here.lat, lng: here.lng } : {}) });
+        h.onPlaces?.(results);
+        // Compact for the model: enough to describe and pick, nothing it shouldn't say.
+        return {
+          results: results.map((r) => ({
+            name: r.name,
+            phone: r.phone,
+            address: r.address,
+            distance_miles: r.distanceMeters != null ? Math.round(r.distanceMeters / 160.9) / 10 : null,
+            open_now: r.openNow ?? null,
+            rating: r.rating ?? null,
+            verified: r.verified,
+            in_phone_book_as: r.inPhoneBookAs ?? null,
+          })),
+        };
+      } catch (e) {
+        return { error: (e as Error).message };
+      }
     }
     if (name === 'update_profile') {
       // The server validates and screens it (no card numbers, SSNs, or passwords are stored).

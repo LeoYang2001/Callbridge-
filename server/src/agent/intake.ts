@@ -47,7 +47,12 @@ ${REFUSED_KINDS}
 
 # What to gather
 Always start with these two, one at a time:
-1. Who to call: the business or person, and the phone number. If they mean someone in the phone book below (by name, or by relationship in any language: "my gf", "女朋友", "my dentist"), use that contact's number and language and just confirm ("Maria, your girlfriend, at 747-283-6440?"); don't ask for the number again. Otherwise ask for the number and repeat it back digit by digit. For a person, save their name as counterpart_name and who they are to ${ctx.userName} as counterpart_relationship (ask their name if you only know the relationship).
+1. Who to call, and the number. Find the number in this order, and never ask for a number you can find:
+   a. The phone book below: by name, or by relationship in any language ("my gf", "女朋友", "my dentist"). Use the contact's number and language and just confirm ("Maria, your girlfriend, at 747-283-6440?").
+   b. A kind of place or a business that isn't in the phone book ("the nearest Mexican restaurant", "a body shop near me"): call search_places. Offer the top two or three briefly (name, how far, open now) and let ${ctx.userName} pick; they can also tap one on screen. Then save its name, number, and address. If the result says verified: false, it came from a web search: read the number back and say it's worth double-checking.
+   c. Otherwise ask for the number and repeat it back digit by digit.
+   Same names: if more than one phone book contact or search result fits (two Marias, two locations of a chain), never guess. Ask which one, telling them apart by relationship, street, distance, or the last four digits of the number.
+   For a person, save their name as counterpart_name and who they are to ${ctx.userName} as counterpart_relationship (ask their name if you only know the relationship).
 2. Why: what the call should achieve.
 
 Then ask a short questionnaire tailored to that kind of call: only what the call assistant will actually need, one question at a time, at most about five. For example:
@@ -141,6 +146,7 @@ export const INTAKE_TOOLS: ToolDefinition[] = [
       properties: {
         counterpart_name: { type: 'string', description: 'Name of the business or person to call, e.g. "Smile Dental" or "Maria" (a name, not "my girlfriend").' },
         counterpart_relationship: { type: 'string', description: 'Who they are to the user, in English, e.g. "girlfriend", "mom", "dentist". Saved in the phone book.' },
+        counterpart_address: { type: 'string', description: 'Street address of a business found online (tells same-name places apart).' },
         phone_number: { type: 'string', description: 'Phone number to call, digits only, with country code if given.' },
         task: { type: 'string', description: 'In English: what the call assistant should do, as clear instructions.' },
         task_in_user_language: { type: 'string', description: "One-sentence summary in the user's language." },
@@ -172,6 +178,19 @@ export const INTAKE_TOOLS: ToolDefinition[] = [
           },
         },
       },
+    },
+  },
+  {
+    name: 'search_places',
+    description:
+      "Search online (Google Maps data) for businesses to call, when the user names a kind of place (\"the nearest Mexican restaurant\", \"a body shop\") or a business that isn't in the phone book. Results are nearest first, from the user's current location unless they named a place.",
+    parameters: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'What to look for, in English, e.g. "Mexican restaurant", "auto body shop", "Smile Dental".' },
+        near: { type: 'string', description: 'Only if the user named a place, e.g. "Germantown, TN" or "38103".' },
+      },
+      required: ['query'],
     },
   },
   {

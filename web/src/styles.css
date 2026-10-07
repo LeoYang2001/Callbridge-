@@ -420,3 +420,10 @@ pre { background: var(--surface); border: 1px solid var(--border); border-radius
 .choice span { font-size: 14px; color: var(--muted); line-height: 1.4; }
 .choice.on { border: 2px solid var(--accent); background: var(--accent-soft); }
 .handoff-note { margin: 12px 0; padding: 10px 14px; border-radius: 12px; background: var(--surface-2); font-size: 14px; }
+
+/* Businesses found online */
+.places { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+.place { display: flex; flex-direction: column; gap: 2px; text-align: left; padding: 10px 14px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font: inherit; cursor: pointer; }
+.place span { font-size: 13px; color: var(--muted); }
+.place.on { border: 2px solid var(--call); }
+.unverified { color: var(--warn); font-style: normal; }

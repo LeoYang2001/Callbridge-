@@ -19,6 +19,8 @@ import { Database } from './db/database';
 import { learnFromCall } from './profile/profile';
 import { registerApiRoutes } from './routes/api';
 import { registerAuthRoutes } from './routes/auth';
+import { GooglePlaces, WebSearchPlaces } from './places/places';
+import { registerPlacesRoutes } from './routes/places';
 import { registerIntakeRoutes } from './routes/intake';
 import { registerTwilioRoutes } from './routes/twilio';
 
@@ -129,6 +131,14 @@ const checkDeps = {
 };
 registerApiRoutes(app, { config, manager, store, checkDeps, db });
 registerIntakeRoutes(app, { config, checkDeps, store });
+registerPlacesRoutes(app, {
+  places: config.GOOGLE_PLACES_API_KEY
+    ? new GooglePlaces(config.GOOGLE_PLACES_API_KEY)
+    : config.OPENAI_API_KEY
+      ? new WebSearchPlaces(config.OPENAI_API_KEY, config.ANALYSIS_MODEL)
+      : null,
+  perUser: new OtpRateLimit(30),
+});
 if (telephony) registerTwilioRoutes(app, { config, manager, telephony });
 
 const webDist = path.join(root, 'web', 'dist');
