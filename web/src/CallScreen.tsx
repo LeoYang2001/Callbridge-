@@ -87,14 +87,18 @@ function LiveCall({ call, demo, error, onDone, onEnd, onAnswer, onMessage }: Pro
 
       {(error || call.status === 'failed') && <div className="alert">{error ?? call.failureReason ?? 'The call failed.'}</div>}
 
-      <Questions call={call} onAnswer={onAnswer} />
+      {call.request.involvement === 'handoff' ? (
+        live && <div className="handoff-note">🤖 Handed off: the assistant won't interrupt you. You'll get the result when the call ends.</div>
+      ) : (
+        <Questions call={call} onAnswer={onAnswer} />
+      )}
 
       <Transcript call={call} live />
       {/* Room for the message box, which makes the bottom bar taller. */}
-      {canEnd && onMessage && <div className="composer-spacer" aria-hidden />}
+      {canEnd && onMessage && call.request.involvement !== 'handoff' && <div className="composer-spacer" aria-hidden />}
 
       <div className="bottom-bar">
-        {canEnd && onMessage && call.status !== 'preparing' && <MessageBox onMessage={onMessage} />}
+        {canEnd && onMessage && call.status !== 'preparing' && call.request.involvement !== 'handoff' && <MessageBox onMessage={onMessage} />}
         <div className="bar-row">
           <button type="button" className="secondary-btn" onClick={onDone}>
             {call.status === 'failed' || error ? 'Back' : demo ? 'End demo' : canEnd ? 'Leave' : 'Back'}

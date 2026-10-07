@@ -414,3 +414,9 @@ pre { background: var(--surface); border: 1px solid var(--border); border-radius
 .contact-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex: none; }
 .primary-btn.small-call { min-height: 36px; font-size: 15px; padding: 0 16px; flex: none; }
 .contact-confirm { margin-top: 6px; font-size: 14px; }
+
+/* Stay in the loop / hand off */
+.choice { display: flex; flex-direction: column; gap: 4px; width: 100%; text-align: left; padding: 12px 14px; margin-top: 8px; border-radius: 12px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font: inherit; cursor: pointer; }
+.choice span { font-size: 14px; color: var(--muted); line-height: 1.4; }
+.choice.on { border: 2px solid var(--accent); background: var(--accent-soft); }
+.handoff-note { margin: 12px 0; padding: 10px 14px; border-radius: 12px; background: var(--surface-2); font-size: 14px; }

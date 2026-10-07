@@ -63,6 +63,11 @@ export interface CallRequest {
   to: string;
   /** Voice for the call assistant; the server's REALTIME_VOICE when omitted. */
   voice?: RealtimeVoice;
+  /**
+   * "supervised" (default): the assistant may put the other party on hold and ask the user in
+   * the app. "handoff": it never does; anything outside the limits is declined for follow-up.
+   */
+  involvement?: 'supervised' | 'handoff';
   /** Who is being called, e.g. "Smile Dental" or "Maria". */
   counterpartName?: string;
   /** Who they are to the user, e.g. "girlfriend" (saved in the phone book). */

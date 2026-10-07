@@ -423,6 +423,19 @@ describe('CallSession (simulated dentist call)', () => {
       expect(c.manager.sendUserMessage('nope', 'hi')).toMatchObject({ status: 404 });
     });
 
+    it('never puts them on hold on a handed-off call: it declines for follow-up instead', async () => {
+      const ctx = setup();
+      const created = ctx.manager.startCall(dentistRequest({ involvement: 'handoff' }));
+      await waitFor(() => ctx.telephony.placed.length === 1);
+      ctx.manager.handleTelephonyState(created.id, 'answered');
+      expect(ctx.agent.config?.instructions).toContain("can't be reached during it");
+      expect(ctx.agent.config?.instructions).not.toContain('waiting_for_user');
+      ctx.agent.emit('toolCall', 't1', 'request_decision', JSON.stringify({ category: 'additional_cost', question: 'Add an $80 X-ray?', amount_usd: 80 }));
+      expect(ctx.agent.toolResults.at(-1)?.output.decision).toBe('requires_user_approval');
+      expect(ctx.store.get(created.id)!.questions ?? []).toHaveLength(0);
+      expect(ctx.store.get(created.id)!.unresolvedQuestions).toContain('Add an $80 X-ray?');
+    });
+
     it('never asks the user about categories that can never be authorized', async () => {
       const c = await live();
       c.ask({ category: 'payment_information', question: 'Card number on file?' });

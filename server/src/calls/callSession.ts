@@ -447,9 +447,12 @@ export class CallSession {
 
   // ───────────────────────────── human in the loop ─────────────────────────────
 
-  /** The user can be asked mid-call only while the other party is on the line. */
+  /**
+   * The user can be asked mid-call only while the other party is on the line, and never on a
+   * handed-off call (the user chose not to be interrupted).
+   */
   private canAskUser() {
-    return this.answered && !this.finalizing && !this.hangupRequested;
+    return this.record.request.involvement !== 'handoff' && this.answered && !this.finalizing && !this.hangupRequested;
   }
 
   private readonly asks = new Map<string, AskUser>();

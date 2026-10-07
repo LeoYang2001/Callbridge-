@@ -55,11 +55,28 @@ interface Props {
   onVoiceChange: (voice: RealtimeVoice) => void;
   /** Fills "About you" from the signed-in user's profile. */
   userDefaults?: (user: CallRequest['user']) => CallRequest['user'];
+  involvement: Involvement;
+  onInvolvementChange: (v: Involvement) => void;
 }
+
+export type Involvement = NonNullable<CallRequest['involvement']>;
+
+const INVOLVEMENT: { value: Involvement; title: string; text: string }[] = [
+  {
+    value: 'supervised',
+    title: "🙋 I'll stay in the loop",
+    text: "If they ask for something outside your limits, the assistant puts them on hold and asks you here (up to a minute). You can also message it during the call.",
+  },
+  {
+    value: 'handoff',
+    title: '🤖 Hand it off completely',
+    text: "No interruptions. The assistant works within your limits, politely declines anything else for you to follow up on, and you get the result after.",
+  },
+];
 
 const STEPS = ['Call', 'Limits', 'You'] as const;
 
-export function NewCall({ demo, blockedReason, submitting, error, onSubmit, initial, initialStep = 0, onTalk, voice, onVoiceChange, userDefaults }: Props) {
+export function NewCall({ demo, blockedReason, submitting, error, onSubmit, initial, initialStep = 0, onTalk, voice, onVoiceChange, userDefaults, involvement, onInvolvementChange }: Props) {
   const [req, setReq] = useState<CallRequest>(() => {
     const base = initial ?? loadSaved();
     return userDefaults ? { ...base, user: userDefaults(base.user) } : base;
@@ -137,6 +154,7 @@ export function NewCall({ demo, blockedReason, submitting, error, onSubmit, init
     onSubmit({
       ...req,
       voice,
+      involvement,
       to: req.to || (demo ? '+1 555 010 0000' : req.to),
       constraints: {
         ...req.constraints,
@@ -369,6 +387,23 @@ export function NewCall({ demo, blockedReason, submitting, error, onSubmit, init
           </div>
 
           <VoicePicker value={voice} onChange={onVoiceChange} />
+
+          <div className="field" role="radiogroup" aria-label="During the call">
+            <span className="field-label">During the call</span>
+            {INVOLVEMENT.map((o) => (
+              <button
+                key={o.value}
+                type="button"
+                role="radio"
+                aria-checked={involvement === o.value}
+                className={`choice ${involvement === o.value ? 'on' : ''}`}
+                onClick={() => onInvolvementChange(o.value)}
+              >
+                <b>{o.title}</b>
+                <span>{o.text}</span>
+              </button>
+            ))}
+          </div>
 
           <label className="consent">
             <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />

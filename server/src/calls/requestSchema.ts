@@ -13,6 +13,7 @@ export const CallRequestSchema = z
   .object({
     to: text(32).min(1),
     voice: z.enum(REALTIME_VOICES).optional(),
+    involvement: z.enum(['supervised', 'handoff']).optional(),
     counterpartName: text(120).optional(),
     counterpartRelationship: text(60).optional(),
     taskInUserLanguage: text(500).optional(),

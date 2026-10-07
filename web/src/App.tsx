@@ -7,7 +7,7 @@ import type { IntakeDraft, RealtimeVoice } from '../../shared/types';
 import { CallScreen } from './CallScreen';
 import { simulateCall } from './demo';
 import { Intake } from './Intake';
-import { LANGUAGES, loadSaved, NewCall } from './NewCall';
+import { LANGUAGES, loadSaved, NewCall, type Involvement } from './NewCall';
 import { PhoneBook } from './PhoneBook';
 import { ProfileScreen } from './ProfileScreen';
 import { SignIn } from './SignIn';
@@ -32,6 +32,22 @@ export function App() {
   /** Calling someone from the phone book. */
   const [callSeed, setCallSeed] = useState<{ draft: IntakeDraft; text: string; key: number } | null>(null);
   const [pickedVoice, setPickedVoice] = useState<RealtimeVoice | null>(loadVoice);
+  /** Stay in the loop or hand the call off; the last choice is the default. */
+  const [involvement, setInvolvement] = useState<Involvement>(() => {
+    try {
+      return localStorage.getItem('callbridge.involvement') === 'handoff' ? 'handoff' : 'supervised';
+    } catch {
+      return 'supervised';
+    }
+  });
+  const changeInvolvement = (v: Involvement) => {
+    setInvolvement(v);
+    try {
+      localStorage.setItem('callbridge.involvement', v);
+    } catch {
+      /* storage unavailable */
+    }
+  };
   const voice = pickedVoice ?? me?.profile.voice ?? ((config?.defaultVoice as RealtimeVoice | undefined) || 'marin');
   const changeVoice = (v: RealtimeVoice) => {
     setPickedVoice(v);
@@ -330,6 +346,8 @@ export function App() {
               initialStep={fromIntake?.step ?? 0}
               onTalk={canTalk ? () => setMode('talk') : undefined}
               userDefaults={me ? userFromProfile : undefined}
+              involvement={involvement}
+              onInvolvementChange={changeInvolvement}
               voice={voice}
               onVoiceChange={changeVoice}
             />
