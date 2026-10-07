@@ -29,7 +29,7 @@ export function App() {
     saveVoice(v);
   };
   /** The form prefilled from the voice intake, opened at the review step. */
-  const [fromIntake, setFromIntake] = useState<{ request: CallRequest; key: number } | null>(null);
+  const [fromIntake, setFromIntake] = useState<{ request: CallRequest; step: number; key: number } | null>(null);
 
   const demo = effectiveDemo(settings);
   // The voice intake needs the live server (it mints the OpenAI session key).
@@ -37,11 +37,13 @@ export function App() {
   const saved = loadSaved();
   const intakeContext = { userName: saved.user.name || 'me', userLanguage, timezone: saved.timezone, voice };
 
-  const reviewDraft = (draft: IntakeDraft) => {
+  /** Opens the form prefilled from the intake: at the review step, or at the start to keep editing. */
+  const openForm = (draft: IntakeDraft, step: number) => {
     const request = draftToRequest(draft, intakeContext);
-    setFromIntake({ request: { ...request, user: { ...saved.user, ...request.user } }, key: Date.now() });
+    setFromIntake({ request: { ...request, user: { ...saved.user, ...request.user } }, step, key: Date.now() });
     setMode('type');
   };
+  const reviewDraft = (draft: IntakeDraft) => openForm(draft, 2);
 
   useEffect(() => {
     setConfig(null);
@@ -146,9 +148,13 @@ export function App() {
               voice={voice}
               onVoiceChange={changeVoice}
               onReview={reviewDraft}
-              onType={() => {
-                setFromIntake(null);
-                setMode('type');
+              onType={(draft) => {
+                const hasDraft = Object.values(draft).some((v) => v !== undefined && v !== '');
+                if (hasDraft) openForm(draft, 0);
+                else {
+                  setFromIntake(null);
+                  setMode('type');
+                }
               }}
             />
           ) : (
@@ -160,7 +166,7 @@ export function App() {
               error={error}
               onSubmit={onSubmit}
               initial={fromIntake?.request}
-              initialStep={fromIntake ? 2 : 0}
+              initialStep={fromIntake?.step ?? 0}
               onTalk={canTalk ? () => setMode('talk') : undefined}
               voice={voice}
               onVoiceChange={changeVoice}

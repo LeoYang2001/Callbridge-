@@ -4,10 +4,13 @@ import { checkIntake, createIntakeSession } from './api';
 import type { Settings } from './settings';
 
 /**
- * Voice intake over WebRTC, straight from the browser to OpenAI Realtime. The server mints a
- * short-lived key with the instructions and tools fixed; this side plays audio, relays tool
- * calls, and keeps the draft. The draft is only a suggestion: the server checks it again here
- * (check_request) and once more when the call is placed.
+ * The intake conversation over WebRTC, straight from the browser to OpenAI Realtime. The server
+ * mints a short-lived key with the instructions and tools fixed; this side plays audio, relays
+ * tool calls, and keeps the draft. The draft is only a suggestion: the server checks it again
+ * here (check_request) and once more when the call is placed.
+ *
+ * Speaking and typing share one session: typed text goes into the same conversation, and the
+ * mic can be turned on and off without reconnecting (the audio sender just swaps tracks).
  */
 
 export type IntakeStatus = 'connecting' | 'listening' | 'thinking' | 'speaking' | 'ended' | 'error';
@@ -29,16 +32,35 @@ export interface IntakeHandlers {
 
 const REALTIME_CALLS_URL = 'https://api.openai.com/v1/realtime/calls';
 
-export async function startIntake(settings: Settings, ctx: IntakeContext, h: IntakeHandlers): Promise<() => void> {
-  h.onStatus('connecting');
-  const session = await createIntakeSession(settings, ctx);
+export interface IntakeSessionControls {
+  /** Adds a typed message to the conversation; the assistant answers it like speech. */
+  sendText: (text: string) => void;
+  /** Turns the mic on (asking for permission the first time) or off, without reconnecting. */
+  setMic: (on: boolean) => Promise<void>;
+  /** Mutes or unmutes the assistant's voice; its words still appear on screen. */
+  setSpeaker: (on: boolean) => void;
+  stop: () => void;
+}
 
-  let mic: MediaStream;
+async function openMic(): Promise<MediaStreamTrack> {
   try {
-    mic = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+    return stream.getAudioTracks()[0]!;
   } catch {
-    throw new Error('Microphone access was blocked. Allow it for this site in your browser settings, or type instead.');
+    throw new Error('Microphone access was blocked. Allow it for this site in your browser settings, or type below.');
   }
+}
+
+export async function startIntake(
+  settings: Settings,
+  ctx: IntakeContext,
+  h: IntakeHandlers,
+  opts: { mic: boolean },
+): Promise<IntakeSessionControls> {
+  h.onStatus('connecting');
+  // Ask for the mic before minting the key, so a slow permission prompt can't outlast it.
+  let micTrack: MediaStreamTrack | null = opts.mic ? await openMic() : null;
+  const session = await createIntakeSession(settings, ctx);
 
   const pc = new RTCPeerConnection();
   const speaker = new Audio();
@@ -46,18 +68,30 @@ export async function startIntake(settings: Settings, ctx: IntakeContext, h: Int
   pc.ontrack = (e) => {
     speaker.srcObject = e.streams[0] ?? null;
   };
-  pc.addTrack(mic.getAudioTracks()[0]!, mic);
+  // Always negotiate a send-capable audio slot, so the mic can join later without renegotiating.
+  const audio = pc.addTransceiver('audio', { direction: 'sendrecv' });
+  if (micTrack) await audio.sender.replaceTrack(micTrack);
   const dc = pc.createDataChannel('oai-events');
 
   let draft: IntakeDraft = {};
   let stopped = false;
   const partial = new Map<string, string>();
+  /** Typed before the data channel opened; sent as soon as it does. */
+  const pendingTexts: string[] = [];
   const send = (event: object) => dc.readyState === 'open' && dc.send(JSON.stringify(event));
+
+  const pushText = (text: string) => {
+    send({ type: 'conversation.item.create', item: { type: 'message', role: 'user', content: [{ type: 'input_text', text }] } });
+    // Interrupt the assistant if it's still talking, then answer the typed message.
+    send({ type: 'response.cancel' });
+    send({ type: 'output_audio_buffer.clear' });
+    send({ type: 'response.create' });
+  };
 
   const stop = () => {
     if (stopped) return;
     stopped = true;
-    mic.getTracks().forEach((t) => t.stop());
+    micTrack?.stop();
     dc.close();
     pc.close();
     speaker.srcObject = null;
@@ -89,7 +123,11 @@ export async function startIntake(settings: Settings, ctx: IntakeContext, h: Int
     return { error: `Unknown tool ${name}` };
   };
 
-  dc.addEventListener('open', () => send({ type: 'response.create' }));
+  dc.addEventListener('open', () => {
+    // Started by typing: answer that. Started by the mic: the assistant greets first.
+    if (pendingTexts.length) pendingTexts.splice(0).forEach(pushText);
+    else send({ type: 'response.create' });
+  });
   dc.addEventListener('message', (msg) => {
     let ev: any;
     try {
@@ -137,8 +175,10 @@ export async function startIntake(settings: Settings, ctx: IntakeContext, h: Int
         );
         break;
       case 'error':
-        // Most realtime errors are recoverable (e.g. a response.create while one is active).
-        if (ev.error?.code !== 'conversation_already_has_active_response') console.warn('Realtime error', ev.error);
+        // Expected when typing interrupts nothing, or races a response that already started.
+        if (!['conversation_already_has_active_response', 'response_cancel_not_active'].includes(ev.error?.code)) {
+          console.warn('Realtime error', ev.error);
+        }
         break;
     }
   });
@@ -164,5 +204,28 @@ export async function startIntake(settings: Settings, ctx: IntakeContext, h: Int
     throw err;
   }
   h.onStatus('listening');
-  return stop;
+
+  let textCount = 0;
+  return {
+    sendText: (text) => {
+      h.onLine({ id: `typed-${++textCount}`, role: 'user', text });
+      if (dc.readyState === 'open') pushText(text);
+      else pendingTexts.push(text);
+    },
+    setMic: async (on) => {
+      if (on && !micTrack) {
+        micTrack = await openMic();
+        await audio.sender.replaceTrack(micTrack);
+      } else if (!on && micTrack) {
+        // Release the mic entirely (the browser's recording indicator goes off).
+        micTrack.stop();
+        micTrack = null;
+        await audio.sender.replaceTrack(null);
+      }
+    },
+    setSpeaker: (on) => {
+      speaker.muted = !on;
+    },
+    stop,
+  };
 }

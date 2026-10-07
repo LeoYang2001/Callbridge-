@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { draftToRequest, type IntakeContext } from '../../shared/intake';
 import { displayPhone } from '../../shared/phone';
 import type { IntakeCheckResult, IntakeDraft, RealtimeVoice } from '../../shared/types';
-import { startIntake, type IntakeLine, type IntakeStatus } from './voiceIntake';
+import { startIntake, type IntakeLine, type IntakeSessionControls, type IntakeStatus } from './voiceIntake';
 import type { Settings } from './settings';
 import { VoicePicker } from './VoicePicker';
 
@@ -14,7 +14,8 @@ interface Props {
   voice: RealtimeVoice;
   onVoiceChange: (voice: RealtimeVoice) => void;
   onReview: (draft: IntakeDraft) => void;
-  onType: () => void;
+  /** Open the form, carrying over what was gathered so far. */
+  onType: (draft: IntakeDraft) => void;
 }
 
 const STATUS_TEXT: Record<IntakeStatus, string> = {
@@ -35,41 +36,84 @@ export function Intake({ settings, context, languages, onLanguageChange, voice, 
   const [draft, setDraft] = useState<IntakeDraft>({});
   const [check, setCheck] = useState<IntakeCheckResult | null>(null);
   const [ready, setReady] = useState(false);
-  const stopRef = useRef<(() => void) | null>(null);
+  const [micOn, setMicOn] = useState(false);
+  const [speakerOn, setSpeakerOn] = useState(true);
+  const [text, setText] = useState('');
+  const sessionRef = useRef<IntakeSessionControls | null>(null);
   const live = status !== null && status !== 'ended' && status !== 'error';
 
-  useEffect(() => () => stopRef.current?.(), []);
+  useEffect(() => () => sessionRef.current?.stop(), []);
 
-  const start = async () => {
+  /** One session for the whole conversation, started by the mic or by the first typed message. */
+  const connect = async (withMic: boolean) => {
     setError(null);
     setReady(false);
     try {
-      stopRef.current = await startIntake(settings, context, {
-        onStatus: (s, detail) => {
-          setStatus(s);
-          if (detail) setError(detail);
+      const session = await startIntake(
+        settings,
+        context,
+        {
+          onStatus: (s, detail) => {
+            setStatus(s);
+            if (detail) setError(detail);
+            if (s === 'ended' || s === 'error') setMicOn(false);
+          },
+          onLine: (line) =>
+            setLines((prev) => {
+              const i = prev.findIndex((l) => l.id === line.id);
+              return i === -1 ? [...prev, line].slice(-10) : prev.map((l, j) => (j === i ? line : l));
+            }),
+          onDraft: (d) => {
+            setDraft(d);
+            setReady(false);
+          },
+          onCheck: setCheck,
+          onReady: () => setReady(true),
         },
-        onLine: (line) =>
-          setLines((prev) => {
-            const i = prev.findIndex((l) => l.id === line.id);
-            return i === -1 ? [...prev, line].slice(-8) : prev.map((l, j) => (j === i ? line : l));
-          }),
-        onDraft: (d) => {
-          setDraft(d);
-          setReady(false);
-        },
-        onCheck: setCheck,
-        onReady: () => setReady(true),
-      });
+        { mic: withMic },
+      );
+      session.setSpeaker(speakerOn);
+      sessionRef.current = session;
+      setMicOn(withMic);
+      return session;
     } catch (e) {
       setStatus('error');
+      setError((e as Error).message);
+      return null;
+    }
+  };
+
+  const toggleMic = async () => {
+    if (!live) {
+      await connect(true);
+      return;
+    }
+    try {
+      await sessionRef.current?.setMic(!micOn);
+      setMicOn(!micOn);
+      setError(null);
+    } catch (e) {
       setError((e as Error).message);
     }
   };
 
+  const sendText = async (e: FormEvent) => {
+    e.preventDefault();
+    const t = text.trim();
+    if (!t) return;
+    setText('');
+    const session = live ? sessionRef.current : await connect(false);
+    session?.sendText(t);
+  };
+
+  const toggleSpeaker = () => {
+    sessionRef.current?.setSpeaker(!speakerOn);
+    setSpeakerOn(!speakerOn);
+  };
+
   const stop = () => {
-    stopRef.current?.();
-    stopRef.current = null;
+    sessionRef.current?.stop();
+    sessionRef.current = null;
   };
 
   const review = () => {
@@ -98,21 +142,40 @@ export function Intake({ settings, context, languages, onLanguageChange, voice, 
           </label>
           <VoicePicker value={voice} onChange={onVoiceChange} disabled={live} />
         </div>
-        {!live && <p className="field-help">The assistant and the call use this voice (★ most natural). Tap the mic to hear it.</p>}
+        {!live && <p className="field-help">The assistant and the call use this voice (★ most natural). Talk or type below; you can switch any time.</p>}
 
         <div className="mic-wrap">
           <button
             type="button"
-            className={`mic-btn ${live ? `live ${status}` : ''}`}
-            onClick={live ? stop : start}
+            className={`mic-btn ${live && micOn ? `live ${status}` : live ? 'muted' : ''}`}
+            onClick={toggleMic}
             disabled={status === 'connecting'}
-            aria-label={live ? 'Stop talking' : 'Start talking'}
+            aria-label={live && micOn ? 'Turn the mic off' : 'Talk'}
+            aria-pressed={live && micOn}
           >
-            <span aria-hidden>{live ? '■' : '🎙'}</span>
+            <span aria-hidden>🎙</span>
           </button>
           <div className="mic-status" aria-live="polite">
-            {status && live ? STATUS_TEXT[status] : hasDraft ? 'Tap to keep talking' : 'Tap to talk'}
+            {!live
+              ? hasDraft
+                ? 'Tap to keep talking'
+                : 'Tap to talk'
+              : micOn
+                ? STATUS_TEXT[status!]
+                : status === 'speaking' || status === 'thinking'
+                  ? STATUS_TEXT[status]
+                  : 'Mic off · type below'}
           </div>
+          {live && (
+            <div className="mic-tools">
+              <button type="button" className="text-btn" onClick={toggleSpeaker} aria-pressed={!speakerOn}>
+                {speakerOn ? '🔈 Sound on' : '🔇 Sound off'}
+              </button>
+              <button type="button" className="text-btn" onClick={stop}>
+                End
+              </button>
+            </div>
+          )}
         </div>
 
         {lines.length > 0 && (
@@ -165,9 +228,21 @@ export function Intake({ settings, context, languages, onLanguageChange, voice, 
 
       <div className="bottom-bar">
         {error && <div className="bar-error">{error}</div>}
+        <form className="composer" onSubmit={sendText}>
+          <input
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder={live ? 'Type a reply…' : 'Or type here…'}
+            enterKeyHint="send"
+            aria-label="Type a message to the assistant"
+          />
+          <button type="submit" className="send-btn" disabled={!text.trim() || status === 'connecting'} aria-label="Send">
+            ↑
+          </button>
+        </form>
         <div className="bar-row">
-          <button type="button" className="secondary-btn" onClick={() => (stop(), onType())}>
-            Type instead
+          <button type="button" className="secondary-btn" onClick={() => (stop(), onType(draft))}>
+            Use the form
           </button>
           <button type="button" className={`primary-btn ${ready ? 'call' : ''}`} disabled={!canReview} onClick={review}>
             Review &amp; call
