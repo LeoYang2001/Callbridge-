@@ -293,6 +293,8 @@ export interface Contact {
   phone: string;
   /** e.g. "dentist", "restaurant", "personal" */
   kind?: string;
+  /** Language the last call to them was in, e.g. "Tagalog". */
+  language?: string;
   /** Things learned on calls, e.g. "Asks for the insurance card at check-in." */
   notes: string[];
   lastCalledAt?: number;

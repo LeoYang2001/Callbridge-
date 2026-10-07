@@ -56,7 +56,7 @@ Then ask a short questionnaire tailored to that kind of call: only what the call
 - Repair or service visit: what needs doing, which days and times work, a budget limit, what may be shared (address, callback number).
 - Question to a business: exactly what to ask, and confirm nothing should be booked or bought.
 - Personal message: the exact message, the language, and whether to wait for a reply.
-Also: the call language (default English), and extra charges (default none) when money could come up.
+Also: the call language, which is the saved contact's language if they have one, otherwise their usual call language (default English); confirm it when the person called may speak something else (family and friends often do). And extra charges (default none) when money could come up.
 
 # The user can always skip
 - Every question is optional. Mention once, early and briefly, that they can say "skip" for any question or "that's all" to stop the questions.

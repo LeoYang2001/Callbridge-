@@ -100,6 +100,7 @@ export function learnFromCall(profile: UserProfile, record: CallRecord): UserPro
     ...previous,
     name: req.counterpartName?.trim() || previous.name,
     kind: previous.kind ?? (req.category ? KIND[req.category] : undefined),
+    language: req.callLanguage || previous.language,
     notes: dedupe([...previous.notes, ...(r?.counterpartNotes ?? [])]).slice(-10),
     lastCalledAt: record.createdAt,
     lastOutcome: r?.headlineInUserLanguage ?? r?.summaryInUserLanguage ?? previous.lastOutcome,
@@ -146,7 +147,7 @@ export function profileForPrompt(profile: UserProfile): string {
   if (contacts.length) {
     lines.push('- Contacts from earlier calls:');
     for (const c of contacts) {
-      lines.push(`  - ${c.name}${c.kind ? ` (${c.kind})` : ''}: ${displayPhone(c.phone)}${c.notes.length ? `; notes: ${c.notes.join(' ')}` : ''}${c.lastOutcome ? `; last call: ${c.lastOutcome}` : ''}`);
+      lines.push(`  - ${c.name}${c.kind ? ` (${c.kind})` : ''}: ${displayPhone(c.phone)}${c.language ? `; calls in ${c.language}` : ''}${c.notes.length ? `; notes: ${c.notes.join(' ')}` : ''}${c.lastOutcome ? `; last call: ${c.lastOutcome}` : ''}`);
     }
   }
   if (profile.appointments.length) {

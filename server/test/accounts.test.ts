@@ -107,7 +107,7 @@ describe('learning from calls', () => {
 
   it('adds the contact, the appointment, and the decisions; a second call updates the same contact', () => {
     const once = learnFromCall({ ...emptyProfile(), timezone: 'America/Chicago' }, finished());
-    expect(once.contacts).toMatchObject([{ name: 'Smile Dental', phone: '+14155550123', kind: 'clinic', notes: ['Bring the insurance card.'], callCount: 1, lastOutcome: '已预约 10月8日 15:30' }]);
+    expect(once.contacts).toMatchObject([{ name: 'Smile Dental', phone: '+14155550123', kind: 'clinic', language: 'English', notes: ['Bring the insurance card.'], callCount: 1, lastOutcome: '已预约 10月8日 15:30' }]);
     expect(once.appointments).toMatchObject([{ date: '2099-10-08', time: '15:30', with: 'Smile Dental' }]);
     expect(once.history.map((h) => h.text)).toEqual(['Smile Dental: declined "Add an $80 X-ray?"']);
 

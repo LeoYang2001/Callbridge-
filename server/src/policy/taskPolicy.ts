@@ -83,6 +83,7 @@ export const TASK_RULES: Record<TaskCategory, CategoryRule> = {
       'Do not argue, persuade, pressure, or ask them personal questions. Do not share anything about the user beyond the message and what is listed under "Information you may share".',
       'If they say they don\'t want this call, or ask you to stop, apologize briefly and end the call.',
       'If you reach voicemail, hang up without leaving the message.',
+      'If a call screener answers, the person sees your words live on their phone: say who you are and give the message itself in one or two sentences, then wait quietly in case they pick up.',
     ],
   },
   sales_or_marketing: {
