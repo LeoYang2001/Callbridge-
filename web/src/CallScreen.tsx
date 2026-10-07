@@ -42,11 +42,13 @@ interface Props {
   demo: boolean;
   error: string | null;
   onDone: () => void;
+  /** Talk it over with the assistant (voice), with this call loaded. Omitted when unavailable. */
+  onFollowUp?: () => void;
 }
 
-export function CallScreen({ call, demo, error, onDone }: Props) {
+export function CallScreen({ call, demo, error, onDone, onFollowUp }: Props) {
   const finished = call.status === 'completed' || call.status === 'failed';
-  return finished && call.result ? <ResultScreen call={call} demo={demo} onDone={onDone} /> : <LiveCall call={call} demo={demo} error={error} onDone={onDone} />;
+  return finished && call.result ? <ResultScreen call={call} demo={demo} onDone={onDone} onFollowUp={onFollowUp} /> : <LiveCall call={call} demo={demo} error={error} onDone={onDone} />;
 }
 
 function LiveCall({ call, demo, error, onDone }: Props) {
@@ -134,7 +136,7 @@ function Section({ title, items, tone }: { title: string; items: string[]; tone?
   );
 }
 
-function ResultScreen({ call, demo, onDone }: { call: CallRecord; demo: boolean; onDone: () => void }) {
+function ResultScreen({ call, demo, onDone, onFollowUp }: { call: CallRecord; demo: boolean; onDone: () => void; onFollowUp?: () => void }) {
   const r = call.result!;
   const [showTranscript, setShowTranscript] = useState(false);
   const appt = r.appointment ? fmtAppointment(r.appointment.date, r.appointment.time) : null;
@@ -164,13 +166,14 @@ function ResultScreen({ call, demo, onDone }: { call: CallRecord; demo: boolean;
       )}
 
       <div className="summary-card">
+        {r.headlineInUserLanguage && <p className="summary-headline">{r.headlineInUserLanguage}</p>}
         <p className="summary-main">{r.summaryInUserLanguage}</p>
         {r.summaryInUserLanguage !== r.summary && <p className="summary-alt">{r.summary}</p>}
       </div>
 
       <Section title="Needs your answer" items={r.unresolvedQuestions} tone="ask" />
       <Section title="The assistant declined" items={r.refusedDecisions.map((d) => d.request)} tone="no" />
-      <Section title="Next steps" items={r.followUpsForUser} />
+      <Section title="Next steps" items={r.nextStepsInUserLanguage?.length ? r.nextStepsInUserLanguage : r.followUpsForUser} />
       <Section title="Please double-check" items={r.policyWarnings} tone="warn" />
 
       <div className="facts-row">
@@ -200,7 +203,12 @@ function ResultScreen({ call, demo, onDone }: { call: CallRecord; demo: boolean;
 
       <div className="bottom-bar">
         <div className="bar-row">
-          <button type="button" className="primary-btn" onClick={onDone}>
+          {onFollowUp && (
+            <button type="button" className="primary-btn" onClick={onFollowUp}>
+              🔊 Talk it over
+            </button>
+          )}
+          <button type="button" className={onFollowUp ? 'secondary-btn' : 'primary-btn'} onClick={onDone}>
             New call
           </button>
         </div>

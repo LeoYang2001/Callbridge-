@@ -16,6 +16,8 @@ interface Props {
   onReview: (draft: IntakeDraft) => void;
   /** Open the form, carrying over what was gathered so far. */
   onType: (draft: IntakeDraft) => void;
+  /** Coming back after a call: the assistant reports on it first, with its request loaded. */
+  followUp?: { callId: string; draft: IntakeDraft; headline?: string };
 }
 
 const STATUS_TEXT: Record<IntakeStatus, string> = {
@@ -29,11 +31,11 @@ const STATUS_TEXT: Record<IntakeStatus, string> = {
 
 const TIER_TEXT = { allowed: 'Allowed', limited: 'Allowed with limits', refused: 'Not allowed' } as const;
 
-export function Intake({ settings, context, languages, onLanguageChange, voice, onVoiceChange, onReview, onType }: Props) {
+export function Intake({ settings, context, languages, onLanguageChange, voice, onVoiceChange, onReview, onType, followUp }: Props) {
   const [status, setStatus] = useState<IntakeStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lines, setLines] = useState<IntakeLine[]>([]);
-  const [draft, setDraft] = useState<IntakeDraft>({});
+  const [draft, setDraft] = useState<IntakeDraft>(() => followUp?.draft ?? {});
   const [check, setCheck] = useState<IntakeCheckResult | null>(null);
   const [ready, setReady] = useState(false);
   const [micOn, setMicOn] = useState(false);
@@ -70,7 +72,7 @@ export function Intake({ settings, context, languages, onLanguageChange, voice, 
           onCheck: setCheck,
           onReady: () => setReady(true),
         },
-        { mic: withMic },
+        { mic: withMic, followUpOf: followUp?.callId, initialDraft: followUp?.draft },
       );
       session.setSpeaker(speakerOn);
       sessionRef.current = session;
@@ -128,8 +130,13 @@ export function Intake({ settings, context, languages, onLanguageChange, voice, 
   return (
     <>
       <div className="screen intake">
-        <h1 className="title">Who should I call?</h1>
-        <p className="lede">Tell me in your language: who to call, what you need, and when you're free. I'll ask about anything missing.</p>
+        <h1 className="title">{followUp ? 'How did it go?' : 'Who should I call?'}</h1>
+        <p className="lede">
+          {followUp
+            ? "Tap the mic and I'll tell you the result. Ask me anything about the call, or have me call again."
+            : "Tell me in your language: who to call, what you need, and when you're free. I'll ask about anything missing."}
+        </p>
+        {followUp?.headline && <div className="summary-card"><p className="summary-headline">{followUp.headline}</p></div>}
 
         <div className="two intake-options">
           <label className="field compact">

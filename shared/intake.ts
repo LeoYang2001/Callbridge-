@@ -43,6 +43,23 @@ export function draftToRequest(draft: IntakeDraft, ctx: IntakeContext): CallRequ
   };
 }
 
+/** The inverse of draftToRequest: seeds a follow-up conversation with the previous call's request. */
+export function requestToDraft(req: CallRequest): IntakeDraft {
+  return {
+    counterpartName: req.counterpartName,
+    phoneNumber: req.to.replace(/^\+1(?=\d{10}$)/, '').replace(/\D/g, ''),
+    task: req.instructions,
+    taskInUserLanguage: req.taskInUserLanguage,
+    callLanguage: req.callLanguage,
+    userName: req.user.name,
+    availability: req.constraints.availability,
+    earliestDate: req.constraints.earliestDate,
+    latestDate: req.constraints.latestDate,
+    maxAdditionalCostUsd: req.constraints.maxAdditionalCostUsd,
+    shareableInfo: req.authorizedInfo,
+  };
+}
+
 /** Converts update_request arguments (snake_case) into a draft patch. */
 export function draftPatchFromArgs(args: Record<string, unknown>): IntakeDraft {
   const map: Record<string, keyof IntakeDraft> = {

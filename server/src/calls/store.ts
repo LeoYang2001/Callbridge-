@@ -1,4 +1,5 @@
 import { EventEmitter } from 'node:events';
+import { readFileSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { CallRecord } from '../../../shared/types';
@@ -24,6 +25,17 @@ export class CallStore {
 
   get(id: string) {
     return this.calls.get(id);
+  }
+
+  /** A call in memory, or one persisted before the last restart (finished calls only). */
+  getOrLoad(id: string): CallRecord | undefined {
+    const live = this.calls.get(id);
+    if (live || !this.persistDir || !/^[0-9a-f-]{36}$/.test(id)) return live;
+    try {
+      return JSON.parse(readFileSync(path.join(this.persistDir, `${id}.json`), 'utf8')) as CallRecord;
+    } catch {
+      return undefined;
+    }
   }
 
   list() {

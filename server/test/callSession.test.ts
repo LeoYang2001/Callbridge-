@@ -15,6 +15,8 @@ class FakeAgent implements VoiceAgent {
   toolResults: { callId: string; output: any; respond: boolean }[] = [];
   truncations: { itemId: string; ms: number }[] = [];
   prompts: string[] = [];
+  responses = 0;
+  cancels = 0;
   closed = false;
   constructor(private readonly failConnect = false) {}
   async connect(config: VoiceAgentConfig) {
@@ -32,6 +34,12 @@ class FakeAgent implements VoiceAgent {
   }
   prompt(text: string) {
     this.prompts.push(text);
+  }
+  respond() {
+    this.responses++;
+  }
+  cancelResponse() {
+    this.cancels++;
   }
   on<E extends keyof VoiceAgentEvents>(event: E, listener: VoiceAgentEvents[E]) {
     this.emitter.on(event, listener as any);
@@ -91,9 +99,19 @@ const analysis: TranscriptAnalysis = {
   possibleFabrications: [],
   summary: 'Dental cleaning scheduled for Thursday at 3:30 PM.',
   summaryInUserLanguage: '洗牙预约在周四下午3:30。',
+  headlineInUserLanguage: '已预约：周四 10月8日 下午3:30 洗牙',
+  nextStepsInUserLanguage: ['提前10分钟到。'],
 };
 
 const flush = () => new Promise((r) => setTimeout(r, 0));
+
+/** 20 ms phone frames: loud speech (μ-law 0x00) or silence (0xFF). */
+const LOUD = Buffer.alloc(160, 0x00).toString('base64');
+const SILENT = Buffer.alloc(160, 0xff).toString('base64');
+function frames(transport: FakeTransport, fromTs: number, count: number, payload = LOUD) {
+  for (let i = 1; i <= count; i++) transport.emit('audio', payload, fromTs + i * 20);
+  return fromTs + count * 20;
+}
 const waitFor = async (pred: () => boolean, ms = 3000) => {
   const end = Date.now() + ms;
   while (!pred()) {
@@ -171,17 +189,23 @@ describe('CallSession (simulated dentist call)', () => {
     agent.emit('toolCall', 't3', 'confirm_agreement', '{"type":"appointment","description":"Dental cleaning","date":"2026-10-08","start_time":"15:30"}');
     expect(agent.toolResults.at(-1)?.output.accepted).toBe(true);
 
-    // Barge-in: business talks over the assistant.
+    // Barge-in: business talks over the assistant with sustained speech.
     agent.emit('utteranceStarted', 'a2', 'assistant');
     agent.emit('audio', 'a2', 'AAAAAAAAAAAA');
-    transport.emit('audio', 'AAAA', 140);
     agent.emit('speechStarted');
-    expect(transport.clears).toBe(1);
+    frames(transport, 140, 30);
+    await waitFor(() => transport.clears === 1);
+    expect(agent.cancels).toBe(1);
     expect(agent.truncations).toHaveLength(1);
     expect(agent.truncations[0]!.itemId).toBe('a2');
     expect(get().transcript.find((t) => t.id === 'a2')?.interrupted).toBe(true);
     transport.emit('mark', 'a2'); // echoed mark for cleared audio is ignored
+    agent.emit('audio', 'a2', 'AAAA'); // late audio from the cancelled response is dropped
+    expect(transport.sent.at(-1)).toBe('AAAAAAAAAAAA');
     agent.emit('transcript', 'a2', 'assistant', 'Thursday at 3:30 works for');
+    const before = agent.responses;
+    agent.emit('speechStopped');
+    expect(agent.responses).toBe(before + 1);
 
     // Goodbye, then end_call. Hangup waits for the response to finish and audio to play out.
     agent.emit('audio', 'a3', 'AAAA');
@@ -220,6 +244,78 @@ describe('CallSession (simulated dentist call)', () => {
     const token = (manager as any).sessions.get(created.id).streamToken as string;
     manager.attachMedia(created.id, token, new FakeTransport());
     await waitFor(() => agent.prompts.length === 1);
+  });
+
+  describe('turn-taking on a noisy line', () => {
+    async function connected() {
+      const ctx = setup();
+      const created = ctx.manager.startCall(dentistRequest());
+      await waitFor(() => ctx.telephony.placed.length === 1);
+      const transport = new FakeTransport();
+      const token = (ctx.manager as any).sessions.get(created.id).streamToken as string;
+      ctx.manager.attachMedia(created.id, token, transport);
+      ctx.agent.emit('speechStarted'); // "Hello?" so the intro nudge stays out of the way
+      let ts = frames(transport, 0, 20);
+      ctx.agent.emit('speechStopped');
+      const responses = ctx.agent.responses;
+      // The assistant starts talking.
+      ctx.agent.emit('utteranceStarted', 'a1', 'assistant');
+      ctx.agent.emit('audio', 'a1', 'AAAA');
+      const get = () => ctx.store.get(created.id)!;
+      return { ...ctx, transport, get, responses, at: () => ts, advance: (n: number, p?: string) => (ts = frames(transport, ts, n, p)) };
+    }
+
+    it('keeps talking through "mm-hm" and short noises', async () => {
+      const c = await connected();
+      c.agent.emit('speechStarted');
+      c.advance(8); // 160 ms of sound
+      c.advance(20, SILENT);
+      await new Promise((r) => setTimeout(r, 150));
+      c.agent.emit('speechStopped');
+      c.agent.emit('utteranceStarted', 'c2', 'counterpart');
+      c.agent.emit('transcript', 'c2', 'counterpart', 'Mm-hm.');
+      expect(c.transport.clears).toBe(0);
+      expect(c.agent.cancels).toBe(0);
+      expect(c.agent.truncations).toHaveLength(0);
+      // When the assistant finishes, the backchannel doesn't get its own answer.
+      c.agent.emit('responseDone');
+      c.transport.emit('mark', 'a1');
+      expect(c.agent.responses).toBe(c.responses);
+      expect(c.get().events.map((e) => e.type)).toContain('turn.held');
+    });
+
+    it('answers a real question asked over the assistant once it finishes', async () => {
+      const c = await connected();
+      // Quiet line: the gate can't confirm speech, so the assistant isn't cut off...
+      c.agent.emit('speechStarted');
+      c.advance(30, SILENT);
+      c.agent.emit('speechStopped');
+      c.agent.emit('utteranceStarted', 'c2', 'counterpart');
+      c.agent.emit('transcript', 'c2', 'counterpart', 'Can I talk to him quickly?');
+      expect(c.agent.responses).toBe(c.responses);
+      // ...but the question is answered as soon as it's done talking.
+      c.agent.emit('responseDone');
+      c.transport.emit('mark', 'a1');
+      expect(c.agent.responses).toBe(c.responses + 1);
+    });
+
+    it('ignores noise in silence unless the transcript has words', async () => {
+      const c = await connected();
+      c.agent.emit('responseDone');
+      c.transport.emit('mark', 'a1');
+      c.agent.emit('speechStarted');
+      c.advance(3); // a 60 ms bang
+      c.agent.emit('speechStopped');
+      c.agent.emit('utteranceStarted', 'c2', 'counterpart');
+      c.agent.emit('transcript', 'c2', 'counterpart', '');
+      expect(c.agent.responses).toBe(c.responses);
+      c.agent.emit('speechStarted');
+      c.advance(3);
+      c.agent.emit('speechStopped');
+      c.agent.emit('utteranceStarted', 'c3', 'counterpart');
+      c.agent.emit('transcript', 'c3', 'counterpart', 'Yes.');
+      expect(c.agent.responses).toBe(c.responses + 1);
+    });
   });
 
   it('reports no-answer as a failed call without analysis', async () => {

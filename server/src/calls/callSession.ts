@@ -7,6 +7,7 @@ import type { CallAnalyzer, TranscriptAnalysis } from '../providers/analysis/typ
 import type { MediaTransport, TelephonyCallState, TelephonyProvider } from '../providers/telephony/types';
 import type { VoiceAgent } from '../providers/voice/types';
 import { localToday } from '../util/time';
+import { SpeechGate } from './speechGate';
 import type { CallStore } from './store';
 
 export interface CallSessionDeps {
@@ -30,6 +31,22 @@ const TERMINAL_FAILURES: Partial<Record<TelephonyCallState, CallResult['status']
 
 /** μ-law at 8 kHz: one byte per sample → 8 bytes per millisecond. */
 const ULAW_BYTES_PER_MS = 8;
+
+/** Sustained speech (within the last BARGE_IN_WINDOW_MS) that counts as interrupting us. */
+const BARGE_IN_SPEECH_MS = 400;
+const BARGE_IN_WINDOW_MS = 700;
+/** How long after the model notices speech we keep checking whether it's a real interruption. */
+const BARGE_IN_WATCH_MS = 2500;
+const BARGE_IN_POLL_MS = 50;
+/** A turn with less speech than this waits for its transcript before getting an answer. */
+const MIN_TURN_SPEECH_MS = 160;
+/** Speech just before the model's speech-started event that still belongs to the turn. */
+const TURN_LEAD_IN_MS = 300;
+
+const hasWords = (text: string) => /[\p{L}\p{N}]/u.test(text);
+/** More than an acknowledgment: three or more words, or four or more CJK characters. */
+const isSubstantive = (text: string) =>
+  text.split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w)).length >= 3 || (text.match(/\p{Script=Han}/gu)?.length ?? 0) >= 4;
 const b64Bytes = (b64: string) => Math.floor((b64.length * 3) / 4) - (b64.endsWith('==') ? 2 : b64.endsWith('=') ? 1 : 0);
 
 /**
@@ -49,6 +66,25 @@ export class CallSession {
   private currentItemSentMs = 0;
   /** Outbound audio chunks sent but not yet played, per assistant item (Twilio echoes marks). */
   private readonly unplayed = new Map<string, number>();
+
+  // Turn-taking. The model detects turns; this session decides whether a turn interrupts us and
+  // whether it gets an answer, using the speech gate's measurement of the actual phone audio.
+  private readonly gate = new SpeechGate();
+  /** The model is producing a response (asked for, until responseDone). */
+  private responding = false;
+  private turnActive = false;
+  private turnStartTs = 0;
+  /** Media time when their previous turn ended; a turn's speech is only counted after it. */
+  private lastTurnEndTs = 0;
+  /** The current turn was a confirmed interruption. */
+  private bargedIn = false;
+  private bargeWatch: NodeJS.Timeout | undefined;
+  /** How the last finished turn was handled, applied to its transcript when it arrives. */
+  private lastTurn: 'held' | 'quiet' | null = null;
+  private readonly turnByItem = new Map<string, 'held' | 'quiet'>();
+  private readonly cancelledItems = new Set<string>();
+  /** Words they said while we kept talking; answered once we finish. */
+  private heldText: string | null = null;
 
   private answered = false;
   private counterpartSpoke = false;
@@ -196,6 +232,7 @@ export class CallSession {
 
     transport.on('audio', (payload, ts) => {
       this.latestMediaTs = ts;
+      this.gate.observe(payload, ts);
       this.agent?.sendAudio(payload);
     });
     transport.on('mark', (itemId) => {
@@ -203,6 +240,7 @@ export class CallSession {
       if (left > 0) this.unplayed.set(itemId, left);
       else this.unplayed.delete(itemId);
       this.maybeHangup();
+      this.answerHeldTurn();
     });
     transport.on('stop', () => {
       if (this.finalizing) return;
@@ -215,6 +253,7 @@ export class CallSession {
     this.timer(this.deps.introDelayMs, () => {
       if (!this.counterpartSpoke && !this.finalizing) {
         this.log('ai.intro_nudge');
+        this.responding = true;
         this.agent?.prompt(INTRO_NUDGE);
       }
     });
@@ -225,6 +264,8 @@ export class CallSession {
   private wireAgent(agent: VoiceAgent) {
     agent.on('audio', (itemId, payload) => {
       if (!this.transport || this.finalizing) return;
+      // Audio from a response cancelled by a barge-in can still arrive; drop it.
+      if (this.cancelledItems.has(itemId) || (this.bargedIn && this.turnActive)) return;
       if (itemId !== this.currentItemId) {
         this.currentItemId = itemId;
         this.currentItemStartTs = this.latestMediaTs;
@@ -249,32 +290,56 @@ export class CallSession {
     agent.on('speechStarted', () => {
       this.counterpartSpoke = true;
       if (this.record.status === 'connected') this.setStatus('in_progress');
-      // Barge-in: the other party talked over us. Stop playback and tell the model what was heard.
-      if (this.currentItemId && this.unplayed.has(this.currentItemId)) {
-        const heardMs = Math.min(Math.max(0, this.latestMediaTs - this.currentItemStartTs), this.currentItemSentMs);
-        agent.truncate(this.currentItemId, heardMs);
-        this.transport?.clearAudio();
-        const interruptedId = this.currentItemId;
-        this.update((r) => {
-          r.metrics.interruptions++;
-          const entry = r.transcript.find((t) => t.id === interruptedId);
-          if (entry) entry.interrupted = true;
-        });
-        this.log('ai.interrupted', `${Math.round(heardMs)}ms heard`);
-        // Twilio echoes marks for cleared audio; forgetting the items makes those echoes no-ops.
-        this.unplayed.clear();
-        this.currentItemId = null;
-      }
+      this.turnActive = true;
+      this.turnStartTs = this.latestMediaTs;
+      this.bargedIn = false;
+      if (this.aiSpeaking()) this.watchForBargeIn();
     });
 
     agent.on('speechStopped', () => {
-      this.speechStoppedAt = Date.now();
+      this.turnActive = false;
+      this.clearTimer(this.bargeWatch);
+      const voiced = this.gate.voicedMsSince(this.turnSpeechFrom());
+      this.lastTurnEndTs = this.latestMediaTs;
+      const detail = `${voiced}ms speech · noise floor ${this.gate.noiseFloor}`;
+      if (this.aiSpeaking() && !this.bargedIn) {
+        // "Okay", "mm-hm", or noise while we talk: keep going. Real words get answered after.
+        this.lastTurn = 'held';
+        this.log('turn.held', detail);
+      } else if (voiced >= MIN_TURN_SPEECH_MS) {
+        this.lastTurn = null;
+        this.speechStoppedAt = Date.now();
+        this.log('turn.answered', detail);
+        this.respond();
+      } else {
+        // Too little speech to be sure; answer only if the transcript shows words.
+        this.lastTurn = 'quiet';
+        this.speechStoppedAt = Date.now();
+        this.log('turn.quiet', detail);
+      }
     });
 
-    agent.on('utteranceStarted', (itemId, speaker) => this.upsertTranscript(itemId, speaker, '', true));
+    agent.on('utteranceStarted', (itemId, speaker) => {
+      if (speaker === 'counterpart' && this.lastTurn) {
+        this.turnByItem.set(itemId, this.lastTurn);
+        this.lastTurn = null;
+      }
+      this.upsertTranscript(itemId, speaker, '', true);
+    });
 
     agent.on('transcript', (itemId, speaker, text) => {
       const clean = text.trim();
+      const turn = speaker === 'counterpart' ? this.turnByItem.get(itemId) : undefined;
+      if (turn) {
+        this.turnByItem.delete(itemId);
+        if (turn === 'quiet' && hasWords(clean)) {
+          if (this.aiSpeaking()) this.heldText = clean;
+          else this.respond();
+        } else if (turn === 'held' && isSubstantive(clean)) {
+          this.heldText = clean;
+          this.answerHeldTurn();
+        }
+      }
       if (!clean) {
         this.update((r) => (r.transcript = r.transcript.filter((t) => t.id !== itemId)));
         return;
@@ -286,7 +351,9 @@ export class CallSession {
 
     agent.on('responseDone', () => {
       this.awaitingResponseDone = false;
+      this.responding = false;
       this.maybeHangup();
+      this.answerHeldTurn();
     });
 
     agent.on('failure', (message, fatal) => {
@@ -296,6 +363,71 @@ export class CallSession {
         this.endWith('ai_connection_lost');
       }
     });
+  }
+
+  /** Where this turn's speech starts: a little before the model noticed it, never before the last turn. */
+  private turnSpeechFrom() {
+    return Math.max(this.turnStartTs - TURN_LEAD_IN_MS, this.lastTurnEndTs);
+  }
+
+  /** We're talking: a response is being generated or its audio hasn't finished playing. */
+  private aiSpeaking() {
+    return this.responding || this.unplayed.size > 0;
+  }
+
+  private respond() {
+    if (this.finalizing || this.hangupRequested) return;
+    this.heldText = null;
+    this.responding = true;
+    this.agent?.respond();
+  }
+
+  /** Answers what they said while we were talking, once we've finished and they're not mid-turn. */
+  private answerHeldTurn() {
+    if (!this.heldText || this.aiSpeaking() || this.turnActive) return;
+    this.log('turn.answered_after', this.heldText.slice(0, 80));
+    this.speechStoppedAt = Date.now();
+    this.respond();
+  }
+
+  /**
+   * While we talk, the other side's speech only interrupts us once the gate confirms sustained
+   * speech. A cough, a door, or "okay" shouldn't stop the assistant mid-sentence (and make it
+   * start the sentence over).
+   */
+  private watchForBargeIn() {
+    const started = Date.now();
+    const check = () => {
+      if (!this.turnActive || !this.aiSpeaking() || this.finalizing) return;
+      const recent = this.gate.voicedMsSince(Math.max(this.latestMediaTs - BARGE_IN_WINDOW_MS, this.turnSpeechFrom()));
+      if (recent >= BARGE_IN_SPEECH_MS) return this.bargeIn(recent);
+      if (Date.now() - started < BARGE_IN_WATCH_MS) this.bargeWatch = this.timer(BARGE_IN_POLL_MS, check);
+    };
+    check();
+  }
+
+  private bargeIn(speechMs: number) {
+    const agent = this.agent;
+    if (!agent) return;
+    this.bargedIn = true;
+    agent.cancelResponse();
+    const itemId = this.currentItemId;
+    if (itemId) this.cancelledItems.add(itemId);
+    let heardMs = 0;
+    if (itemId && this.unplayed.has(itemId)) {
+      heardMs = Math.min(Math.max(0, this.latestMediaTs - this.currentItemStartTs), this.currentItemSentMs);
+      agent.truncate(itemId, heardMs);
+      this.update((r) => {
+        const entry = r.transcript.find((t) => t.id === itemId);
+        if (entry) entry.interrupted = true;
+      });
+    }
+    this.transport?.clearAudio();
+    this.update((r) => r.metrics.interruptions++);
+    this.log('ai.interrupted', `${Math.round(heardMs)}ms heard · ${speechMs}ms speech`);
+    // Twilio echoes marks for cleared audio; forgetting the items makes those echoes no-ops.
+    this.unplayed.clear();
+    this.currentItemId = null;
   }
 
   private upsertTranscript(itemId: string, speaker: Speaker, text: string, pending: boolean) {
@@ -333,6 +465,7 @@ export class CallSession {
       this.timer(12_000, () => this.hangup());
       this.maybeHangup();
     } else {
+      this.responding = true;
       this.agent?.sendToolResult(callId, exec.output, true);
     }
   }
@@ -529,6 +662,8 @@ export function buildResult(r: CallRecord, analysis: TranscriptAnalysis | null, 
     followUpsForUser: analysis?.followUpsForUser ?? [],
     summary: analysis?.summary ?? fallbackSummary,
     summaryInUserLanguage: analysis?.summaryInUserLanguage ?? fallbackSummary,
+    headlineInUserLanguage: analysis?.headlineInUserLanguage,
+    nextStepsInUserLanguage: analysis?.nextStepsInUserLanguage,
     policyWarnings: warnings,
   };
 }

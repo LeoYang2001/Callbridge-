@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { draftPatchFromArgs, draftToRequest, normalizeTime } from '../../shared/intake';
+import { draftPatchFromArgs, draftToRequest, normalizeTime, requestToDraft } from '../../shared/intake';
 import { TASK_CATEGORIES, type TaskCategory } from '../../shared/types';
-import { checkRequest } from '../src/agent/intake';
+import { buildFollowUpSection, checkRequest } from '../src/agent/intake';
+import { newCallRecord } from '../src/calls/callSession';
 import { buildInstructions } from '../src/agent/prompt';
 import { CallRequestSchema } from '../src/calls/requestSchema';
 import { TaskReviewUnavailableError, type TaskClassifier } from '../src/policy/taskClassifier';
@@ -137,5 +138,51 @@ describe('intake and Start call agree', () => {
       '5pm',
       '25:00',
     ]);
+  });
+});
+
+describe('appointments need a time window', () => {
+  it('reports missing availability for a booking, but not for a question', async () => {
+    const noWindows = dentistRequest({ constraints: { availability: [], maxAdditionalCostUsd: 0 } });
+    const booking = await checkRequest(noWindows, deps('healthcare_appointment'));
+    expect(booking.ok).toBe(false);
+    expect(booking.missing).toEqual(['which days and times work (at least one time window)']);
+    expect((await checkRequest(noWindows, deps('business_inquiry'))).ok).toBe(true);
+  });
+});
+
+describe('follow-up after a call', () => {
+  const record = () => {
+    const r = newCallRecord('5e6ca169-0903-45cc-b724-e253756f3726', dentistRequest({ counterpartName: 'David Clinic' }));
+    r.status = 'completed';
+    r.transcript = [
+      { id: 'c1', speaker: 'counterpart', text: '3pm is the best I can do.', at: 1 },
+      { id: 'a1', speaker: 'assistant', text: 'Thanks, I will let Leo know.', at: 2 },
+    ];
+    r.result = {
+      status: 'completed', success: false, objective: 'schedule_cleaning', appointment: null, commitments: [],
+      additionalChargesAuthorized: false, unresolvedQuestions: ['Accept Thursday 3 pm?'], refusedDecisions: [],
+      followUpsForUser: ['Call back to accept 3 pm.'], summary: 'Not booked; they offered Thursday 3 pm.',
+      summaryInUserLanguage: '没有预约成功；对方提供了周四下午3点。', headlineInUserLanguage: '未预约：对方只能周四下午3点',
+      nextStepsInUserLanguage: ['回电接受下午3点。'], policyWarnings: [],
+    };
+    return r;
+  };
+
+  it('reports the result first, from the record, with the transcript as data', () => {
+    const text = buildFollowUpSection(record(), 'Leo', 'Chinese (Mandarin)');
+    expect(text).toContain('this replaces how to start');
+    expect(text).toContain('未预约：对方只能周四下午3点');
+    expect(text).toContain('Accept Thursday 3 pm?');
+    expect(text).toContain('THEM: 3pm is the best I can do.');
+    expect(text).toContain('"confirmedAppointment":null');
+  });
+
+  it('seeds the draft with the previous request so only changes need saying', () => {
+    const draft = requestToDraft(record().request);
+    const back = draftToRequest(draft, { userName: 'Leo', userLanguage: 'Chinese (Mandarin)', timezone: 'America/Los_Angeles' });
+    expect(back.to).toBe('+14155550123');
+    expect(back.constraints.availability).toEqual(record().request.constraints.availability);
+    expect(back.counterpartName).toBe('David Clinic');
   });
 });

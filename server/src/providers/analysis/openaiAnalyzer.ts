@@ -19,6 +19,8 @@ const SCHEMA = {
     'possibleFabrications',
     'summary',
     'summaryInUserLanguage',
+    'headlineInUserLanguage',
+    'nextStepsInUserLanguage',
   ],
   properties: {
     objective: { type: 'string', description: 'snake_case label for the task, e.g. schedule_dental_cleaning' },
@@ -56,6 +58,12 @@ const SCHEMA = {
     },
     summary: { type: 'string', description: 'Two or three sentences in English.' },
     summaryInUserLanguage: { type: 'string', description: "The same summary in the user's preferred language." },
+    headlineInUserLanguage: {
+      type: 'string',
+      description:
+        "One short line in the user's language stating the outcome, e.g. booked for <weekday, date, time> at <business>, or not booked and why. A booking may only be stated if it is in validatedCommitments.",
+    },
+    nextStepsInUserLanguage: { ...stringArray, description: "followUpsForUser, written in the user's language." },
   },
 } as const;
 

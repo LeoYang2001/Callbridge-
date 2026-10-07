@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CallRecord, CallRequest, PublicConfig } from '../../shared/types';
 import { getConfig, startCall, watchCall } from './api';
-import { draftToRequest } from '../../shared/intake';
+import { draftToRequest, requestToDraft } from '../../shared/intake';
 import type { IntakeDraft, RealtimeVoice } from '../../shared/types';
 import { CallScreen } from './CallScreen';
 import { simulateCall } from './demo';
@@ -29,6 +29,8 @@ export function App() {
     saveVoice(v);
   };
   /** The form prefilled from the voice intake, opened at the review step. */
+  /** The finished call the voice assistant reports on and can follow up. */
+  const [followUp, setFollowUp] = useState<{ callId: string; draft: IntakeDraft; headline?: string } | null>(null);
   const [fromIntake, setFromIntake] = useState<{ request: CallRequest; step: number; key: number } | null>(null);
 
   const demo = effectiveDemo(settings);
@@ -90,6 +92,14 @@ export function App() {
     stopRef.current = null;
     setCall(null);
     setError(null);
+    setFollowUp(null);
+    setFromIntake(null);
+  };
+
+  const followUpOn = (finished: CallRecord) => {
+    reset();
+    setFollowUp({ callId: finished.id, draft: requestToDraft(finished.request), headline: finished.result?.headlineInUserLanguage });
+    setMode('talk');
   };
 
   return (
@@ -137,10 +147,18 @@ export function App() {
         )}
 
         {call ? (
-          <CallScreen call={call} demo={call.id.startsWith('demo-')} error={error} onDone={reset} />
+          <CallScreen
+            call={call}
+            demo={call.id.startsWith('demo-')}
+            error={error}
+            onDone={reset}
+            onFollowUp={canTalk && !call.id.startsWith('demo-') ? () => followUpOn(call) : undefined}
+          />
         ) : (
           canTalk && mode === 'talk' ? (
             <Intake
+              key={followUp?.callId ?? 'new'}
+              followUp={followUp ?? undefined}
               settings={settings}
               context={intakeContext}
               languages={LANGUAGES}

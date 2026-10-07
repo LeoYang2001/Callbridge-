@@ -109,7 +109,7 @@ const checkDeps = {
   allowedDestinations: config.allowedDestinations,
 };
 registerApiRoutes(app, { config, manager, store, checkDeps });
-registerIntakeRoutes(app, { config, checkDeps });
+registerIntakeRoutes(app, { config, checkDeps, store });
 if (telephony) registerTwilioRoutes(app, { config, manager, telephony });
 
 const webDist = path.join(root, 'web', 'dist');

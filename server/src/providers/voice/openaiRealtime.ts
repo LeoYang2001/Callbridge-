@@ -95,16 +95,18 @@ export class OpenAIRealtimeAgent implements VoiceAgent {
   }
 
   private sessionConfig(config: VoiceAgentConfig) {
+    // The model detects turns, but the call session decides whether to answer or stop (see
+    // CallSession: confirmed barge-in), so automatic responses and interruptions are off.
     const turnDetection =
       this.opts.turnDetection === 'semantic_vad'
-        ? { type: 'semantic_vad', eagerness: 'auto', create_response: true, interrupt_response: true }
+        ? { type: 'semantic_vad', eagerness: 'auto', create_response: false, interrupt_response: false }
         : {
             type: 'server_vad',
             threshold: 0.6,
             prefix_padding_ms: 300,
-            silence_duration_ms: 600,
-            create_response: true,
-            interrupt_response: true,
+            silence_duration_ms: 500,
+            create_response: false,
+            interrupt_response: false,
           };
 
     return {
@@ -232,6 +234,15 @@ export class OpenAIRealtimeAgent implements VoiceAgent {
       item: { type: 'message', role: 'system', content: [{ type: 'input_text', text: systemText }] },
     });
     this.createResponse();
+  }
+
+  respond() {
+    this.createResponse();
+  }
+
+  cancelResponse() {
+    this.responseQueued = false;
+    if (this.responseActive) this.send({ type: 'response.cancel' });
   }
 
   on<E extends keyof VoiceAgentEvents>(event: E, listener: VoiceAgentEvents[E]) {

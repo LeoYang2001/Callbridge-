@@ -55,12 +55,13 @@ export async function startIntake(
   settings: Settings,
   ctx: IntakeContext,
   h: IntakeHandlers,
-  opts: { mic: boolean },
+  /** followUpOf: a finished call the assistant reports on first; initialDraft: its request. */
+  opts: { mic: boolean; followUpOf?: string; initialDraft?: IntakeDraft },
 ): Promise<IntakeSessionControls> {
   h.onStatus('connecting');
   // Ask for the mic before minting the key, so a slow permission prompt can't outlast it.
   let micTrack: MediaStreamTrack | null = opts.mic ? await openMic() : null;
-  const session = await createIntakeSession(settings, ctx);
+  const session = await createIntakeSession(settings, { ...ctx, followUpOf: opts.followUpOf });
 
   const pc = new RTCPeerConnection();
   const speaker = new Audio();
@@ -73,7 +74,7 @@ export async function startIntake(
   if (micTrack) await audio.sender.replaceTrack(micTrack);
   const dc = pc.createDataChannel('oai-events');
 
-  let draft: IntakeDraft = {};
+  let draft: IntakeDraft = { ...opts.initialDraft };
   let stopped = false;
   const partial = new Map<string, string>();
   /** Typed before the data channel opened; sent as soon as it does. */

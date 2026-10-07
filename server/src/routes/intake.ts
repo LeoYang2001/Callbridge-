@@ -3,7 +3,8 @@ import OpenAI from 'openai';
 import { z } from 'zod';
 import { draftToRequest } from '../../../shared/intake';
 import { REALTIME_VOICES, type IntakeDraft, type IntakeSession } from '../../../shared/types';
-import { buildIntakeInstructions, checkRequest, INTAKE_TOOLS, type CheckDeps } from '../agent/intake';
+import { buildFollowUpSection, buildIntakeInstructions, checkRequest, INTAKE_TOOLS, type CheckDeps } from '../agent/intake';
+import type { CallStore } from '../calls/store';
 import type { AppConfig } from '../config';
 import { isValidTimeZone, localToday } from '../util/time';
 
@@ -12,6 +13,11 @@ const ContextSchema = z.object({
   userLanguage: z.string().trim().min(1).max(60),
   timezone: z.string().refine(isValidTimeZone, 'Unknown time zone'),
   voice: z.enum(REALTIME_VOICES).optional(),
+});
+
+const SessionSchema = ContextSchema.extend({
+  /** A finished call to report on and possibly follow up. */
+  followUpOf: z.string().uuid().optional(),
 });
 
 /** The draft is model output relayed by the browser, so it's shape-checked like any input. */
@@ -36,8 +42,8 @@ const DraftSchema = z
 /** A minute to start the session; the session itself may then run longer. */
 const SECRET_TTL_SECONDS = 60;
 
-export function registerIntakeRoutes(app: FastifyInstance, deps: { config: AppConfig; checkDeps: CheckDeps }) {
-  const { config, checkDeps } = deps;
+export function registerIntakeRoutes(app: FastifyInstance, deps: { config: AppConfig; checkDeps: CheckDeps; store: CallStore }) {
+  const { config, checkDeps, store } = deps;
   const openai = config.OPENAI_API_KEY ? new OpenAI({ apiKey: config.OPENAI_API_KEY }) : null;
 
   /**
@@ -47,16 +53,21 @@ export function registerIntakeRoutes(app: FastifyInstance, deps: { config: AppCo
    */
   app.post('/api/intake/session', async (req, reply) => {
     if (!openai) return reply.code(503).send({ error: 'OPENAI_API_KEY is not set on the server.' });
-    const parsed = ContextSchema.safeParse(req.body);
+    const parsed = SessionSchema.safeParse(req.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.issues.map((i) => i.message).join('; ') });
     const ctx = parsed.data;
+    const previous = ctx.followUpOf ? store.getOrLoad(ctx.followUpOf) : undefined;
+    if (ctx.followUpOf && !previous) return reply.code(404).send({ error: 'That call is no longer on the server.' });
+    const instructions =
+      buildIntakeInstructions({ ...ctx, today: localToday(ctx.timezone) }) +
+      (previous ? buildFollowUpSection(previous, ctx.userName, ctx.userLanguage) : '');
 
     const secret = await openai.realtime.clientSecrets.create({
       expires_after: { anchor: 'created_at', seconds: SECRET_TTL_SECONDS },
       session: {
         type: 'realtime',
         model: config.REALTIME_MODEL,
-        instructions: buildIntakeInstructions({ ...ctx, today: localToday(ctx.timezone) }),
+        instructions,
         output_modalities: ['audio'],
         audio: {
           input: {

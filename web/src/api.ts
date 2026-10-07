@@ -48,7 +48,8 @@ export const startCall = (s: Settings, req: CallRequest) =>
 const postJson = <T>(s: Settings, path: string, body: unknown) =>
   request<T>(s, path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 
-export const createIntakeSession = (s: Settings, context: IntakeContext) => postJson<IntakeSession>(s, '/api/intake/session', context);
+export const createIntakeSession = (s: Settings, context: IntakeContext & { followUpOf?: string }) =>
+  postJson<IntakeSession>(s, '/api/intake/session', context);
 
 export const checkIntake = (s: Settings, context: IntakeContext, draft: IntakeDraft) =>
   postJson<IntakeCheckResult>(s, '/api/intake/check', { context, draft });

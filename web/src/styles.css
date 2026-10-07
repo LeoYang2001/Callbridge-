@@ -372,3 +372,4 @@ pre { background: var(--surface); border: 1px solid var(--border); border-radius
   background: var(--accent); color: var(--accent-text); font-size: 20px; font-weight: 700;
 }
 .send-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.summary-headline { font-size: 19px; font-weight: 700; line-height: 1.35; margin: 0 0 8px; }

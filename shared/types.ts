@@ -163,6 +163,9 @@ export interface CallResult {
   followUpsForUser: string[];
   summary: string;
   summaryInUserLanguage: string;
+  /** One-line outcome in the user's language (absent on calls analyzed before it existed). */
+  headlineInUserLanguage?: string;
+  nextStepsInUserLanguage?: string[];
   /** Discrepancies between what was said and what the policy layer validated. */
   policyWarnings: string[];
 }

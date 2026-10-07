@@ -22,6 +22,10 @@ export interface TranscriptAnalysis {
   possibleFabrications: string[];
   summary: string;
   summaryInUserLanguage: string;
+  /** One line for the top of the result, in the user's language. */
+  headlineInUserLanguage: string;
+  /** followUpsForUser, in the user's language. */
+  nextStepsInUserLanguage: string[];
 }
 
 export interface CallAnalyzer {
