@@ -18,7 +18,16 @@ describe('ground rules', () => {
   it('has a rule for every category, and refuses anything not explicitly allowed', () => {
     expect(Object.keys(TASK_RULES).sort()).toEqual([...TASK_CATEGORIES].sort());
     const callable = TASK_CATEGORIES.filter((c) => TASK_RULES[c].tier !== 'refused');
-    expect(callable.sort()).toEqual(['appointment', 'business_inquiry', 'healthcare_appointment', 'reservation', 'service_request']);
+    expect(callable.sort()).toEqual(['appointment', 'business_inquiry', 'healthcare_appointment', 'personal_call', 'reservation', 'service_request']);
+  });
+
+  it('allows a personal message, delivered in the user\'s name, ending if unwanted', async () => {
+    const review = reviewTask('personal_call', '');
+    expect(review.tier).toBe('limited');
+    expect(review.rules.join(' ')).toMatch(/never as if you were the user/);
+    expect(review.rules.join(' ')).toMatch(/apologize briefly and end the call/);
+    const req = dentistRequest({ counterpartName: 'my girlfriend', instructions: 'Tell her I love her and that I just got to work.', constraints: { availability: [], maxAdditionalCostUsd: 0 } });
+    expect((await checkRequest(req, deps('personal_call'))).ok).toBe(true);
   });
 
   it('limits healthcare calls to scheduling and status', () => {
@@ -39,7 +48,7 @@ describe('checkRequest', () => {
     expect(result.review?.category).toBe('healthcare_appointment');
   });
 
-  it.each(['financial', 'emergency', 'personal_call', 'other'] as const)('refuses %s with the reason in both languages', async (category) => {
+  it.each(['financial', 'emergency', 'deceptive_or_harmful', 'other'] as const)('refuses %s with the reason in both languages', async (category) => {
     const result = await checkRequest(dentistRequest(), deps(category));
     expect(result.ok).toBe(false);
     expect(result.problems).toContain(TASK_RULES[category].reason);

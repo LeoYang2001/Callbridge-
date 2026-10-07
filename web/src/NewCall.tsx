@@ -389,7 +389,7 @@ export function NewCall({ demo, blockedReason, submitting, error, onSubmit, init
 
           <label className="consent">
             <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />
-            <span>I'm asking for this call to a specific business, for myself. The assistant will say it's an AI.</span>
+            <span>I'm asking for this call myself, to a specific business or someone I know. The assistant will say it's an AI.</span>
           </label>
         </div>
       )}

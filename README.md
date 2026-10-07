@@ -203,7 +203,8 @@ The model handles conversation. Code decides what may be agreed. Each authorizat
 
 - One live call at a time and `MAX_CALLS_PER_HOUR`. This product never dials in bulk.
 - `ALLOWED_DESTINATIONS` allowlist for testing. N11 and premium-rate (900/976) numbers are blocked, and short emergency codes can't pass E.164 validation.
-- The user must confirm the call is a user-requested call to a specific business. The other party is always told it's an AI.
+- The user must confirm they requested the call, to a specific business or someone they know. The other party is always told it's an AI.
+- Ground rules (`server/src/policy/taskPolicy.ts`) decide which kinds of calls are placed at all. Personal calls only deliver a short message in the user's name and end if the person doesn't want the call; harassment, pressure, and deception are refused.
 - Twilio webhook signatures are validated, and the media stream requires a per-call token.
 - `MAX_CALL_SECONDS` is enforced by both Twilio (`timeLimit`) and the server.
 
@@ -246,7 +247,7 @@ Alternatives considered:
 
 ## Before production: compliance checklist
 
-This product is for **user-requested calls to specific businesses on that user's behalf**. Do not build bulk dialing, cold calling, lead generation, or telemarketing on top of it. Before launch, get legal review of:
+This product is for **user-requested calls on that user's behalf, to specific businesses or to people the user knows**. Do not build bulk dialing, cold calling, lead generation, or telemarketing on top of it. Before launch, get legal review of:
 
 - **AI disclosure:** state laws on bots and AI voices (e.g. California's B.O.T. Act), plus any new AI-voice disclosure laws.
 - **TCPA:** the FCC's 2024 ruling treats AI-generated voices as "artificial or prerecorded voice" under the TCPA. Calls to businesses at the user's request are a different profile from marketing calls, but consent and exemption analysis is needed, especially for calls to mobile numbers.

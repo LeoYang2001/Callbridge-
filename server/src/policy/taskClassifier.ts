@@ -83,8 +83,10 @@ Set reasonInUserLanguage to the ruling text of the category you picked, translat
     } catch (err) {
       throw new TaskReviewUnavailableError(`Couldn't review the task: ${(err as Error).message}`);
     }
-    // A private person is never a valid counterpart, whatever category was picked.
-    const category: TaskCategory = parsed.counterpartIsBusiness ? parsed.category : 'personal_call';
+    // A call to a private person can only ever be a personal message (or something refused):
+    // business-style tasks like bookings don't apply, and harmful ones stay harmful.
+    const category: TaskCategory =
+      parsed.counterpartIsBusiness || TASK_RULES[parsed.category]?.tier === 'refused' ? parsed.category : 'personal_call';
     return reviewTask(category, category === parsed.category ? parsed.reasonInUserLanguage : '');
   }
 }

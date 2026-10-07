@@ -6,7 +6,8 @@ import type { TaskCategory, TaskReview } from '../../../shared/types';
  * limited is refused, including `other`, so a new kind of task is denied until it's added here.
  *
  * The rules protect both ends of the call: the user (no banking or identity checks done by an
- * AI on their behalf) and the person who answers (no personal calls, sales, or deception).
+ * AI on their behalf) and the person who answers (an AI that says so, no sales, deception, or
+ * pressure; personal calls only deliver a message and end if they're unwanted).
  */
 
 interface CategoryRule {
@@ -74,9 +75,15 @@ export const TASK_RULES: Record<TaskCategory, CategoryRule> = {
     rules: [],
   },
   personal_call: {
-    tier: 'refused',
-    reason: 'CallBridge only calls businesses. It does not call private individuals.',
-    rules: [],
+    tier: 'limited',
+    reason: 'A short personal message to someone you know, delivered by an AI that says it is an AI.',
+    rules: [
+      'This is a personal call to someone the user knows, not a business. Your job is to deliver the message in the task and, if they reply, take a short reply back.',
+      'Deliver the message in the user\'s name, never as if you were the user: "Leo asked me to tell you he loves you", not "I love you".',
+      'Do not argue, persuade, pressure, or ask them personal questions. Do not share anything about the user beyond the message and what is listed under "Information you may share".',
+      'If they say they don\'t want this call, or ask you to stop, apologize briefly and end the call.',
+      'If you reach voicemail, hang up without leaving the message.',
+    ],
   },
   sales_or_marketing: {
     tier: 'refused',
@@ -85,12 +92,12 @@ export const TASK_RULES: Record<TaskCategory, CategoryRule> = {
   },
   deceptive_or_harmful: {
     tier: 'refused',
-    reason: 'CallBridge will not make calls that deceive, impersonate, harass, or threaten anyone.',
+    reason: 'CallBridge will not make calls that deceive, impersonate, harass, threaten, or pressure anyone, including personal calls.',
     rules: [],
   },
   other: {
     tier: 'refused',
-    reason: 'CallBridge can help with appointments, reservations, service requests, and questions to businesses.',
+    reason: 'CallBridge can help with appointments, reservations, service requests, questions to businesses, and short personal messages.',
     rules: [],
   },
 };
