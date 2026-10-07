@@ -2,7 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import OpenAI from 'openai';
 import { z } from 'zod';
 import { draftToRequest } from '../../../shared/intake';
-import type { IntakeDraft, IntakeSession } from '../../../shared/types';
+import { REALTIME_VOICES, type IntakeDraft, type IntakeSession } from '../../../shared/types';
 import { buildIntakeInstructions, checkRequest, INTAKE_TOOLS, type CheckDeps } from '../agent/intake';
 import type { AppConfig } from '../config';
 import { isValidTimeZone, localToday } from '../util/time';
@@ -11,6 +11,7 @@ const ContextSchema = z.object({
   userName: z.string().trim().min(1).max(80),
   userLanguage: z.string().trim().min(1).max(60),
   timezone: z.string().refine(isValidTimeZone, 'Unknown time zone'),
+  voice: z.enum(REALTIME_VOICES).optional(),
 });
 
 /** The draft is model output relayed by the browser, so it's shape-checked like any input. */
@@ -63,7 +64,7 @@ export function registerIntakeRoutes(app: FastifyInstance, deps: { config: AppCo
             transcription: { model: config.TRANSCRIPTION_MODEL },
             turn_detection: { type: 'semantic_vad', eagerness: 'auto', create_response: true, interrupt_response: true },
           },
-          output: { voice: config.REALTIME_VOICE },
+          output: { voice: ctx.voice ?? config.REALTIME_VOICE },
         },
         tools: INTAKE_TOOLS.map((t) => ({ type: 'function' as const, ...t })),
         tool_choice: 'auto',

@@ -1,15 +1,18 @@
 import { useEffect, useRef, useState } from 'react';
 import { draftToRequest, type IntakeContext } from '../../shared/intake';
 import { displayPhone } from '../../shared/phone';
-import type { IntakeCheckResult, IntakeDraft } from '../../shared/types';
+import type { IntakeCheckResult, IntakeDraft, RealtimeVoice } from '../../shared/types';
 import { startIntake, type IntakeLine, type IntakeStatus } from './voiceIntake';
 import type { Settings } from './settings';
+import { VoicePicker } from './VoicePicker';
 
 interface Props {
   settings: Settings;
   context: IntakeContext;
   languages: string[];
   onLanguageChange: (language: string) => void;
+  voice: RealtimeVoice;
+  onVoiceChange: (voice: RealtimeVoice) => void;
   onReview: (draft: IntakeDraft) => void;
   onType: () => void;
 }
@@ -25,7 +28,7 @@ const STATUS_TEXT: Record<IntakeStatus, string> = {
 
 const TIER_TEXT = { allowed: 'Allowed', limited: 'Allowed with limits', refused: 'Not allowed' } as const;
 
-export function Intake({ settings, context, languages, onLanguageChange, onReview, onType }: Props) {
+export function Intake({ settings, context, languages, onLanguageChange, voice, onVoiceChange, onReview, onType }: Props) {
   const [status, setStatus] = useState<IntakeStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lines, setLines] = useState<IntakeLine[]>([]);
@@ -84,14 +87,18 @@ export function Intake({ settings, context, languages, onLanguageChange, onRevie
         <h1 className="title">Who should I call?</h1>
         <p className="lede">Tell me in your language: who to call, what you need, and when you're free. I'll ask about anything missing.</p>
 
-        <label className="field compact intake-lang">
-          <span className="field-label">I'll speak</span>
-          <select value={context.userLanguage} disabled={live} onChange={(e) => onLanguageChange(e.target.value)}>
-            {languages.map((l) => (
-              <option key={l}>{l}</option>
-            ))}
-          </select>
-        </label>
+        <div className="two intake-options">
+          <label className="field compact">
+            <span className="field-label">I'll speak</span>
+            <select value={context.userLanguage} disabled={live} onChange={(e) => onLanguageChange(e.target.value)}>
+              {languages.map((l) => (
+                <option key={l}>{l}</option>
+              ))}
+            </select>
+          </label>
+          <VoicePicker value={voice} onChange={onVoiceChange} disabled={live} />
+        </div>
+        {!live && <p className="field-help">The assistant and the call use this voice (★ most natural). Tap the mic to hear it.</p>}
 
         <div className="mic-wrap">
           <button

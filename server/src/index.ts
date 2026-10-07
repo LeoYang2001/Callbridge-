@@ -82,11 +82,11 @@ const manager = new CallManager(
   store,
   () => ({
     telephony: telephony!,
-    createAgent: () =>
+    createAgent: (voice) =>
       new OpenAIRealtimeAgent({
         apiKey: config.OPENAI_API_KEY!,
         model: config.REALTIME_MODEL,
-        voice: config.REALTIME_VOICE,
+        voice: voice ?? config.REALTIME_VOICE,
         transcriptionModel: config.TRANSCRIPTION_MODEL,
         turnDetection: config.REALTIME_TURN_DETECTION,
         reasoningEffort: config.REALTIME_REASONING_EFFORT,

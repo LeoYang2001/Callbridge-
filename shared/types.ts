@@ -52,9 +52,15 @@ export interface TaskReview {
   rules: string[];
 }
 
+/** Voices the OpenAI Realtime API offers. `marin` and `cedar` are its most natural ones. */
+export const REALTIME_VOICES = ['marin', 'cedar', 'alloy', 'ash', 'ballad', 'coral', 'echo', 'sage', 'shimmer', 'verse'] as const;
+export type RealtimeVoice = (typeof REALTIME_VOICES)[number];
+
 export interface CallRequest {
   /** Destination in E.164 format, e.g. +14155550123 */
   to: string;
+  /** Voice for the call assistant; the server's REALTIME_VOICE when omitted. */
+  voice?: RealtimeVoice;
   /** Who is being called, e.g. "Smile Dental". */
   counterpartName?: string;
   /** The task as the user described it, in the user's language (shown on the review card). */
@@ -232,4 +238,5 @@ export interface PublicConfig {
   voiceConfigured: boolean;
   allowlistActive: boolean;
   realtimeModel: string;
+  defaultVoice: string;
 }

@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { CallRecord, CallRequest, PublicConfig } from '../../../shared/types';
-import { WEEKDAYS } from '../../../shared/types';
+import { REALTIME_VOICES, WEEKDAYS } from '../../../shared/types';
 import { checkRequest, type CheckDeps } from '../agent/intake';
 import { CallRejectedError, type CallManager } from '../calls/callManager';
 import type { CallStore } from '../calls/store';
@@ -14,6 +14,7 @@ const text = (max: number) => z.string().trim().max(max);
 const CallRequestSchema = z
   .object({
     to: text(32).min(1),
+    voice: z.enum(REALTIME_VOICES).optional(),
     counterpartName: text(120).optional(),
     taskInUserLanguage: text(500).optional(),
     user: z.object({
@@ -58,6 +59,7 @@ export function registerApiRoutes(
     voiceConfigured: config.voiceConfigured,
     allowlistActive: Boolean(config.allowedDestinations),
     realtimeModel: config.REALTIME_MODEL,
+    defaultVoice: config.REALTIME_VOICE,
   }));
 
   app.post('/api/calls', async (req, reply) => {

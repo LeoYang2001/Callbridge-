@@ -2,13 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 import type { CallRecord, CallRequest, PublicConfig } from '../../shared/types';
 import { getConfig, startCall, watchCall } from './api';
 import { draftToRequest } from '../../shared/intake';
-import type { IntakeDraft } from '../../shared/types';
+import type { IntakeDraft, RealtimeVoice } from '../../shared/types';
 import { CallScreen } from './CallScreen';
 import { simulateCall } from './demo';
 import { Intake } from './Intake';
 import { LANGUAGES, loadSaved, NewCall } from './NewCall';
 import { effectiveDemo, isStaticHost, loadSettings, saveSettings, type Settings } from './settings';
 import { SettingsSheet } from './SettingsSheet';
+import { loadVoice, saveVoice } from './VoicePicker';
 
 export function App() {
   const [settings, setSettings] = useState<Settings>(loadSettings);
@@ -21,6 +22,12 @@ export function App() {
   const stopRef = useRef<(() => void) | null>(null);
   const [mode, setMode] = useState<'talk' | 'type'>('talk');
   const [userLanguage, setUserLanguage] = useState(() => loadSaved().user.preferredLanguage);
+  const [pickedVoice, setPickedVoice] = useState<RealtimeVoice | null>(loadVoice);
+  const voice = pickedVoice ?? ((config?.defaultVoice as RealtimeVoice | undefined) || 'marin');
+  const changeVoice = (v: RealtimeVoice) => {
+    setPickedVoice(v);
+    saveVoice(v);
+  };
   /** The form prefilled from the voice intake, opened at the review step. */
   const [fromIntake, setFromIntake] = useState<{ request: CallRequest; key: number } | null>(null);
 
@@ -28,7 +35,7 @@ export function App() {
   // The voice intake needs the live server (it mints the OpenAI session key).
   const canTalk = !demo && Boolean(config?.voiceConfigured);
   const saved = loadSaved();
-  const intakeContext = { userName: saved.user.name || 'me', userLanguage, timezone: saved.timezone };
+  const intakeContext = { userName: saved.user.name || 'me', userLanguage, timezone: saved.timezone, voice };
 
   const reviewDraft = (draft: IntakeDraft) => {
     const request = draftToRequest(draft, intakeContext);
@@ -136,6 +143,8 @@ export function App() {
               context={intakeContext}
               languages={LANGUAGES}
               onLanguageChange={setUserLanguage}
+              voice={voice}
+              onVoiceChange={changeVoice}
               onReview={reviewDraft}
               onType={() => {
                 setFromIntake(null);
@@ -153,6 +162,8 @@ export function App() {
               initial={fromIntake?.request}
               initialStep={fromIntake ? 2 : 0}
               onTalk={canTalk ? () => setMode('talk') : undefined}
+              voice={voice}
+              onVoiceChange={changeVoice}
             />
           )
         )}

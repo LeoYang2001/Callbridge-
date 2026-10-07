@@ -12,7 +12,7 @@ import type { CallStore } from './store';
 export interface CallSessionDeps {
   store: CallStore;
   telephony: TelephonyProvider;
-  createAgent: () => VoiceAgent;
+  createAgent: (voice?: string) => VoiceAgent;
   analyzer: CallAnalyzer | null;
   maxCallSeconds: number;
   introDelayMs: number;
@@ -112,7 +112,7 @@ export class CallSession {
       const instructions = buildInstructions(r.request, { today: localToday(r.request.timezone) });
 
       // Connect the voice model before dialing so it is ready the instant the call is answered.
-      const agent = this.deps.createAgent();
+      const agent = this.deps.createAgent(r.request.voice);
       this.agent = agent;
       this.wireAgent(agent);
       const t0 = Date.now();

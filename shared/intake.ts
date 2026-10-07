@@ -1,9 +1,10 @@
-import type { CallRequest, IntakeDraft } from './types';
+import type { CallRequest, IntakeDraft, RealtimeVoice } from './types';
 
 export interface IntakeContext {
   userName: string;
   userLanguage: string;
   timezone: string;
+  voice?: RealtimeVoice;
 }
 
 /** Turns what the voice intake gathered into a call request (the server re-validates all of it). */
@@ -11,6 +12,7 @@ export function draftToRequest(draft: IntakeDraft, ctx: IntakeContext): CallRequ
   const digits = (draft.phoneNumber ?? '').replace(/\D/g, '');
   return {
     to: digits ? `+${digits.length === 10 ? `1${digits}` : digits}` : '',
+    voice: ctx.voice,
     counterpartName: draft.counterpartName?.trim() || undefined,
     taskInUserLanguage: draft.taskInUserLanguage?.trim() || undefined,
     user: { name: draft.userName?.trim() || ctx.userName, preferredLanguage: ctx.userLanguage },

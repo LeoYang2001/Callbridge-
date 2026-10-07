@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import type { ChangeEvent } from 'react';
 import { displayPhone, formatUsPhone, usNationalDigits } from '../../shared/phone';
-import type { AuthorizedFact, AvailabilityWindow, CallRequest, Weekday } from '../../shared/types';
+import type { AuthorizedFact, AvailabilityWindow, CallRequest, RealtimeVoice, Weekday } from '../../shared/types';
+import { VoicePicker } from './VoicePicker';
 import { WEEKDAYS } from '../../shared/types';
 
 const DAY_SHORT: Record<Weekday, string> = { mon: 'M', tue: 'T', wed: 'W', thu: 'T', fri: 'F', sat: 'S', sun: 'S' };
@@ -65,11 +66,13 @@ interface Props {
   initialStep?: number;
   /** Switch to the voice intake; omitted when it isn't available. */
   onTalk?: () => void;
+  voice: RealtimeVoice;
+  onVoiceChange: (voice: RealtimeVoice) => void;
 }
 
 const STEPS = ['Call', 'Limits', 'You'] as const;
 
-export function NewCall({ demo, blockedReason, submitting, error, onSubmit, initial, initialStep = 0, onTalk }: Props) {
+export function NewCall({ demo, blockedReason, submitting, error, onSubmit, initial, initialStep = 0, onTalk, voice, onVoiceChange }: Props) {
   const [req, setReq] = useState<CallRequest>(() => initial ?? loadSaved());
   const [step, setStep] = useState(initialStep);
   const [confirmed, setConfirmed] = useState(false);
@@ -136,6 +139,7 @@ export function NewCall({ demo, blockedReason, submitting, error, onSubmit, init
     if (step < STEPS.length - 1) return setStep(step + 1);
     onSubmit({
       ...req,
+      voice,
       to: req.to || (demo ? '+1 555 010 0000' : req.to),
       constraints: {
         ...req.constraints,
@@ -373,6 +377,8 @@ export function NewCall({ demo, blockedReason, submitting, error, onSubmit, init
               <b>{req.constraints.maxAdditionalCostUsd ? `Up to $${req.constraints.maxAdditionalCostUsd}` : 'None'}</b>
             </div>
           </div>
+
+          <VoicePicker value={voice} onChange={onVoiceChange} />
 
           <label className="consent">
             <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />
