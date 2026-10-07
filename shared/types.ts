@@ -169,6 +169,8 @@ export interface CallResult {
   summaryInUserLanguage: string;
   /** False when the policy validated a time the other party never agreed to: needs confirming. */
   appointmentConfirmedByCounterpart?: boolean;
+  /** Facts the other party stated that help next time (requirements, hours, names). */
+  counterpartNotes?: string[];
   /** One-line outcome in the user's language (absent on calls analyzed before it existed). */
   headlineInUserLanguage?: string;
   nextStepsInUserLanguage?: string[];
@@ -222,6 +224,8 @@ export interface CallLogEvent {
 
 export interface CallRecord {
   id: string;
+  /** The signed-in user who placed the call. */
+  userId?: string;
   createdAt: number;
   updatedAt: number;
   status: CallStatus;
@@ -277,4 +281,73 @@ export interface PublicConfig {
   allowlistActive: boolean;
   realtimeModel: string;
   defaultVoice: string;
+}
+
+// ── accounts and profiles ─────────────────────────────────────────────────────
+
+/** Someone the user has called; built up automatically from calls. */
+export interface Contact {
+  id: string;
+  name: string;
+  /** E.164 */
+  phone: string;
+  /** e.g. "dentist", "restaurant", "personal" */
+  kind?: string;
+  /** Things learned on calls, e.g. "Asks for the insurance card at check-in." */
+  notes: string[];
+  lastCalledAt?: number;
+  /** Outcome of the last call, in the user's language. */
+  lastOutcome?: string;
+  callCount: number;
+}
+
+export interface UpcomingAppointment {
+  id: string;
+  /** YYYY-MM-DD */
+  date: string;
+  /** HH:MM */
+  time: string;
+  with: string;
+  description: string;
+  callId: string;
+  /** The AI booked it, but the other party may not have agreed. */
+  needsConfirmation?: boolean;
+}
+
+/**
+ * What CallBridge knows about the user: what they said in the profile interview, plus what
+ * calls recorded. They can view and delete all of it. Never holds card numbers, SSNs, or
+ * passwords (screened on the way in).
+ */
+export interface UserProfile {
+  name: string;
+  pronouns?: string;
+  preferredLanguage: string;
+  otherLanguages: string[];
+  timezone: string;
+  defaultCallLanguage?: string;
+  voice?: RealtimeVoice;
+  usualAvailability: AvailabilityWindow[];
+  /** Facts they're happy to share when relevant; each call still confirms which ones. */
+  shareable: AuthorizedFact[];
+  /** In their words, e.g. "prefers morning appointments". */
+  preferences: string[];
+  contacts: Contact[];
+  appointments: UpcomingAppointment[];
+  /** Decisions and notes recorded from calls, newest last. */
+  history: { at: number; callId: string; text: string }[];
+  /** Finished (or skipped) the profile interview. */
+  onboarded: boolean;
+}
+
+export interface Me {
+  id: string;
+  phone: string;
+  profile: UserProfile;
+}
+
+export interface AuthResult {
+  token: string;
+  isNew: boolean;
+  me: Me;
 }

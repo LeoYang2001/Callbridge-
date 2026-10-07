@@ -100,6 +100,7 @@ const analysis: TranscriptAnalysis = {
   summary: 'Dental cleaning scheduled for Thursday at 3:30 PM.',
   summaryInUserLanguage: '洗牙预约在周四下午3:30。',
   counterpartAgreedToAppointment: true,
+  notesAboutCounterpart: ['Asks patients to arrive 10 minutes early.'],
   headlineInUserLanguage: '已预约：周四 10月8日 下午3:30 洗牙',
   nextStepsInUserLanguage: ['提前10分钟到。'],
 };

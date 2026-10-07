@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { draftToRequest, type IntakeContext } from '../../shared/intake';
 import { displayPhone } from '../../shared/phone';
-import type { IntakeCheckResult, IntakeDraft, RealtimeVoice } from '../../shared/types';
+import type { IntakeCheckResult, IntakeDraft, Me, RealtimeVoice } from '../../shared/types';
 import { startIntake, type IntakeLine, type IntakeSessionControls, type IntakeStatus } from './voiceIntake';
 import type { Settings } from './settings';
 import { VoicePicker } from './VoicePicker';
@@ -18,6 +18,8 @@ interface Props {
   onType: (draft: IntakeDraft) => void;
   /** Coming back after a call: the assistant reports on it first, with its request loaded. */
   followUp?: { callId: string; draft: IntakeDraft; headline?: string };
+  /** The profile interview instead of setting up a call. */
+  profile?: { me: Me; onSaved: (me: Me) => void; onDone: () => void; onSkip: () => void };
 }
 
 const STATUS_TEXT: Record<IntakeStatus, string> = {
@@ -31,7 +33,7 @@ const STATUS_TEXT: Record<IntakeStatus, string> = {
 
 const TIER_TEXT = { allowed: 'Allowed', limited: 'Allowed with limits', refused: 'Not allowed' } as const;
 
-export function Intake({ settings, context, languages, onLanguageChange, voice, onVoiceChange, onReview, onType, followUp }: Props) {
+export function Intake({ settings, context, languages, onLanguageChange, voice, onVoiceChange, onReview, onType, followUp, profile }: Props) {
   const [status, setStatus] = useState<IntakeStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lines, setLines] = useState<IntakeLine[]>([]);
@@ -71,8 +73,9 @@ export function Intake({ settings, context, languages, onLanguageChange, voice, 
           },
           onCheck: setCheck,
           onReady: () => setReady(true),
+          onProfile: profile?.onSaved,
         },
-        { mic: withMic, followUpOf: followUp?.callId, initialDraft: followUp?.draft },
+        { mic: withMic, mode: profile ? 'profile' : 'call', followUpOf: followUp?.callId, initialDraft: followUp?.draft },
       );
       session.setSpeaker(speakerOn);
       sessionRef.current = session;
@@ -134,11 +137,13 @@ export function Intake({ settings, context, languages, onLanguageChange, voice, 
   return (
     <>
       <div className="screen intake">
-        <h1 className="title">{followUp ? 'How did it go?' : 'Who should I call?'}</h1>
+        <h1 className="title">{profile ? (profile.me.profile.onboarded ? 'Update your profile' : "Let's get to know you") : followUp ? 'How did it go?' : 'Who should I call?'}</h1>
         <p className="lede">
-          {followUp
-            ? "Tap the mic and I'll tell you the result. Ask me anything about the call, or have me call again."
-            : "Tell me in your language: who to call, what you need, and when you're free. I'll ask about anything missing."}
+          {profile
+            ? 'A few quick questions so future calls need fewer. Every question is optional; tap the mic or type.'
+            : followUp
+              ? "Tap the mic and I'll tell you the result. Ask me anything about the call, or have me call again."
+              : "Tell me in your language: who to call, what you need, and when you're free. I'll ask about anything missing."}
         </p>
         {followUp?.headline && <div className="summary-card"><p className="summary-headline">{followUp.headline}</p></div>}
 
@@ -199,7 +204,9 @@ export function Intake({ settings, context, languages, onLanguageChange, voice, 
           </div>
         )}
 
-        {hasDraft && (
+        {profile && <ProfileCard me={profile.me} />}
+
+        {!profile && hasDraft && (
           <div className="review">
             {draft.counterpartName && (
               <div className="review-row">
@@ -244,7 +251,11 @@ export function Intake({ settings, context, languages, onLanguageChange, voice, 
             <button type="button" className="chip" onClick={() => void say('(Skip this question.)')}>
               Skip this question
             </button>
-            <button type="button" className="chip" onClick={() => void say("(That's all. Skip the remaining questions and check the request.)")}>
+            <button
+              type="button"
+              className="chip"
+              onClick={() => void say(profile ? "(That's all. Skip the remaining questions.)" : "(That's all. Skip the remaining questions and check the request.)")}
+            >
               That's all
             </button>
           </div>
@@ -261,15 +272,53 @@ export function Intake({ settings, context, languages, onLanguageChange, voice, 
             ↑
           </button>
         </form>
-        <div className="bar-row">
-          <button type="button" className="secondary-btn" onClick={() => (stop(), onType(draft))}>
-            Use the form
-          </button>
-          <button type="button" className={`primary-btn ${ready ? 'call' : ''}`} disabled={!canReview} onClick={review}>
-            Review &amp; call
-          </button>
-        </div>
+        {profile ? (
+          <div className="bar-row">
+            <button type="button" className="secondary-btn" onClick={() => (stop(), profile.onSkip())}>
+              {profile.me.profile.onboarded ? 'Close' : 'Skip for now'}
+            </button>
+            <button type="button" className={`primary-btn ${ready ? 'call' : ''}`} onClick={() => (stop(), profile.onDone())}>
+              Done
+            </button>
+          </div>
+        ) : (
+          <div className="bar-row">
+            <button type="button" className="secondary-btn" onClick={() => (stop(), onType(draft))}>
+              Use the form
+            </button>
+            <button type="button" className={`primary-btn ${ready ? 'call' : ''}`} disabled={!canReview} onClick={review}>
+              Review &amp; call
+            </button>
+          </div>
+        )}
       </div>
     </>
+  );
+}
+
+/** What the profile interview has saved so far. */
+function ProfileCard({ me }: { me: Me }) {
+  const p = me.profile;
+  const rows: [string, string][] = [
+    ['Name', p.name],
+    ['Pronouns', p.pronouns ?? ''],
+    ['Languages', [p.preferredLanguage, ...p.otherLanguages].join(', ')],
+    ['Calls in', p.defaultCallLanguage ?? ''],
+    ['Time zone', p.timezone],
+    ['Usually free', p.usualAvailability.map((w) => `${w.days.join('/')} ${w.start}–${w.end}`).join('; ')],
+    ['May share', p.shareable.map((f) => f.label).join(', ')],
+    ['Preferences', p.preferences.join('; ')],
+  ];
+  return (
+    <div className="review">
+      {rows
+        .filter(([, v]) => v)
+        .map(([k, v]) => (
+          <div key={k} className="review-row">
+            <span>{k}</span>
+            <b>{v}</b>
+          </div>
+        ))}
+    </div>
   );
 }

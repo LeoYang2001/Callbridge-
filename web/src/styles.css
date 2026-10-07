@@ -394,3 +394,12 @@ pre { background: var(--surface); border: 1px solid var(--border); border-radius
 .msg.system .msg-bubble { background: var(--ask-soft); color: var(--text); border: 1px dashed var(--ask); }
 .bottom-bar .composer { margin-bottom: 10px; }
 .composer-spacer { height: 64px; }
+
+/* Sign-in and profile */
+.primary-btn.wide { width: 100%; min-height: 54px; margin-top: 8px; }
+.code-input { letter-spacing: 0.3em; text-align: center; }
+.signin-links { display: flex; justify-content: space-between; margin-top: 12px; }
+.profile-list { list-style: none; margin: 0; padding: 0; }
+.profile-item { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); font-size: 15px; }
+.profile-item:last-child { border-bottom: 0; }
+.profile-danger { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px; margin: 24px 0 8px; font-size: 14px; }

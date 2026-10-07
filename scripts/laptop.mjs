@@ -9,7 +9,6 @@
 // Ctrl+C stops everything.
 
 import { spawn, spawnSync } from 'node:child_process';
-import { randomBytes } from 'node:crypto';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { networkInterfaces } from 'node:os';
 import path from 'node:path';
@@ -84,8 +83,7 @@ async function createEnv() {
   const sid = await ask('Twilio Account SID (AC…)');
   const token = await ask('Twilio Auth Token');
   const from = toE164(await ask('Twilio phone number to call from (+1…)'));
-  const allow = toE164(await ask('Your own mobile number to test with (+1…). Only this number can be called'));
-  const password = await ask('Access key for the app (enter it in the app Settings)', randomBytes(9).toString('base64url'));
+  const allow = toE164(await ask('Your own mobile number (+1…). Only this number can sign up and be called while testing'));
   rl.close();
 
   const example = readFileSync(path.join(root, '.env.example'), 'utf8');
@@ -95,7 +93,8 @@ async function createEnv() {
     TWILIO_AUTH_TOKEN: token,
     TWILIO_FROM_NUMBER: from,
     ALLOWED_DESTINATIONS: allow,
-    APP_PASSWORD: password,
+    SIGNUP_ALLOWLIST: allow,
+    AUTH_CODES: 'log',
     // Set automatically from the tunnel on every run.
     PUBLIC_BASE_URL: '',
   };
@@ -110,7 +109,7 @@ const missing = ['OPENAI_API_KEY', 'TWILIO_ACCOUNT_SID', 'TWILIO_AUTH_TOKEN', 'T
 if (missing.length) {
   console.log(`\n${c.yellow('!')} .env is missing ${missing.join(', ')}. The app will open, but only demo mode works until you add them.`);
 }
-if (!env.APP_PASSWORD) console.log(`${c.yellow('!')} APP_PASSWORD is empty: anyone with the tunnel URL could place calls. Set it in .env.`);
+if (!env.SIGNUP_ALLOWLIST) console.log(`${c.yellow('!')} SIGNUP_ALLOWLIST is empty: anyone with the tunnel URL could sign up and place calls. Set it in .env.`);
 
 // ── 2. Install + build ──────────────────────────────────────────────────────
 const run = (cmd, args) => {
@@ -207,19 +206,17 @@ ${c.green('━━━━━━━━━━━━━━━━━━━━━━━
 
    On this laptop:  ${c.cyan(`http://localhost:${PORT}`)}
    On your phone:   ${c.cyan(phoneUrl)}   ${c.dim('(scan the QR code)')}
-   Access key:      ${env.APP_PASSWORD ? c.bold(env.APP_PASSWORD) : c.yellow('none set')}   ${c.dim('(the QR code fills it in for you)')}
+   Sign in:         with your phone number${env.TWILIO_VERIFY_SERVICE_SID && env.AUTH_CODES !== 'log' ? ' (code by text)' : c.yellow(' (test mode: the code appears in this log)')}
+   Who can join:    ${env.SIGNUP_ALLOWLIST ? env.SIGNUP_ALLOWLIST : c.yellow('anyone with the link (set SIGNUP_ALLOWLIST)')}
 `);
 try {
   const { default: qr } = await import('qrcode-terminal');
-  // The key rides in the URL fragment (never sent to the server), so scanning connects the app.
-  const qrUrl = env.APP_PASSWORD ? `${phoneUrl}/#key=${encodeURIComponent(env.APP_PASSWORD)}` : phoneUrl;
-  qr.generate(qrUrl, { small: true }, (code) => console.log(code.replace(/^/gm, '   ')));
+  qr.generate(phoneUrl, { small: true }, (code) => console.log(code.replace(/^/gm, '   ')));
 } catch {
   /* QR code is optional */
 }
-console.log(`   ${c.bold('Test call:')} enter your own mobile number${env.ALLOWED_DESTINATIONS ? ` (${env.ALLOWED_DESTINATIONS})` : ''}, start the call,
-   answer it and play the receptionist. Twilio trial accounts can only call verified numbers
-   and play a short trial message first; press any key when asked.
+console.log(`   ${c.bold('Test call:')} sign in, tell the assistant who to call${env.ALLOWED_DESTINATIONS ? ` (allowed: ${env.ALLOWED_DESTINATIONS})` : ''},
+   answer on your phone and play the other side.
 ${publicUrl ? c.dim('   The tunnel URL changes each run; nothing to update, this script handles it.') : ''}
    ${c.dim('Ctrl+C to stop.')}
 ${c.green('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')}

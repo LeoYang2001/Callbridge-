@@ -1,4 +1,4 @@
-import type { FastifyInstance } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import type { CallRecord, CallRequest, PublicConfig } from '../../../shared/types';
 import { checkRequest, type CheckDeps } from '../agent/intake';
@@ -6,12 +6,18 @@ import { CallRejectedError, type CallManager } from '../calls/callManager';
 import { CallRequestSchema } from '../calls/requestSchema';
 import type { CallStore } from '../calls/store';
 import type { AppConfig } from '../config';
+import type { Database } from '../db/database';
 
 export function registerApiRoutes(
   app: FastifyInstance,
-  deps: { config: AppConfig; manager: CallManager; store: CallStore; checkDeps: CheckDeps },
+  deps: { config: AppConfig; manager: CallManager; store: CallStore; checkDeps: CheckDeps; db: Database },
 ) {
-  const { config, manager, store, checkDeps } = deps;
+  const { config, manager, store, checkDeps, db } = deps;
+  /** A call the signed-in user placed; other users' calls look like they don't exist. */
+  const ownCall = (req: FastifyRequest, id: string) => {
+    const r = store.getOrLoad(id);
+    return r && r.userId === req.user?.id ? r : undefined;
+  };
 
   app.get('/api/health', async () => ({ ok: true, activeCalls: manager.activeCount }));
 
@@ -43,7 +49,7 @@ export function registerApiRoutes(
       return reply.code(422).send({ error: [...reasons, translated].filter(Boolean).join(' '), review: check.review });
     }
     try {
-      const record = manager.startCall({ ...request, category: check.review!.category });
+      const record = manager.startCall({ ...request, category: check.review!.category }, req.user!.id);
       return reply.code(201).send(record);
     } catch (err) {
       if (err instanceof CallRejectedError) return reply.code(err.statusCode).send({ error: err.message });
@@ -52,6 +58,7 @@ export function registerApiRoutes(
   });
 
   app.post<{ Params: { id: string; qid: string } }>('/api/calls/:id/questions/:qid', async (req, reply) => {
+    if (!ownCall(req, req.params.id)) return reply.code(404).send({ error: 'Not found' });
     const parsed = z
       .object({ decision: z.enum(['approve', 'decline', 'reply']), text: z.string().trim().max(300).optional() })
       .safeParse(req.body);
@@ -62,6 +69,7 @@ export function registerApiRoutes(
   });
 
   app.post<{ Params: { id: string } }>('/api/calls/:id/messages', async (req, reply) => {
+    if (!ownCall(req, req.params.id)) return reply.code(404).send({ error: 'Not found' });
     const parsed = z.object({ text: z.string().trim().min(1).max(500) }).safeParse(req.body);
     if (!parsed.success) return reply.code(400).send({ error: 'Type a message first.' });
     const failed = manager.sendUserMessage(req.params.id, parsed.data.text);
@@ -70,23 +78,35 @@ export function registerApiRoutes(
   });
 
   app.post<{ Params: { id: string } }>('/api/calls/:id/hangup', async (req, reply) => {
+    if (!ownCall(req, req.params.id)) return reply.code(404).send({ error: 'Not found' });
     if (!manager.endCall(req.params.id)) return reply.code(404).send({ error: 'That call is not in progress.' });
     return reply.code(202).send({ ok: true });
   });
 
-  app.get('/api/calls', async () =>
-    store.list().map((r) => ({ id: r.id, createdAt: r.createdAt, status: r.status, to: r.request.to, success: r.result?.success })),
-  );
+  /** The signed-in user's calls, newest first: live ones from memory, finished ones from the database. */
+  app.get('/api/calls', async (req) => {
+    const live = store.list().filter((r) => r.userId === req.user!.id);
+    const saved = db.callsForUser(req.user!.id).filter((r) => !live.some((l) => l.id === r.id));
+    return [...live, ...saved].map((r) => ({
+      id: r.id,
+      createdAt: r.createdAt,
+      status: r.status,
+      to: r.request.to,
+      counterpartName: r.request.counterpartName,
+      headline: r.result?.headlineInUserLanguage,
+      success: r.result?.success,
+    }));
+  });
 
   app.get<{ Params: { id: string } }>('/api/calls/:id', async (req, reply) => {
-    const r = store.get(req.params.id);
+    const r = ownCall(req, req.params.id);
     if (!r) return reply.code(404).send({ error: 'Not found' });
     return r;
   });
 
   /** Server-sent events: the full call record on every change. */
   app.get<{ Params: { id: string } }>('/api/calls/:id/stream', (req, reply) => {
-    const r = store.get(req.params.id);
+    const r = ownCall(req, req.params.id) && store.get(req.params.id);
     if (!r) return reply.code(404).send({ error: 'Not found' });
 
     reply.hijack();

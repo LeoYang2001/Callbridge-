@@ -21,6 +21,8 @@ export interface CallManagerOptions {
   maxCallsPerHour: number;
   /** MVP guardrail: one live call at a time. This product never dials in bulk. */
   maxConcurrentCalls: number;
+  /** Runs once a call is finished and saved (e.g. to update the user's profile). */
+  onCallFinished?: (record: CallRecord) => void;
 }
 
 type SessionDeps = Omit<CallSessionDeps, 'onFinished' | 'store'>;
@@ -36,7 +38,7 @@ export class CallManager {
   ) {}
 
   /** Validates the request against product guardrails and starts the call. */
-  startCall(input: CallRequest): CallRecord {
+  startCall(input: CallRequest, userId?: string): CallRecord {
     const to = normalizePhone(input.to);
     if (!to) throw new CallRejectedError('Destination must be a valid phone number in international format, e.g. +14155550123.');
     const blocked = blockedReason(to);
@@ -64,12 +66,22 @@ export class CallManager {
     this.recentStarts.push(Date.now());
 
     const id = newCallId();
-    const record = newCallRecord(id, request);
+    const record = { ...newCallRecord(id, request), userId };
     this.store.create(record);
     const session = new CallSession(id, {
       ...this.sessionDeps(),
       store: this.store,
-      onFinished: (callId) => this.sessions.delete(callId),
+      onFinished: (callId) => {
+        this.sessions.delete(callId);
+        const finished = this.store.get(callId);
+        if (finished) {
+          try {
+            this.opts.onCallFinished?.(finished);
+          } catch {
+            /* a profile update must never break call wrap-up */
+          }
+        }
+      },
     });
     this.sessions.set(id, session);
     void session.start();

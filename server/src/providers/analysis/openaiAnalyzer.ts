@@ -22,6 +22,7 @@ const SCHEMA = {
     'headlineInUserLanguage',
     'nextStepsInUserLanguage',
     'counterpartAgreedToAppointment',
+    'notesAboutCounterpart',
   ],
   properties: {
     objective: { type: 'string', description: 'snake_case label for the task, e.g. schedule_dental_cleaning' },
@@ -59,6 +60,11 @@ const SCHEMA = {
     },
     summary: { type: 'string', description: 'Two or three sentences in English.' },
     summaryInUserLanguage: { type: 'string', description: "The same summary in the user's preferred language." },
+    notesAboutCounterpart: {
+      ...stringArray,
+      description:
+        'Facts the OTHER PARTY stated that would help on a future call with them: requirements (bring insurance card), hours, policies, staff names, preferred booking times. Short English sentences. Nothing about the user, no opinions, nothing sensitive.',
+    },
     counterpartAgreedToAppointment: {
       type: ['boolean', 'null'],
       description:

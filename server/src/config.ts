@@ -30,8 +30,6 @@ const EnvSchema = z.object({
    * https://<name>.pages.dev and local dev servers.
    */
   CORS_ORIGINS: optionalString,
-  /** Shared password protecting the UI and API (Bearer token, or basic auth with any username). */
-  APP_PASSWORD: optionalString,
 
   TWILIO_ACCOUNT_SID: optionalString,
   TWILIO_AUTH_TOKEN: optionalString,
@@ -50,6 +48,17 @@ const EnvSchema = z.object({
   /** Translates the live transcript into the user's language, one line at a time. */
   TRANSLATION_MODEL: z.string().default('gpt-5.4-mini'),
 
+  /** SQLite file for users, sessions, profiles, and call history. */
+  DATABASE_FILE: z.string().default('data/callbridge.db'),
+  /**
+   * How sign-in codes are delivered: "verify" (Twilio Verify SMS, needs TWILIO_VERIFY_SERVICE_SID)
+   * or "log" (printed in the server log; for testing on your own laptop only).
+   */
+  AUTH_CODES: z.enum(['verify', 'log']).optional(),
+  TWILIO_VERIFY_SERVICE_SID: optionalString,
+  /** Comma-separated numbers allowed to create an account (invite-only). Empty: anyone can sign up. */
+  SIGNUP_ALLOWLIST: optionalString,
+
   /** Comma-separated E.164 numbers. When set, only these numbers can be called. */
   ALLOWED_DESTINATIONS: optionalString,
   MAX_CALL_SECONDS: int(600),
@@ -65,6 +74,8 @@ const EnvSchema = z.object({
 
 export type AppConfig = z.infer<typeof EnvSchema> & {
   allowedDestinations: string[] | null;
+  signupAllowlist: string[] | null;
+  authCodes: 'verify' | 'log';
   corsOrigins: string[] | null;
   telephonyConfigured: boolean;
   voiceConfigured: boolean;
@@ -85,6 +96,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
           .map((s) => normalizePhone(s) ?? s.trim())
           .filter(Boolean)
       : null,
+    signupAllowlist: c.SIGNUP_ALLOWLIST
+      ? c.SIGNUP_ALLOWLIST.split(',')
+          .map((s) => normalizePhone(s) ?? s.trim())
+          .filter(Boolean)
+      : null,
+    authCodes: c.AUTH_CODES ?? (c.TWILIO_VERIFY_SERVICE_SID ? 'verify' : 'log'),
     corsOrigins: c.CORS_ORIGINS
       ? c.CORS_ORIGINS.split(',')
           .map((s) => s.trim().replace(/\/+$/, ''))

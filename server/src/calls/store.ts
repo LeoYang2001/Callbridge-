@@ -14,7 +14,11 @@ export class CallStore {
   private readonly calls = new Map<string, CallRecord>();
   private readonly emitter = new EventEmitter();
 
-  constructor(private readonly persistDir: string | null) {
+  constructor(
+    private readonly persistDir: string | null,
+    /** Call history lives in the database; files in persistDir are kept for debugging. */
+    private readonly db?: { saveCall(r: CallRecord): void; call(id: string): CallRecord | undefined },
+  ) {
     this.emitter.setMaxListeners(100);
   }
 
@@ -29,7 +33,7 @@ export class CallStore {
 
   /** A call in memory, or one persisted before the last restart (finished calls only). */
   getOrLoad(id: string): CallRecord | undefined {
-    const live = this.calls.get(id);
+    const live = this.calls.get(id) ?? this.db?.call(id);
     if (live || !this.persistDir || !/^[0-9a-f-]{36}$/.test(id)) return live;
     try {
       return JSON.parse(readFileSync(path.join(this.persistDir, `${id}.json`), 'utf8')) as CallRecord;
@@ -60,6 +64,7 @@ export class CallStore {
 
   async persist(id: string) {
     const r = this.calls.get(id);
+    if (r) this.db?.saveCall(r);
     if (!r || !this.persistDir) return;
     await mkdir(this.persistDir, { recursive: true });
     await writeFile(path.join(this.persistDir, `${id}.json`), JSON.stringify(r, null, 2));

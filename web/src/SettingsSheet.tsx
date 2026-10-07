@@ -66,30 +66,10 @@ export function SettingsSheet({ settings, onSave, onClose }: Props) {
             onChange={(e) => setDraft({ ...draft, serverUrl: e.target.value.trim() })}
           />
           {urlOk ? (
-            <span className="field-help">Leave empty when you opened the app from the server's own link or QR code.</span>
+            <span className="field-help">Leave empty when you opened the app from the server's own link.</span>
           ) : (
             <span className="field-error">Must start with https:// (or leave it empty).</span>
           )}
-        </label>
-
-        <label className="field">
-          <span className="field-label">Access key</span>
-          {/* A text field styled as dots, not type=password, so browsers don't treat this form as a
-              login and autofill a saved username into the Server URL field. */}
-          <input
-            type="text"
-            className="masked"
-            name="callbridge-access-key"
-            autoComplete="off"
-            autoCapitalize="off"
-            autoCorrect="off"
-            spellCheck={false}
-            data-1p-ignore
-            data-lpignore="true"
-            placeholder="Shown in the terminal as Access key"
-            value={draft.accessKey}
-            onChange={(e) => setDraft({ ...draft, accessKey: e.target.value })}
-          />
         </label>
 
         <button type="button" className="ghost-btn" disabled={testing || !urlOk || (staticHost && !draft.serverUrl)} onClick={runTest}>

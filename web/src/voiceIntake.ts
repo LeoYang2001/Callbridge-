@@ -1,6 +1,8 @@
 import { draftPatchFromArgs, type IntakeContext } from '../../shared/intake';
 import type { IntakeCheckResult, IntakeDraft } from '../../shared/types';
-import { checkIntake, createIntakeSession } from './api';
+import { profilePatchFromArgs } from '../../shared/profilePatch';
+import type { Me } from '../../shared/types';
+import { checkIntake, createIntakeSession, updateProfile } from './api';
 import type { Settings } from './settings';
 
 /**
@@ -28,6 +30,8 @@ export interface IntakeHandlers {
   onCheck: (result: IntakeCheckResult) => void;
   /** The assistant finished gathering and the server said the request is ok. */
   onReady: () => void;
+  /** Profile interview: the saved profile after each update. */
+  onProfile?: (me: Me) => void;
 }
 
 const REALTIME_CALLS_URL = 'https://api.openai.com/v1/realtime/calls';
@@ -55,13 +59,16 @@ export async function startIntake(
   settings: Settings,
   ctx: IntakeContext,
   h: IntakeHandlers,
-  /** followUpOf: a finished call the assistant reports on first; initialDraft: its request. */
-  opts: { mic: boolean; followUpOf?: string; initialDraft?: IntakeDraft },
+  /**
+   * mode "profile": the profile interview instead of setting up a call.
+   * followUpOf: a finished call the assistant reports on first; initialDraft: its request.
+   */
+  opts: { mic: boolean; mode?: 'call' | 'profile'; followUpOf?: string; initialDraft?: IntakeDraft },
 ): Promise<IntakeSessionControls> {
   h.onStatus('connecting');
   // Ask for the mic before minting the key, so a slow permission prompt can't outlast it.
   let micTrack: MediaStreamTrack | null = opts.mic ? await openMic() : null;
-  const session = await createIntakeSession(settings, { ...ctx, followUpOf: opts.followUpOf });
+  const session = await createIntakeSession(settings, { ...ctx, followUpOf: opts.followUpOf, mode: opts.mode ?? 'call' });
 
   const pc = new RTCPeerConnection();
   const speaker = new Audio();
@@ -117,7 +124,17 @@ export async function startIntake(
       // The model gets the ruling, not just ok/not ok, so it can explain it in the user's language.
       return result;
     }
-    if (name === 'finish_intake') {
+    if (name === 'update_profile') {
+      // The server validates and screens it (no card numbers, SSNs, or passwords are stored).
+      try {
+        const me = await updateProfile(settings, profilePatchFromArgs(args));
+        h.onProfile?.(me);
+        return { saved: true };
+      } catch (e) {
+        return { saved: false, error: (e as Error).message };
+      }
+    }
+    if (name === 'finish_intake' || name === 'finish_profile') {
       h.onReady();
       return { shown: true };
     }

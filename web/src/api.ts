@@ -1,5 +1,5 @@
 import type { IntakeContext } from '../../shared/intake';
-import type { CallRecord, CallRequest, IntakeCheckResult, IntakeDraft, IntakeSession, PublicConfig, UserAnswer } from '../../shared/types';
+import type { AuthResult, CallRecord, CallRequest, IntakeCheckResult, IntakeDraft, IntakeSession, Me, PublicConfig, UserAnswer } from '../../shared/types';
 import type { Settings } from './settings';
 
 function endpoint(s: Settings, path: string) {
@@ -11,7 +11,7 @@ function headers(s: Settings, extra: Record<string, string> = {}) {
     ...extra,
     // Lets requests through ngrok's free-tier browser interstitial.
     'ngrok-skip-browser-warning': '1',
-    ...(s.accessKey ? { Authorization: `Bearer ${s.accessKey}` } : {}),
+    ...(s.sessionToken ? { Authorization: `Bearer ${s.sessionToken}` } : {}),
   };
 }
 
@@ -23,6 +23,12 @@ async function json<T>(res: Response): Promise<T> {
   return body as T;
 }
 
+/** Called when the server no longer accepts the session (the app shows the sign-in screen). */
+let onSignedOut: (() => void) | undefined;
+export const setSignedOutHandler = (fn: () => void) => {
+  onSignedOut = fn;
+};
+
 async function request<T>(s: Settings, path: string, init: RequestInit = {}): Promise<T> {
   let res: Response;
   try {
@@ -30,13 +36,24 @@ async function request<T>(s: Settings, path: string, init: RequestInit = {}): Pr
   } catch {
     throw new Error(`Can't reach the server${s.serverUrl ? ` at ${s.serverUrl}` : ''}. Check Settings and that the server is running.`);
   }
-  if (res.status === 401) {
-    throw new Error(s.accessKey ? 'The server rejected the access key. Check Settings.' : 'Enter your access key in Settings to connect.');
+  if (res.status === 401 && !path.startsWith('/api/auth/')) {
+    onSignedOut?.();
+    throw new Error('Your sign-in expired. Sign in again.');
   }
   return json<T>(res);
 }
 
 export const getConfig = (s: Settings) => request<PublicConfig>(s, '/api/config');
+
+// ── sign-in and profile ──
+export const startSignIn = (s: Settings, phone: string) => postJson<{ ok: boolean; channel: 'sms' | 'log' }>(s, '/api/auth/start', { phone });
+export const verifySignIn = (s: Settings, body: { phone: string; code: string; language: string; timezone: string }) =>
+  postJson<AuthResult>(s, '/api/auth/verify', body);
+export const signOut = (s: Settings) => postJson<{ ok: boolean }>(s, '/api/auth/logout', {});
+export const getMe = (s: Settings) => request<Me>(s, '/api/me');
+export const updateProfile = (s: Settings, patch: Record<string, unknown>) =>
+  request<Me>(s, '/api/me/profile', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) });
+export const deleteAccount = (s: Settings) => request<{ ok: boolean }>(s, '/api/me', { method: 'DELETE' });
 
 export const startCall = (s: Settings, req: CallRequest) =>
   request<CallRecord>(s, '/api/calls', {
@@ -48,7 +65,7 @@ export const startCall = (s: Settings, req: CallRequest) =>
 const postJson = <T>(s: Settings, path: string, body: unknown) =>
   request<T>(s, path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 
-export const createIntakeSession = (s: Settings, context: IntakeContext & { followUpOf?: string }) =>
+export const createIntakeSession = (s: Settings, context: IntakeContext & { followUpOf?: string; mode?: 'call' | 'profile' }) =>
   postJson<IntakeSession>(s, '/api/intake/session', context);
 
 export const checkIntake = (s: Settings, context: IntakeContext, draft: IntakeDraft) =>

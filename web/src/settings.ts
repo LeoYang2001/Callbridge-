@@ -3,8 +3,8 @@ const KEY = 'callbridge.settings.v1';
 export interface Settings {
   /** Base URL of the CallBridge server, e.g. https://abc.ngrok.app. Empty = same origin. */
   serverUrl: string;
-  /** Matches the server's APP_PASSWORD. */
-  accessKey: string;
+  /** Sign-in session from verifying a code sent to the user's phone. Empty when signed out. */
+  sessionToken: string;
   /** Simulate calls in the browser instead of dialing. */
   demo: boolean;
 }
@@ -20,7 +20,7 @@ export const isStaticHost = () => DEFAULT_SERVER_URL !== '' || /\.(github\.io|pa
 export const isValidServerUrl = (url: string) => url.trim() === '' || /^https?:\/\/[^\s/]+/i.test(url.trim());
 
 export function loadSettings(): Settings {
-  const fallback: Settings = { serverUrl: DEFAULT_SERVER_URL, accessKey: '', demo: isStaticHost() && !DEFAULT_SERVER_URL };
+  const fallback: Settings = { serverUrl: DEFAULT_SERVER_URL, sessionToken: '', demo: isStaticHost() && !DEFAULT_SERVER_URL };
   let settings = fallback;
   try {
     const raw = localStorage.getItem(KEY);
@@ -30,11 +30,9 @@ export function loadSettings(): Settings {
   }
   if (!isValidServerUrl(settings.serverUrl)) settings = { ...settings, serverUrl: fallback.serverUrl };
 
-  // `npm run laptop` puts the access key in the QR code as #key=…; the fragment never reaches the
-  // server. Use it to connect to this same server, then remove it from the address bar.
-  const key = new URLSearchParams(location.hash.slice(1)).get('key');
-  if (key) {
-    settings = { ...settings, accessKey: key, serverUrl: '', demo: false };
+  // Old links carried an access key as #key=…; sign-in replaced it. Connect to this same server.
+  if (new URLSearchParams(location.hash.slice(1)).has('key')) {
+    settings = { ...settings, serverUrl: '', demo: false };
     saveSettings(settings);
     history.replaceState(null, '', location.pathname + location.search);
   }

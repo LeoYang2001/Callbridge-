@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import type { CallRecord, CallRequest, PublicConfig } from '../../shared/types';
-import { answerQuestion, endCall, getConfig, sendCallMessage, startCall, watchCall } from './api';
+import type { AuthResult, CallRecord, CallRequest, Me, PublicConfig } from '../../shared/types';
+import { answerQuestion, endCall, getConfig, getMe, sendCallMessage, setSignedOutHandler, signOut, startCall, updateProfile, watchCall } from './api';
 import { primeAlerts } from './alerts';
 import { draftToRequest, requestToDraft } from '../../shared/intake';
 import type { IntakeDraft, RealtimeVoice } from '../../shared/types';
@@ -8,6 +8,8 @@ import { CallScreen } from './CallScreen';
 import { simulateCall } from './demo';
 import { Intake } from './Intake';
 import { LANGUAGES, loadSaved, NewCall } from './NewCall';
+import { ProfileScreen } from './ProfileScreen';
+import { SignIn } from './SignIn';
 import { effectiveDemo, isStaticHost, loadSettings, saveSettings, type Settings } from './settings';
 import { SettingsSheet } from './SettingsSheet';
 import { loadVoice, saveVoice } from './VoicePicker';
@@ -23,8 +25,11 @@ export function App() {
   const stopRef = useRef<(() => void) | null>(null);
   const [mode, setMode] = useState<'talk' | 'type'>('talk');
   const [userLanguage, setUserLanguage] = useState(() => loadSaved().user.preferredLanguage);
+  /** Signed-in user; undefined while checking the saved session, null when signed out. */
+  const [me, setMe] = useState<Me | null | undefined>(undefined);
+  const [screen, setScreen] = useState<'home' | 'profile' | 'profileTalk'>('home');
   const [pickedVoice, setPickedVoice] = useState<RealtimeVoice | null>(loadVoice);
-  const voice = pickedVoice ?? ((config?.defaultVoice as RealtimeVoice | undefined) || 'marin');
+  const voice = pickedVoice ?? me?.profile.voice ?? ((config?.defaultVoice as RealtimeVoice | undefined) || 'marin');
   const changeVoice = (v: RealtimeVoice) => {
     setPickedVoice(v);
     saveVoice(v);
@@ -38,12 +43,21 @@ export function App() {
   // The voice intake needs the live server (it mints the OpenAI session key).
   const canTalk = !demo && Boolean(config?.voiceConfigured);
   const saved = loadSaved();
-  const intakeContext = { userName: saved.user.name || 'me', userLanguage, timezone: saved.timezone, voice };
+  const profile = me?.profile;
+  const intakeContext = {
+    userName: profile?.name || saved.user.name || '',
+    userLanguage,
+    timezone: profile?.timezone ?? saved.timezone,
+    voice,
+  };
+  /** The user section of a call request comes from the profile when signed in. */
+  const userFromProfile = (u: CallRequest['user']): CallRequest['user'] =>
+    profile ? { ...u, name: profile.name || u.name, pronouns: profile.pronouns ?? u.pronouns, preferredLanguage: userLanguage } : u;
 
   /** Opens the form prefilled from the intake: at the review step, or at the start to keep editing. */
   const openForm = (draft: IntakeDraft, step: number) => {
     const request = draftToRequest(draft, intakeContext);
-    setFromIntake({ request: { ...request, user: { ...saved.user, ...request.user } }, step, key: Date.now() });
+    setFromIntake({ request: { ...request, user: userFromProfile({ ...saved.user, ...request.user }) }, step, key: Date.now() });
     setMode('type');
   };
   const reviewDraft = (draft: IntakeDraft) => openForm(draft, 2);
@@ -56,6 +70,42 @@ export function App() {
   }, [demo, settings]);
 
   useEffect(() => () => stopRef.current?.(), []);
+
+  // Sign-in: restore the saved session; any 401 later signs the app out.
+  const signedOut = () => {
+    setSettings((s) => {
+      const next = { ...s, sessionToken: '' };
+      saveSettings(next);
+      return next;
+    });
+    setMe(null);
+    setScreen('home');
+  };
+  useEffect(() => setSignedOutHandler(signedOut), []);
+  useEffect(() => {
+    if (demo) return;
+    if (!settings.sessionToken) return setMe(null);
+    getMe(settings).then(
+      (m) => {
+        setMe(m);
+        setUserLanguage(m.profile.preferredLanguage);
+      },
+      () => setMe((current) => current ?? null),
+    );
+    // Only on start and when the session changes, not on every settings edit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [demo, settings.sessionToken]);
+
+  const onSignedIn = (r: AuthResult) => {
+    updateSettings({ ...settings, sessionToken: r.token, serverUrl: settings.serverUrl, demo: false });
+    setMe(r.me);
+    setUserLanguage(r.me.profile.preferredLanguage);
+  };
+
+  const finishOnboarding = async () => {
+    if (me && !me.profile.onboarded) setMe(await updateProfile(settings, { onboarded: true }).catch(() => me));
+    setScreen('home');
+  };
 
   const blockedReason = demo
     ? null
@@ -122,6 +172,11 @@ export function App() {
           CallBridge
         </div>
         <div className="topbar-right">
+          {me && (
+            <button type="button" className="icon-btn" aria-label="Profile" onClick={() => setScreen('profile')}>
+              👤
+            </button>
+          )}
           <button type="button" className={`mode-pill ${demo ? 'demo' : config ? 'live' : ''}`} onClick={() => setShowSettings(true)}>
             {demo ? 'Demo' : config ? 'Live' : configError ? 'Not connected' : '…'}
           </button>
@@ -156,7 +211,37 @@ export function App() {
           </div>
         )}
 
-        {call ? (
+        {!demo && me === undefined ? (
+          <div className="muted">Loading…</div>
+        ) : !demo && me === null ? (
+          <SignIn settings={settings} languages={LANGUAGES} language={userLanguage} onLanguageChange={setUserLanguage} onSignedIn={onSignedIn} />
+        ) : me && screen === 'profile' && !call ? (
+          <ProfileScreen
+            settings={settings}
+            me={me}
+            onChange={setMe}
+            onTalk={() => setScreen('profileTalk')}
+            onClose={() => setScreen('home')}
+            onSignOut={() => {
+              void signOut(settings).catch(() => {});
+              signedOut();
+            }}
+            onDeleted={signedOut}
+          />
+        ) : me && !call && canTalk && (screen === 'profileTalk' || !me.profile.onboarded) ? (
+          <Intake
+            key="profile"
+            profile={{ me, onSaved: setMe, onDone: () => void finishOnboarding(), onSkip: () => void finishOnboarding() }}
+            settings={settings}
+            context={intakeContext}
+            languages={LANGUAGES}
+            onLanguageChange={setUserLanguage}
+            voice={voice}
+            onVoiceChange={changeVoice}
+            onReview={() => {}}
+            onType={() => {}}
+          />
+        ) : call ? (
           <CallScreen
             call={call}
             demo={call.id.startsWith('demo-')}
@@ -210,6 +295,7 @@ export function App() {
               initial={fromIntake?.request}
               initialStep={fromIntake?.step ?? 0}
               onTalk={canTalk ? () => setMode('talk') : undefined}
+              userDefaults={me ? userFromProfile : undefined}
               voice={voice}
               onVoiceChange={changeVoice}
             />

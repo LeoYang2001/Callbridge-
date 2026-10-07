@@ -1,4 +1,3 @@
-import { timingSafeEqual } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -15,7 +14,11 @@ import { OpenAIAnalyzer } from './providers/analysis/openaiAnalyzer';
 import { OpenAITranslator } from './providers/translation/openaiTranslator';
 import { TwilioTelephony } from './providers/telephony/twilio';
 import { OpenAIRealtimeAgent } from './providers/voice/openaiRealtime';
+import { LogOtp, OtpRateLimit, TwilioVerifyOtp } from './auth/otp';
+import { Database } from './db/database';
+import { learnFromCall } from './profile/profile';
 import { registerApiRoutes } from './routes/api';
+import { registerAuthRoutes } from './routes/auth';
 import { registerIntakeRoutes } from './routes/intake';
 import { registerTwilioRoutes } from './routes/twilio';
 
@@ -35,7 +38,7 @@ await app.register(formbody);
 await app.register(websocket);
 
 // The hosted UI (GitHub Pages) calls this server cross-origin. CORS is not the security boundary
-// (APP_PASSWORD is); it only lets browsers on the allowed origins read responses.
+// (sign-in is); it only lets browsers on the allowed origins read responses.
 await app.register(cors, {
   origin: (origin, cb) => cb(null, !origin || isAllowedOrigin(origin, config.corsOrigins)),
   allowedHeaders: ['Content-Type', 'Authorization', 'ngrok-skip-browser-warning'],
@@ -43,26 +46,33 @@ await app.register(cors, {
   maxAge: 600,
 });
 
-// Shared-password gate for the API: `Authorization: Bearer <APP_PASSWORD>` (the app's access key),
-// or basic auth with any username. The static UI itself holds no secrets, so it loads without a
-// password and asks for the key in Settings. Twilio routes authenticate separately (webhook
-// signatures + a per-call stream token).
-if (config.APP_PASSWORD) {
-  const expected = Buffer.from(config.APP_PASSWORD);
-  const matches = (candidate: string) => {
-    const c = Buffer.from(candidate);
-    return c.length === expected.length && timingSafeEqual(c, expected);
-  };
-  app.addHook('onRequest', async (req: FastifyRequest, reply) => {
-    if (req.method === 'OPTIONS' || !req.url.startsWith('/api/') || req.url === '/api/health') return;
-    const [scheme, value = ''] = (req.headers.authorization ?? '').split(' ');
-    const password =
-      scheme === 'Bearer' ? value : scheme === 'Basic' ? Buffer.from(value, 'base64').toString().split(':').slice(1).join(':') : '';
-    if (!matches(password)) return reply.code(401).send({ error: 'Authentication required' });
-  });
-}
+// Sign-in: every /api route except these needs `Authorization: Bearer <session token>`, which
+// the app gets by verifying a code sent to the user's phone. Twilio routes authenticate separately
+// (webhook signatures + a per-call stream token).
+const db = new Database(path.resolve(root, config.DATABASE_FILE));
+const PUBLIC_API = new Set(['/api/health', '/api/config', '/api/auth/start', '/api/auth/verify']);
+app.addHook('onRequest', async (req: FastifyRequest, reply) => {
+  if (req.method === 'OPTIONS' || !req.url.startsWith('/api/') || PUBLIC_API.has(req.url.split('?')[0]!)) return;
+  const [scheme, token = ''] = (req.headers.authorization ?? '').split(' ');
+  const user = scheme === 'Bearer' && token ? db.userForToken(token) : undefined;
+  if (!user) return reply.code(401).send({ error: 'Sign in to continue.' });
+  req.user = user;
+  req.sessionToken = token;
+});
 
-const store = new CallStore(config.PERSIST_CALLS ? path.join(root, 'data', 'calls') : null);
+const otp =
+  config.authCodes === 'verify' && config.TWILIO_ACCOUNT_SID && config.TWILIO_AUTH_TOKEN && config.TWILIO_VERIFY_SERVICE_SID
+    ? new TwilioVerifyOtp(config.TWILIO_ACCOUNT_SID, config.TWILIO_AUTH_TOKEN, config.TWILIO_VERIFY_SERVICE_SID)
+    : new LogOtp((message) => app.log.warn(message));
+registerAuthRoutes(app, {
+  db,
+  otp,
+  perPhone: new OtpRateLimit(5),
+  perAddress: new OtpRateLimit(20),
+  signupAllowlist: config.signupAllowlist,
+});
+
+const store = new CallStore(config.PERSIST_CALLS ? path.join(root, 'data', 'calls') : null, db);
 
 const telephony = config.telephonyConfigured
   ? new TwilioTelephony({
@@ -105,6 +115,11 @@ const manager = new CallManager(
     allowedDestinations: config.allowedDestinations,
     maxCallsPerHour: config.MAX_CALLS_PER_HOUR,
     maxConcurrentCalls: 1,
+    // Every finished call adds to its user's profile: the contact, an appointment, decisions.
+    onCallFinished: (record) => {
+      const user = record.userId ? db.userById(record.userId) : undefined;
+      if (user) db.saveProfile(user.id, learnFromCall(user.profile, record));
+    },
   },
 );
 
@@ -112,7 +127,7 @@ const checkDeps = {
   classifier: config.OPENAI_API_KEY ? new OpenAITaskClassifier(config.OPENAI_API_KEY, config.ANALYSIS_MODEL) : null,
   allowedDestinations: config.allowedDestinations,
 };
-registerApiRoutes(app, { config, manager, store, checkDeps });
+registerApiRoutes(app, { config, manager, store, checkDeps, db });
 registerIntakeRoutes(app, { config, checkDeps, store });
 if (telephony) registerTwilioRoutes(app, { config, manager, telephony });
 
@@ -127,5 +142,6 @@ await app.listen({ port: config.PORT, host: config.HOST });
 
 if (!config.telephonyConfigured) app.log.warn('Twilio is not configured (TWILIO_* and PUBLIC_BASE_URL). Calls are disabled.');
 if (!config.voiceConfigured) app.log.warn('OPENAI_API_KEY is not set. Calls are disabled.');
-if (!config.APP_PASSWORD) app.log.warn('APP_PASSWORD is not set: anyone who can reach this server can place calls. Set it before exposing the server.');
+if (config.authCodes === 'log') app.log.warn('Sign-in codes are printed in this log (AUTH_CODES=log). Use Twilio Verify before anyone else can reach this server.');
+if (!config.signupAllowlist) app.log.warn('SIGNUP_ALLOWLIST is not set: anyone with the link can create an account and place calls.');
 if (!config.allowedDestinations) app.log.warn('ALLOWED_DESTINATIONS is not set: any valid number can be called. Set it while testing.');

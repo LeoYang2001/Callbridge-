@@ -24,13 +24,13 @@ npm install                   # once
 npm run laptop
 ```
 
-On the first run it asks for your OpenAI key, Twilio SID, auth token and number, and your own mobile number, which is the only number allowed for test calls. It saves them to `.env` with a generated access key. Each run then:
+On the first run it asks for your OpenAI key, Twilio SID, auth token and number, and your own mobile number, which is the only number allowed for test calls. It saves them to `.env`, with that number as the only one allowed to sign up (`SIGNUP_ALLOWLIST`). Each run then:
 
 1. builds the app;
 2. opens a free Cloudflare quick tunnel (`https://<random>.trycloudflare.com`, no account needed) and points the server at it, so Twilio can reach your laptop;
-3. starts the server and prints the phone URL as a **QR code**, plus your access key.
+3. starts the server and prints the phone URL as a **QR code**.
 
-Scan the QR code, enter the access key in ⚙︎ Settings, enter your own number and start a call. Answer it and play the receptionist. Ctrl+C stops everything. Without `cloudflared` the app still runs on your laptop and Wi-Fi in demo mode.
+Scan the QR code and sign in with your phone number: with `AUTH_CODES=log` the 6-digit code is printed in the terminal; with Twilio Verify it's texted. The assistant then interviews you for your profile (every question can be skipped). Tell it who to call and start the call. Answer it and play the receptionist. Ctrl+C stops everything. Without `cloudflared` the app still runs on your laptop and Wi-Fi in demo mode.
 
 ## Hosting on Cloudflare (byte2bite.tech)
 
@@ -62,7 +62,7 @@ cloudflared tunnel route dns callbridge callbridge-api.byte2bite.tech
 cp deploy/cloudflared/config.example.yml ~/.cloudflared/config.yml   # fill in the tunnel ID and credentials path
 ```
 
-In `.env`, set `PUBLIC_BASE_URL=https://callbridge-api.byte2bite.tech`, `CORS_ORIGINS=https://callbridge.byte2bite.tech`, a long random `APP_PASSWORD`, plus the Twilio and OpenAI keys. Then:
+In `.env`, set `PUBLIC_BASE_URL=https://callbridge-api.byte2bite.tech`, `CORS_ORIGINS=https://callbridge.byte2bite.tech`, `SIGNUP_ALLOWLIST`, `AUTH_CODES=verify` with `TWILIO_VERIFY_SERVICE_SID`, plus the Twilio and OpenAI keys. Then:
 
 ```bash
 npm run build && npm start        # terminal 1: the server on :3000
@@ -73,7 +73,7 @@ To check it from anywhere, open `https://callbridge-api.byte2bite.tech/api/healt
 
 **Cloudflare settings that can break calls:**
 - **Bot Fight Mode** (Security → Bots) can challenge Twilio's webhook requests, leaving calls stuck at *Dialing*. Turn it off, or add a WAF custom rule that skips security checks for hostname `callbridge-api.byte2bite.tech` with a path starting `/twilio/`.
-- **Don't put Cloudflare Access in front of `callbridge-api`.** Twilio can't sign in. The API is protected by `APP_PASSWORD`, and the Twilio routes by signatures and per-call tokens.
+- **Don't put Cloudflare Access in front of `callbridge-api`.** Twilio can't sign in. The API is protected by phone sign-in sessions, and the Twilio routes by signatures and per-call tokens.
 - **WebSockets** (Network tab) must stay on. It's on by default.
 
 For a quick test without DNS setup, `cloudflared tunnel --url http://localhost:3000` gives a temporary `*.trycloudflare.com` URL. Put it in `PUBLIC_BASE_URL` and in the app's Settings.
@@ -81,7 +81,7 @@ For a quick test without DNS setup, `cloudflared tunnel --url http://localhost:3
 ### 3. On your phone
 
 1. Open `https://callbridge.byte2bite.tech`. In Safari, use *Share → Add to Home Screen* to install it like an app (Android: *Install app*).
-2. Tap ⚙︎ **Settings** → Access key = your `APP_PASSWORD` → **Test connection** → Save.
+2. Sign in with your phone number.
 3. **Demo mode** (toggle in Settings) plays a simulated dentist call in the browser and dials nothing. Use it any time the server is off; the app also offers it when it can't reach the server.
 
 GitHub Pages is still available as a fallback (`.github/workflows/pages.yml`, run manually from the Actions tab). It serves the UI at `https://leoyang2001.github.io/Callbridge-/` in demo mode until a server URL is entered in Settings.
@@ -107,7 +107,7 @@ You don't need to configure any webhook in the Twilio console. Each call passes 
 
 For a single-process setup (for example, behind the tunnel), run `npm run build && npm start` and open `PUBLIC_BASE_URL`.
 
-**Always set `APP_PASSWORD` when the server is reachable from the internet.** Otherwise anyone with the URL can place calls on your account. The app sends it as `Authorization: Bearer …` once you enter it as the access key in Settings. Only `/api/*` is protected; the static UI holds no secrets and loads without it. Cross-origin requests are allowed from any `https://*.github.io` or `*.pages.dev` origin and localhost by default; add your own domain with `CORS_ORIGINS` (e.g. `https://callbridge.byte2bite.tech`).
+**Accounts:** users sign in with their phone number only (a 6-digit code by SMS through Twilio Verify, or printed in the server log with `AUTH_CODES=log` for testing). The app sends the session as `Authorization: Bearer …`; every `/api/*` route except sign-in requires it, and users only see their own calls. **Set `SIGNUP_ALLOWLIST` whenever the server is reachable from the internet,** otherwise anyone with the URL can sign up and place calls on your account. Profiles, sessions (stored hashed), and call history live in SQLite (`DATABASE_FILE`). The static UI holds no secrets and loads without signing in. Cross-origin requests are allowed from any `https://*.github.io` or `*.pages.dev` origin and localhost by default; add your own domain with `CORS_ORIGINS` (e.g. `https://callbridge.byte2bite.tech`).
 
 ### Scripts
 

@@ -53,12 +53,17 @@ interface Props {
   onTalk?: () => void;
   voice: RealtimeVoice;
   onVoiceChange: (voice: RealtimeVoice) => void;
+  /** Fills "About you" from the signed-in user's profile. */
+  userDefaults?: (user: CallRequest['user']) => CallRequest['user'];
 }
 
 const STEPS = ['Call', 'Limits', 'You'] as const;
 
-export function NewCall({ demo, blockedReason, submitting, error, onSubmit, initial, initialStep = 0, onTalk, voice, onVoiceChange }: Props) {
-  const [req, setReq] = useState<CallRequest>(() => initial ?? loadSaved());
+export function NewCall({ demo, blockedReason, submitting, error, onSubmit, initial, initialStep = 0, onTalk, voice, onVoiceChange, userDefaults }: Props) {
+  const [req, setReq] = useState<CallRequest>(() => {
+    const base = initial ?? loadSaved();
+    return userDefaults ? { ...base, user: userDefaults(base.user) } : base;
+  });
   const [step, setStep] = useState(initialStep);
   const [confirmed, setConfirmed] = useState(false);
   const [stepError, setStepError] = useState<string | null>(null);

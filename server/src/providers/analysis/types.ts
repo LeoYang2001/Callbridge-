@@ -27,6 +27,8 @@ export interface TranscriptAnalysis {
    * time; null when no appointment was validated. Only ever downgrades a booking.
    */
   counterpartAgreedToAppointment: boolean | null;
+  /** Facts the other party stated that would help on a future call (English). */
+  notesAboutCounterpart: string[];
   /** One line for the top of the result, in the user's language. */
   headlineInUserLanguage: string;
   /** followUpsForUser, in the user's language. */

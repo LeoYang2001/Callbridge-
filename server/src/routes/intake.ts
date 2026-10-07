@@ -5,12 +5,14 @@ import { draftToRequest } from '../../../shared/intake';
 import { REALTIME_VOICES, type IntakeDraft, type IntakeSession } from '../../../shared/types';
 import { buildFollowUpSection, buildIntakeInstructions, checkRequest, INTAKE_TOOLS, type CheckDeps } from '../agent/intake';
 import { languageCode } from '../../../shared/languages';
+import { buildProfileInstructions, PROFILE_TOOLS } from '../agent/profileIntake';
 import type { CallStore } from '../calls/store';
+import { profileForPrompt } from '../profile/profile';
 import type { AppConfig } from '../config';
 import { isValidTimeZone, localToday } from '../util/time';
 
 const ContextSchema = z.object({
-  userName: z.string().trim().min(1).max(80),
+  userName: z.string().trim().max(80).default(''),
   userLanguage: z.string().trim().min(1).max(60),
   timezone: z.string().refine(isValidTimeZone, 'Unknown time zone'),
   voice: z.enum(REALTIME_VOICES).optional(),
@@ -19,6 +21,8 @@ const ContextSchema = z.object({
 const SessionSchema = ContextSchema.extend({
   /** A finished call to report on and possibly follow up. */
   followUpOf: z.string().uuid().optional(),
+  /** "profile" runs the profile interview instead of setting up a call. */
+  mode: z.enum(['call', 'profile']).default('call'),
 });
 
 /** The draft is model output relayed by the browser, so it's shape-checked like any input. */
@@ -56,12 +60,15 @@ export function registerIntakeRoutes(app: FastifyInstance, deps: { config: AppCo
     if (!openai) return reply.code(503).send({ error: 'OPENAI_API_KEY is not set on the server.' });
     const parsed = SessionSchema.safeParse(req.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.issues.map((i) => i.message).join('; ') });
-    const ctx = parsed.data;
+    const profile = req.user!.profile;
+    const ctx = { ...parsed.data, userName: profile.name || parsed.data.userName || 'there' };
     const previous = ctx.followUpOf ? store.getOrLoad(ctx.followUpOf) : undefined;
-    if (ctx.followUpOf && !previous) return reply.code(404).send({ error: 'That call is no longer on the server.' });
-    const instructions =
-      buildIntakeInstructions({ ...ctx, today: localToday(ctx.timezone) }) +
-      (previous ? buildFollowUpSection(previous, ctx.userName, ctx.userLanguage) : '');
+    if (ctx.followUpOf && previous?.userId !== req.user!.id) return reply.code(404).send({ error: 'That call is no longer on the server.' });
+    const isProfile = ctx.mode === 'profile';
+    const instructions = isProfile
+      ? buildProfileInstructions(profile, ctx)
+      : buildIntakeInstructions({ ...ctx, today: localToday(ctx.timezone), profile: profileForPrompt(profile) }) +
+        (previous ? buildFollowUpSection(previous, ctx.userName, ctx.userLanguage) : '');
 
     const secret = await openai.realtime.clientSecrets.create({
       expires_after: { anchor: 'created_at', seconds: SECRET_TTL_SECONDS },
@@ -78,7 +85,7 @@ export function registerIntakeRoutes(app: FastifyInstance, deps: { config: AppCo
           },
           output: { voice: ctx.voice ?? config.REALTIME_VOICE },
         },
-        tools: INTAKE_TOOLS.map((t) => ({ type: 'function' as const, ...t })),
+        tools: (isProfile ? PROFILE_TOOLS : INTAKE_TOOLS).map((t) => ({ type: 'function' as const, ...t })),
         tool_choice: 'auto',
         ...(/^gpt-realtime-2/.test(config.REALTIME_MODEL) ? { reasoning: { effort: config.REALTIME_REASONING_EFFORT } } : {}),
       },
