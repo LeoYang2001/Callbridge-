@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import type { ChangeEvent } from 'react';
+import { displayPhone, formatUsPhone, usNationalDigits } from '../../shared/phone';
 import type { AuthorizedFact, AvailabilityWindow, CallRequest, Weekday } from '../../shared/types';
 import { WEEKDAYS } from '../../shared/types';
 
@@ -86,6 +88,21 @@ export function NewCall({ demo, blockedReason, submitting, error, onSubmit }: Pr
   const setConstraints = (patch: Partial<CallRequest['constraints']>) =>
     setReq((r) => ({ ...r, constraints: { ...r.constraints, ...patch } }));
 
+  // The field shows "(901)-455-3148"; the request keeps "+19014553148".
+  const setPhone = (e: ChangeEvent<HTMLInputElement>) => {
+    const el = e.target;
+    const digits = usNationalDigits(el.value);
+    set('to', digits ? `+1${digits}` : '');
+    // Reformatting moves the caret to the end; keep it after the same digit when editing mid-number.
+    const caret = el.selectionStart ?? el.value.length;
+    if (caret >= el.value.length) return;
+    const formatted = formatUsPhone(digits);
+    const want = (el.value.slice(0, caret).match(/\d/g) ?? []).length;
+    let pos = 0;
+    for (let seen = 0; pos < formatted.length && seen < want; pos++) if (/\d/.test(formatted[pos]!)) seen++;
+    requestAnimationFrame(() => el.setSelectionRange(pos, pos));
+  };
+
   const windows = req.constraints.availability;
   const setWindow = (i: number, patch: Partial<AvailabilityWindow>) =>
     setConstraints({ availability: windows.map((w, j) => (j === i ? { ...w, ...patch } : w)) });
@@ -100,7 +117,7 @@ export function NewCall({ demo, blockedReason, submitting, error, onSubmit }: Pr
 
   const validate = (s: number): string | null => {
     if (s === 0) {
-      if (!demo && req.to.replace(/\D/g, '').length < 10) return 'Enter the full phone number, including area code.';
+      if (!demo && usNationalDigits(req.to).length < 10) return 'Enter the full phone number, including area code.';
       if (req.instructions.trim().length < 10) return 'Describe the task in a sentence or two.';
     }
     if (s === 1 && windows.some((w) => w.start >= w.end)) return 'Each time window must end after it starts.';
@@ -152,15 +169,20 @@ export function NewCall({ demo, blockedReason, submitting, error, onSubmit }: Pr
           <h1 className="title">Who should I call?</h1>
           <label className="field">
             <span className="field-label">Phone number</span>
-            <input
-              className="input-xl"
-              type="tel"
-              inputMode="tel"
-              autoComplete="tel"
-              placeholder={demo ? 'Optional in demo mode' : '+1 415 555 0123'}
-              value={req.to}
-              onChange={(e) => set('to', e.target.value)}
-            />
+            <span className="phone-input">
+              <span className="phone-prefix" aria-hidden="true">
+                +1
+              </span>
+              <input
+                className="input-xl"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel-national"
+                placeholder={demo ? 'Optional in demo mode' : '(415)-555-0123'}
+                value={formatUsPhone(req.to)}
+                onChange={setPhone}
+              />
+            </span>
           </label>
 
           <div className="field">
@@ -317,7 +339,7 @@ export function NewCall({ demo, blockedReason, submitting, error, onSubmit }: Pr
           <div className="review">
             <div className="review-row">
               <span>Calling</span>
-              <b>{req.to || (demo ? 'Demo number' : '—')}</b>
+              <b>{req.to ? displayPhone(req.to) : demo ? 'Demo number' : '—'}</b>
             </div>
             <div className="review-row">
               <span>Speaks</span>

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CallRecord, CallStatus } from '../../shared/types';
+import { displayPhone } from '../../shared/phone';
 
 const STATUS_TEXT: Record<CallStatus, string> = {
   preparing: 'Preparing…',
@@ -61,7 +62,7 @@ function LiveCall({ call, demo, error, onDone }: Props) {
         <div className={`avatar ${live ? 'live' : ''} ${call.status === 'failed' ? 'failed' : ''}`} aria-hidden>
           <span>🤖</span>
         </div>
-        <div className="hero-number">{call.request.to}</div>
+        <div className="hero-number">{displayPhone(call.request.to)}</div>
         <div className="hero-status" aria-live="polite">
           {STATUS_TEXT[call.status]}
           {elapsed && <span className="hero-timer"> · {elapsed}</span>}
@@ -148,7 +149,7 @@ function ResultScreen({ call, demo, onDone }: { call: CallRecord; demo: boolean;
         </div>
         <div className="result-title">{r.success ? 'Done' : call.status === 'failed' ? 'Call failed' : 'Not completed'}</div>
         <div className="result-sub">
-          {call.request.to}
+          {displayPhone(call.request.to)}
           {duration && ` · ${duration}`}
         </div>
       </div>
