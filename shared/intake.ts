@@ -7,6 +7,20 @@ export interface IntakeContext {
   voice?: RealtimeVoice;
 }
 
+/**
+ * Tidies a model-written time into HH:MM when the meaning is unambiguous ("9:00" → "09:00",
+ * "24:00" → "23:59"). Anything else is passed through for the validator to reject, so the
+ * intake asks the user rather than guessing (e.g. whether "5:00" meant 5 pm).
+ */
+export function normalizeTime(t: string): string {
+  const m = t.trim().match(/^(\d{1,2})(?:[:.](\d{2}))?$/);
+  if (!m) return t.trim();
+  const h = Number(m[1]);
+  const min = m[2] ?? '00';
+  if (h === 24 && min === '00') return '23:59';
+  return h <= 23 ? `${String(h).padStart(2, '0')}:${min}` : t.trim();
+}
+
 /** Turns what the voice intake gathered into a call request (the server re-validates all of it). */
 export function draftToRequest(draft: IntakeDraft, ctx: IntakeContext): CallRequest {
   const digits = (draft.phoneNumber ?? '').replace(/\D/g, '');
@@ -21,7 +35,7 @@ export function draftToRequest(draft: IntakeDraft, ctx: IntakeContext): CallRequ
     authorizedInfo: (draft.shareableInfo ?? []).filter((f) => f.label?.trim() && f.value?.trim()),
     instructions: draft.task?.trim() ?? '',
     constraints: {
-      availability: draft.availability ?? [],
+      availability: (draft.availability ?? []).map((w) => ({ ...w, start: normalizeTime(w.start), end: normalizeTime(w.end) })),
       earliestDate: draft.earliestDate || undefined,
       latestDate: draft.latestDate || undefined,
       maxAdditionalCostUsd: Math.max(0, draft.maxAdditionalCostUsd ?? 0),

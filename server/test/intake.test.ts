@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { draftPatchFromArgs, draftToRequest } from '../../shared/intake';
+import { draftPatchFromArgs, draftToRequest, normalizeTime } from '../../shared/intake';
 import { TASK_CATEGORIES, type TaskCategory } from '../../shared/types';
 import { checkRequest } from '../src/agent/intake';
 import { buildInstructions } from '../src/agent/prompt';
+import { CallRequestSchema } from '../src/calls/requestSchema';
 import { TaskReviewUnavailableError, type TaskClassifier } from '../src/policy/taskClassifier';
 import { reviewTask, TASK_RULES } from '../src/policy/taskPolicy';
 import { dentistRequest } from './fixtures';
@@ -100,5 +101,41 @@ describe('voice intake draft', () => {
     expect(text).toContain('You are calling Smile Dental.');
     expect(text).toContain('# Rules for this kind of call');
     expect(buildInstructions(dentistRequest(), { today })).not.toContain('# Rules for this kind of call');
+  });
+});
+
+describe('intake and Start call agree', () => {
+  const ctx = { userName: 'Leo', userLanguage: 'Chinese (Mandarin)', timezone: 'America/Chicago' };
+  const draft = (start: string, end: string) =>
+    draftToRequest(
+      { phoneNumber: '9014553148', task: 'Schedule a teeth cleaning.', availability: [{ days: ['wed'], start, end }] },
+      ctx,
+    );
+
+  it('flags a window that ends before it starts, in words the assistant can ask about', async () => {
+    // "2 to 5 in the afternoon" written as 14:00–05:00 passed the old intake check, then failed at Start call.
+    const result = await checkRequest(draft('14:00', '05:00'), deps('healthcare_appointment'));
+    expect(result.ok).toBe(false);
+    expect(result.problems).toContain('Time window 1 (wed 14:00–05:00) ends before it starts.');
+  });
+
+  it('only says ok for requests the call endpoint accepts', async () => {
+    for (const [start, end] of [['14:00', '17:00'], ['9:00', '12:00'], ['14:00', '24:00'], ['2pm', '5pm']]) {
+      const req = draft(start!, end!);
+      const result = await checkRequest(req, deps('healthcare_appointment'));
+      expect(result.ok, `${start}–${end}`).toBe(CallRequestSchema.safeParse(req).success);
+    }
+  });
+
+  it('tidies unambiguous times and leaves the rest for the validator', () => {
+    expect(['9:00', '9', '09.30', '24:00', '14:00', '5pm', '25:00'].map(normalizeTime)).toEqual([
+      '09:00',
+      '09:00',
+      '09:30',
+      '23:59',
+      '14:00',
+      '5pm',
+      '25:00',
+    ]);
   });
 });

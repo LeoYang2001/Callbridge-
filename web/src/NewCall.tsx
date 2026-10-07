@@ -88,8 +88,12 @@ export function NewCall({ demo, blockedReason, submitting, error, onSubmit, init
 
   useEffect(() => {
     window.scrollTo({ top: 0 });
-    setStepError(null);
   }, [step]);
+
+  const goTo = (s: number, err: string | null = null) => {
+    setStep(s);
+    setStepError(err);
+  };
 
   const set = <K extends keyof CallRequest>(key: K, value: CallRequest[K]) => setReq((r) => ({ ...r, [key]: value }));
   const setUser = (patch: Partial<CallRequest['user']>) => setReq((r) => ({ ...r, user: { ...r.user, ...patch } }));
@@ -128,7 +132,7 @@ export function NewCall({ demo, blockedReason, submitting, error, onSubmit, init
       if (!demo && usNationalDigits(req.to).length < 10) return 'Enter the full phone number, including area code.';
       if (req.instructions.trim().length < 10) return 'Describe the task in a sentence or two.';
     }
-    if (s === 1 && windows.some((w) => w.start >= w.end)) return 'Each time window must end after it starts.';
+    if (s === 1 && windows.some((w) => w.start >= w.end)) return 'Each time window must end after it starts (24-hour times, e.g. 14:00–17:00).';
     if (s === 2 && !req.user.name.trim()) return 'Enter your name.';
     return null;
   };
@@ -136,7 +140,10 @@ export function NewCall({ demo, blockedReason, submitting, error, onSubmit, init
   const next = () => {
     const err = validate(step);
     if (err) return setStepError(err);
-    if (step < STEPS.length - 1) return setStep(step + 1);
+    if (step < STEPS.length - 1) return goTo(step + 1);
+    // The voice intake opens straight at the last step, so check the earlier ones before calling.
+    const earlier = STEPS.findIndex((_, s) => s < step && validate(s));
+    if (earlier !== -1) return goTo(earlier, validate(earlier));
     onSubmit({
       ...req,
       voice,
@@ -163,7 +170,7 @@ export function NewCall({ demo, blockedReason, submitting, error, onSubmit, init
             role="tab"
             aria-selected={i === step}
             className={`wp-step ${i === step ? 'current' : i < step ? 'done' : ''}`}
-            onClick={() => i < step && setStep(i)}
+            onClick={() => i < step && goTo(i)}
           >
             <span className="wp-bar" />
             <span className="wp-label">
@@ -397,7 +404,7 @@ export function NewCall({ demo, blockedReason, submitting, error, onSubmit, init
         {(stepError || error || (isLast && blockedReason)) && <div className="bar-error">{stepError ?? error ?? blockedReason}</div>}
         <div className="bar-row">
           {step > 0 && (
-            <button type="button" className="secondary-btn" onClick={() => setStep(step - 1)}>
+            <button type="button" className="secondary-btn" onClick={() => goTo(step - 1)}>
               Back
             </button>
           )}

@@ -1,50 +1,10 @@
 import type { FastifyInstance } from 'fastify';
-import { z } from 'zod';
 import type { CallRecord, CallRequest, PublicConfig } from '../../../shared/types';
-import { REALTIME_VOICES, WEEKDAYS } from '../../../shared/types';
 import { checkRequest, type CheckDeps } from '../agent/intake';
 import { CallRejectedError, type CallManager } from '../calls/callManager';
+import { CallRequestSchema } from '../calls/requestSchema';
 import type { CallStore } from '../calls/store';
 import type { AppConfig } from '../config';
-import { isValidDate, isValidTime } from '../policy/availability';
-import { isValidTimeZone } from '../util/time';
-
-const text = (max: number) => z.string().trim().max(max);
-
-const CallRequestSchema = z
-  .object({
-    to: text(32).min(1),
-    voice: z.enum(REALTIME_VOICES).optional(),
-    counterpartName: text(120).optional(),
-    taskInUserLanguage: text(500).optional(),
-    user: z.object({
-      name: text(80).min(1, 'Name is required'),
-      pronouns: text(40).optional(),
-      preferredLanguage: text(60).min(1),
-    }),
-    callLanguage: text(60).min(1).default('English'),
-    timezone: z.string().refine(isValidTimeZone, 'Unknown time zone'),
-    authorizedInfo: z.array(z.object({ label: text(60), value: text(300) })).max(20).default([]),
-    instructions: text(2000).min(10, 'Describe the task in a sentence or two'),
-    constraints: z.object({
-      availability: z
-        .array(
-          z
-            .object({
-              days: z.array(z.enum(WEEKDAYS)).min(1),
-              start: z.string().refine(isValidTime, 'HH:MM'),
-              end: z.string().refine(isValidTime, 'HH:MM'),
-            })
-            .refine((w) => w.start < w.end, 'Window end must be after start'),
-        )
-        .max(10)
-        .default([]),
-      earliestDate: z.string().refine(isValidDate, 'YYYY-MM-DD').optional().or(z.literal('').transform(() => undefined)),
-      latestDate: z.string().refine(isValidDate, 'YYYY-MM-DD').optional().or(z.literal('').transform(() => undefined)),
-      maxAdditionalCostUsd: z.number().min(0).max(10_000).default(0),
-    }),
-  })
-  .transform((r) => ({ ...r, authorizedInfo: r.authorizedInfo.filter((f) => f.label && f.value) }));
 
 export function registerApiRoutes(
   app: FastifyInstance,
