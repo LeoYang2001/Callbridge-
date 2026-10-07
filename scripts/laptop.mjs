@@ -147,15 +147,25 @@ function lanAddress() {
   return null;
 }
 
+/**
+ * A named tunnel (CLOUDFLARE_TUNNEL + a fixed PUBLIC_BASE_URL on your domain) keeps the same
+ * address across restarts and reconnects after sleep. Otherwise a free quick tunnel gives a new
+ * https://<random>.trycloudflare.com address each run.
+ */
 function startTunnel() {
   return new Promise((resolve) => {
     const has = spawnSync('cloudflared', ['--version'], { shell: isWin }).status === 0;
     if (!has) return resolve(null);
-    const t = spawn('cloudflared', ['tunnel', '--no-autoupdate', '--url', `http://localhost:${PORT}`], { shell: isWin });
+    const named = env.CLOUDFLARE_TUNNEL && env.PUBLIC_BASE_URL?.startsWith('https://') ? env.CLOUDFLARE_TUNNEL : null;
+    const args = named
+      ? ['tunnel', '--no-autoupdate', 'run', '--url', `http://localhost:${PORT}`, named]
+      : ['tunnel', '--no-autoupdate', '--url', `http://localhost:${PORT}`];
+    const t = spawn('cloudflared', args, { shell: isWin });
     children.push(t);
     const timer = setTimeout(() => resolve(null), 30_000);
     const onData = (buf) => {
-      const m = buf.toString().match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com/);
+      const text = buf.toString();
+      const m = named ? (/Registered tunnel connection/.test(text) ? [env.PUBLIC_BASE_URL.replace(/\/+$/, '')] : null) : text.match(/https:\/\/[a-z0-9-]+\.trycloudflare\.com/);
       if (m) {
         clearTimeout(timer);
         resolve(m[0]);
@@ -185,7 +195,7 @@ step('Starting the CallBridge server');
 const server = spawn('npm', ['run', 'start', '-w', 'server', '--silent'], {
   cwd: root,
   shell: isWin,
-  // Environment wins over .env, so the fresh tunnel URL replaces any old value.
+  // Environment wins over .env, so a fresh quick-tunnel URL replaces any old value.
   env: { ...process.env, PORT: String(PORT), PUBLIC_BASE_URL: publicUrl ?? '', LOG_LEVEL: process.env.LOG_LEVEL ?? 'warn' },
   stdio: ['ignore', 'inherit', 'inherit'],
 });
@@ -225,7 +235,7 @@ try {
 }
 console.log(`   ${c.bold('Test call:')} sign in, tell the assistant who to call${env.ALLOWED_DESTINATIONS ? ` (allowed: ${env.ALLOWED_DESTINATIONS})` : ''},
    answer on your phone and play the other side.
-${publicUrl ? c.dim('   The tunnel URL changes each run; nothing to update, this script handles it.') : ''}
+${publicUrl && !env.CLOUDFLARE_TUNNEL ? c.dim('   The tunnel URL changes each run; nothing to update, this script handles it.') : ''}
    ${c.dim('Ctrl+C to stop.')}
 ${c.green('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━')}
 `);
