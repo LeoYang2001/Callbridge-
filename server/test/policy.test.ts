@@ -75,8 +75,13 @@ describe('policy engine', () => {
     const ok = e.confirmAgreement({ type: 'appointment', description: 'Cleaning', date: '2026-10-08', startTime: '15:30' });
     expect(ok.output.accepted).toBe(true);
     expect(ok.commitment).toMatchObject({ date: '2026-10-08', startTime: '15:30' });
-    // A second booking on the same call is not authorized.
-    expect(e.confirmAgreement({ type: 'appointment', description: 'Cleaning', date: '2026-10-07', startTime: '15:00' }).output.accepted).toBe(false);
+    // Moving it to another allowed time on the same call replaces the first booking.
+    const moved = e.confirmAgreement({ type: 'appointment', description: 'Cleaning', date: '2026-10-07', startTime: '15:00' });
+    expect(moved.output.accepted).toBe(true);
+    expect(moved.replacesCommitmentId).toBe(ok.commitment!.id);
+    expect(moved.decision.reason).toContain('replaces 2026-10-08 15:30');
+    // A time outside the window still can't replace it.
+    expect(e.confirmAgreement({ type: 'appointment', description: 'Cleaning', date: '2026-10-09', startTime: '15:00' }).output.accepted).toBe(false);
   });
 
   it('rejects appointments with no availability configured', () => {

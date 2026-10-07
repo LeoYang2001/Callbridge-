@@ -44,6 +44,8 @@ export interface PolicyRuling {
   output: Record<string, unknown>;
   decision: PolicyDecision;
   commitment?: ValidatedCommitment;
+  /** An earlier commitment this one replaces (a rescheduled appointment). */
+  replacesCommitmentId?: string;
   /** A question that needs the user's input after the call. */
   unresolvedQuestion?: string;
 }
@@ -165,13 +167,11 @@ export class PolicyEngine {
       if (!input.date || !input.startTime) return reject('Appointments need both date (YYYY-MM-DD) and start_time (HH:MM).');
       const slot = checkSlot(this.request.constraints, input.date, input.startTime, this.today);
       if (!slot.allowed) return reject(slot.reason);
-      const existing = this.commitments.find((c) => c.type === 'appointment');
-      if (existing) {
-        return reject(
-          `An appointment was already confirmed on this call (${existing.date} ${existing.startTime}). Booking another needs ${this.name}'s approval.`,
-        );
-      }
     }
+    // One appointment per call: a new time inside the user's window replaces the earlier one
+    // (the business moved it, or the first confirmation was premature).
+    const replaced = input.type === 'appointment' ? this.commitments.findIndex((c) => c.type === 'appointment') : -1;
+    const previous = replaced >= 0 ? this.commitments.splice(replaced, 1)[0] : undefined;
 
     const commitment: ValidatedCommitment = {
       id: randomUUID(),
@@ -188,8 +188,15 @@ export class PolicyEngine {
         accepted: true,
         instructions: 'You may now confirm this verbally. Read back the key details (date, time, any cost) to the other party.',
       },
-      decision: this.decision('confirm_agreement', input.description, input.type, 'accepted', 'Within authorized constraints.'),
+      decision: this.decision(
+        'confirm_agreement',
+        input.description,
+        input.type,
+        'accepted',
+        previous ? `Within authorized constraints; replaces ${previous.date} ${previous.startTime}.` : 'Within authorized constraints.',
+      ),
       commitment,
+      replacesCommitmentId: previous?.id,
     };
   }
 

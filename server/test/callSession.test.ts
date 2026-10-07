@@ -99,6 +99,7 @@ const analysis: TranscriptAnalysis = {
   possibleFabrications: [],
   summary: 'Dental cleaning scheduled for Thursday at 3:30 PM.',
   summaryInUserLanguage: '洗牙预约在周四下午3:30。',
+  counterpartAgreedToAppointment: true,
   headlineInUserLanguage: '已预约：周四 10月8日 下午3:30 洗牙',
   nextStepsInUserLanguage: ['提前10分钟到。'],
 };
@@ -316,6 +317,20 @@ describe('CallSession (simulated dentist call)', () => {
       c.agent.emit('transcript', 'c3', 'counterpart', 'Yes.');
       expect(c.agent.responses).toBe(c.responses + 1);
     });
+  });
+
+  it('hangs up when the user taps End call', async () => {
+    const { store, telephony, manager } = setup();
+    const created = manager.startCall(dentistRequest());
+    await waitFor(() => telephony.placed.length === 1);
+    manager.handleTelephonyState(created.id, 'answered');
+    expect(manager.endCall(created.id)).toBe(true);
+    await waitFor(() => telephony.hangups.length === 1);
+    expect(telephony.hangups).toEqual(['CA123']);
+    manager.handleTelephonyState(created.id, 'completed');
+    await waitFor(() => store.get(created.id)!.status === 'completed');
+    expect(store.get(created.id)!.endReason).toBe('user_ended');
+    expect(manager.endCall(created.id)).toBe(false);
   });
 
   it('reports no-answer as a failed call without analysis', async () => {

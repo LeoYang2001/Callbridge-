@@ -7,6 +7,7 @@ import type { CallAnalyzer, TranscriptAnalysis } from '../providers/analysis/typ
 import type { MediaTransport, TelephonyCallState, TelephonyProvider } from '../providers/telephony/types';
 import type { VoiceAgent } from '../providers/voice/types';
 import { localToday } from '../util/time';
+import { languageCode } from '../../../shared/languages';
 import { SpeechGate } from './speechGate';
 import type { CallStore } from './store';
 
@@ -152,7 +153,7 @@ export class CallSession {
       this.agent = agent;
       this.wireAgent(agent);
       const t0 = Date.now();
-      await agent.connect({ instructions, tools: TOOL_DEFINITIONS });
+      await agent.connect({ instructions, tools: TOOL_DEFINITIONS, transcriptionLanguage: languageCode(r.request.callLanguage) });
       this.log('ai.connected', `${Date.now() - t0}ms`);
       if (this.finalizing) return;
 
@@ -449,6 +450,7 @@ export class CallSession {
     this.update((r) => {
       r.metrics.toolCalls++;
       if (exec.decision) r.decisions.push(exec.decision);
+      if (exec.replacesCommitmentId) r.commitments = r.commitments.filter((c) => c.id !== exec.replacesCommitmentId);
       if (exec.commitment) r.commitments.push(exec.commitment);
       if (exec.unresolvedQuestion && !r.unresolvedQuestions.includes(exec.unresolvedQuestion)) {
         r.unresolvedQuestions.push(exec.unresolvedQuestion);
@@ -486,6 +488,19 @@ export class CallSession {
     }
     // If the provider never confirms, finish anyway.
     this.timer(5_000, () => void this.finalize());
+  }
+
+  /** The user tapped End call in the app. */
+  endByUser() {
+    if (this.finalizing) return;
+    this.log('call.user_ended');
+    if (!this.record.providerCallId) {
+      // Not dialed yet: nothing to hang up.
+      this.update((r) => (r.endReason ??= 'user_ended'));
+      void this.finalize('canceled');
+      return;
+    }
+    this.endWith('user_ended');
   }
 
   private endWith(reason: string) {
@@ -619,6 +634,12 @@ export function buildResult(r: CallRecord, analysis: TranscriptAnalysis | null, 
   const warnings: string[] = [];
 
   if (analysisError) warnings.push(`Automatic transcript analysis failed (${analysisError}); result is based on the policy ledger only.`);
+  const unagreed = Boolean(appt && analysis?.counterpartAgreedToAppointment === false);
+  if (unagreed) {
+    warnings.push(
+      `The AI confirmed ${appt!.date} at ${appt!.startTime}, but the other party may never have agreed to that time. Call to confirm before relying on it.`,
+    );
+  }
   if (analysis) {
     const m = analysis.appointmentMentioned;
     if (m?.date && (!appt || appt.date !== m.date || (m.time && appt.startTime !== m.time))) {
@@ -652,7 +673,7 @@ export function buildResult(r: CallRecord, analysis: TranscriptAnalysis | null, 
 
   return {
     status,
-    success: status !== 'voicemail' && (analysis ? analysis.objectiveAchieved : r.commitments.length > 0),
+    success: status !== 'voicemail' && !unagreed && (analysis ? analysis.objectiveAchieved : r.commitments.length > 0),
     objective: analysis?.objective ?? 'unknown',
     appointment: appt ? { date: appt.date!, time: appt.startTime!, notes: appt.description } : null,
     commitments: r.commitments,
@@ -662,6 +683,7 @@ export function buildResult(r: CallRecord, analysis: TranscriptAnalysis | null, 
     followUpsForUser: analysis?.followUpsForUser ?? [],
     summary: analysis?.summary ?? fallbackSummary,
     summaryInUserLanguage: analysis?.summaryInUserLanguage ?? fallbackSummary,
+    appointmentConfirmedByCounterpart: appt ? !unagreed : undefined,
     headlineInUserLanguage: analysis?.headlineInUserLanguage,
     nextStepsInUserLanguage: analysis?.nextStepsInUserLanguage,
     policyWarnings: warnings,

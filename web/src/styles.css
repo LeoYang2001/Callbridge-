@@ -373,3 +373,4 @@ pre { background: var(--surface); border: 1px solid var(--border); border-radius
 }
 .send-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 .summary-headline { font-size: 19px; font-weight: 700; line-height: 1.35; margin: 0 0 8px; }
+.primary-btn.end-call { background: var(--bad); color: #fff; }

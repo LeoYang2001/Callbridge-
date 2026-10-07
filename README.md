@@ -188,7 +188,7 @@ The model handles conversation. Code decides what may be agreed. Each authorizat
 | Level | Enforced by |
 | --- | --- |
 | **1. Answer automatically** | Only facts the user listed are placed in the prompt. Anything else is unknown to the model, and the prompt tells it to say so. `sensitive.ts` **rejects the request before dialing** if it contains passwords, PINs, SSNs, or Luhn-valid card numbers. The model can't leak what it never received. |
-| **2. Negotiate automatically** | `check_appointment_slot` and `confirm_agreement` are validated in code against structured availability windows, date bounds, and the extra-charge cap. The model is told to confirm out loud only after `accepted: true`. Only one appointment per call. |
+| **2. Negotiate automatically** | `check_appointment_slot` and `confirm_agreement` are validated in code against structured availability windows, date bounds, and the extra-charge cap. The model is told to confirm out loud only after `accepted: true`, and only for a time the other party offered or agreed to. One appointment per call: a later valid time replaces the earlier one. |
 | **3. Ask the user** | `request_decision` returns `requires_user_approval` for anything unexpected (extra services, charges above the cap, the `other` category). In Phase 0 the assistant declines politely, and the item is recorded under *unresolved questions* and *declined decisions*. |
 | **4. Never authorize** | Medical consent, contracts and signatures, payment details, credentials, government IDs, and legal matters are hard-coded in `NEVER_AUTHORIZE`. The UI can't override them. |
 

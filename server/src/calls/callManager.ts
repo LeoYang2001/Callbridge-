@@ -80,6 +80,14 @@ export class CallManager {
     this.sessions.get(callId)?.handleTelephonyState(state);
   }
 
+  /** Hangs up a live call at the user's request. Returns false if it isn't live. */
+  endCall(callId: string): boolean {
+    const session = this.sessions.get(callId);
+    if (!session) return false;
+    session.endByUser();
+    return true;
+  }
+
   /** Attach a media stream to its call. Returns false if the call/token don't match. */
   attachMedia(callId: string, token: string, transport: MediaTransport): boolean {
     const session = this.sessions.get(callId);

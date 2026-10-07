@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { CallRecord, CallRequest, PublicConfig } from '../../shared/types';
-import { getConfig, startCall, watchCall } from './api';
+import { endCall, getConfig, startCall, watchCall } from './api';
 import { draftToRequest, requestToDraft } from '../../shared/intake';
 import type { IntakeDraft, RealtimeVoice } from '../../shared/types';
 import { CallScreen } from './CallScreen';
@@ -74,7 +74,15 @@ export function App() {
     try {
       const created = await startCall(settings, req);
       setCall(created);
-      stopRef.current = watchCall(settings, created.id, setCall, setError);
+      stopRef.current = watchCall(
+        settings,
+        created.id,
+        (r) => {
+          setCall(r);
+          setError(null);
+        },
+        setError,
+      );
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -153,6 +161,14 @@ export function App() {
             error={error}
             onDone={reset}
             onFollowUp={canTalk && !call.id.startsWith('demo-') ? () => followUpOn(call) : undefined}
+            onEnd={async () => {
+              try {
+                await endCall(settings, call.id);
+              } catch (e) {
+                setError((e as Error).message);
+                throw e;
+              }
+            }}
           />
         ) : (
           canTalk && mode === 'talk' ? (

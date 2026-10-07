@@ -108,6 +108,7 @@ export interface ToolExecution {
   output: Record<string, unknown>;
   decision?: PolicyDecision;
   commitment?: ValidatedCommitment;
+  replacesCommitmentId?: string;
   unresolvedQuestion?: string;
   endCall?: z.infer<typeof EndCallArgs>;
 }

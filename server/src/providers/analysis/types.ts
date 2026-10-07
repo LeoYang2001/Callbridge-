@@ -22,6 +22,11 @@ export interface TranscriptAnalysis {
   possibleFabrications: string[];
   summary: string;
   summaryInUserLanguage: string;
+  /**
+   * Whether the other party explicitly offered or agreed to the validated appointment's date and
+   * time; null when no appointment was validated. Only ever downgrades a booking.
+   */
+  counterpartAgreedToAppointment: boolean | null;
   /** One line for the top of the result, in the user's language. */
   headlineInUserLanguage: string;
   /** followUpsForUser, in the user's language. */

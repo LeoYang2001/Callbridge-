@@ -118,7 +118,7 @@ export class OpenAIRealtimeAgent implements VoiceAgent {
         input: {
           format: { type: 'audio/pcmu' },
           noise_reduction: { type: 'near_field' },
-          transcription: { model: this.opts.transcriptionModel },
+          transcription: { model: this.opts.transcriptionModel, ...(config.transcriptionLanguage ? { language: config.transcriptionLanguage } : {}) },
           turn_detection: turnDetection,
         },
         output: {

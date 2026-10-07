@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { draftToRequest } from '../../../shared/intake';
 import { REALTIME_VOICES, type IntakeDraft, type IntakeSession } from '../../../shared/types';
 import { buildFollowUpSection, buildIntakeInstructions, checkRequest, INTAKE_TOOLS, type CheckDeps } from '../agent/intake';
+import { languageCode } from '../../../shared/languages';
 import type { CallStore } from '../calls/store';
 import type { AppConfig } from '../config';
 import { isValidTimeZone, localToday } from '../util/time';
@@ -72,7 +73,7 @@ export function registerIntakeRoutes(app: FastifyInstance, deps: { config: AppCo
         audio: {
           input: {
             noise_reduction: { type: 'near_field' },
-            transcription: { model: config.TRANSCRIPTION_MODEL },
+            transcription: { model: config.TRANSCRIPTION_MODEL, ...(languageCode(ctx.userLanguage) ? { language: languageCode(ctx.userLanguage) } : {}) },
             turn_detection: { type: 'semantic_vad', eagerness: 'auto', create_response: true, interrupt_response: true },
           },
           output: { voice: ctx.voice ?? config.REALTIME_VOICE },

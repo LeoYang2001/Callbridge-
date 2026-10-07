@@ -21,6 +21,7 @@ const SCHEMA = {
     'summaryInUserLanguage',
     'headlineInUserLanguage',
     'nextStepsInUserLanguage',
+    'counterpartAgreedToAppointment',
   ],
   properties: {
     objective: { type: 'string', description: 'snake_case label for the task, e.g. schedule_dental_cleaning' },
@@ -58,10 +59,15 @@ const SCHEMA = {
     },
     summary: { type: 'string', description: 'Two or three sentences in English.' },
     summaryInUserLanguage: { type: 'string', description: "The same summary in the user's preferred language." },
+    counterpartAgreedToAppointment: {
+      type: ['boolean', 'null'],
+      description:
+        'null if validatedCommitments has no appointment. Otherwise true only if OTHER PARTY explicitly offered or agreed to that exact date and time in the transcript; false if only the AI assistant proposed it.',
+    },
     headlineInUserLanguage: {
       type: 'string',
       description:
-        "One short line in the user's language stating the outcome, e.g. booked for <weekday, date, time> at <business>, or not booked and why. A booking may only be stated if it is in validatedCommitments.",
+        "One short line in the user's language stating the outcome, e.g. booked for <weekday, date, time> at <business>, or not booked and why. A booking may only be stated if it is in validatedCommitments; if the other party never agreed to it, say it still needs confirmation.",
     },
     nextStepsInUserLanguage: { ...stringArray, description: "followUpsForUser, written in the user's language." },
   },

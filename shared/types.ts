@@ -163,6 +163,8 @@ export interface CallResult {
   followUpsForUser: string[];
   summary: string;
   summaryInUserLanguage: string;
+  /** False when the policy validated a time the other party never agreed to: needs confirming. */
+  appointmentConfirmedByCounterpart?: boolean;
   /** One-line outcome in the user's language (absent on calls analyzed before it existed). */
   headlineInUserLanguage?: string;
   nextStepsInUserLanguage?: string[];

@@ -8,6 +8,8 @@ import type { ToolDefinition } from '../../agent/tools';
 export interface VoiceAgentConfig {
   instructions: string;
   tools: ToolDefinition[];
+  /** ISO-639-1 hint for transcribing the other side, e.g. "en". */
+  transcriptionLanguage?: string;
 }
 
 export interface VoiceAgentEvents {

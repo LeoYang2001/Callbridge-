@@ -50,6 +50,11 @@ export function registerApiRoutes(
     }
   });
 
+  app.post<{ Params: { id: string } }>('/api/calls/:id/hangup', async (req, reply) => {
+    if (!manager.endCall(req.params.id)) return reply.code(404).send({ error: 'That call is not in progress.' });
+    return reply.code(202).send({ ok: true });
+  });
+
   app.get('/api/calls', async () =>
     store.list().map((r) => ({ id: r.id, createdAt: r.createdAt, status: r.status, to: r.request.to, success: r.result?.success })),
   );

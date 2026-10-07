@@ -44,15 +44,19 @@ interface Props {
   onDone: () => void;
   /** Talk it over with the assistant (voice), with this call loaded. Omitted when unavailable. */
   onFollowUp?: () => void;
+  /** Hang up the call in progress. */
+  onEnd?: () => Promise<void>;
 }
 
-export function CallScreen({ call, demo, error, onDone, onFollowUp }: Props) {
+export function CallScreen({ call, demo, error, onDone, onFollowUp, onEnd }: Props) {
   const finished = call.status === 'completed' || call.status === 'failed';
-  return finished && call.result ? <ResultScreen call={call} demo={demo} onDone={onDone} onFollowUp={onFollowUp} /> : <LiveCall call={call} demo={demo} error={error} onDone={onDone} />;
+  return finished && call.result ? <ResultScreen call={call} demo={demo} onDone={onDone} onFollowUp={onFollowUp} /> : <LiveCall call={call} demo={demo} error={error} onDone={onDone} onEnd={onEnd} />;
 }
 
-function LiveCall({ call, demo, error, onDone }: Props) {
+function LiveCall({ call, demo, error, onDone, onEnd }: Props) {
   const now = useNow(true);
+  const [ending, setEnding] = useState(false);
+  const canEnd = Boolean(onEnd) && !demo && ['preparing', 'dialing', 'connected', 'in_progress'].includes(call.status);
   const live = call.status === 'connected' || call.status === 'in_progress';
   const idx = STEPS.indexOf(call.status === 'analyzing' ? 'completed' : call.status);
   const elapsed = call.metrics.answeredAt ? fmtDuration((call.metrics.endedAt ?? now) - call.metrics.answeredAt) : null;
@@ -83,8 +87,21 @@ function LiveCall({ call, demo, error, onDone }: Props) {
       <div className="bottom-bar">
         <div className="bar-row">
           <button type="button" className="secondary-btn" onClick={onDone}>
-            {call.status === 'failed' || error ? 'Back' : demo ? 'End demo' : 'Leave (call keeps going)'}
+            {call.status === 'failed' || error ? 'Back' : demo ? 'End demo' : canEnd ? 'Leave' : 'Back'}
           </button>
+          {canEnd && (
+            <button
+              type="button"
+              className="primary-btn end-call"
+              disabled={ending}
+              onClick={() => {
+                setEnding(true);
+                onEnd!().catch(() => setEnding(false));
+              }}
+            >
+              {ending ? 'Ending…' : 'End call'}
+            </button>
+          )}
         </div>
       </div>
     </>
@@ -158,7 +175,9 @@ function ResultScreen({ call, demo, onDone, onFollowUp }: { call: CallRecord; de
 
       {appt && (
         <div className="appt-card">
-          <div className="appt-label">Appointment confirmed</div>
+          <div className="appt-label">
+            {r.appointmentConfirmedByCounterpart === false ? 'Needs confirmation: they may not have agreed' : 'Appointment confirmed'}
+          </div>
           <div className="appt-day">{appt.day}</div>
           <div className="appt-time">{appt.time}</div>
           {r.appointment?.notes && <div className="appt-notes">{r.appointment.notes}</div>}
