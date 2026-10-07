@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { normalizePhone } from './util/phone';
 
 const bool = (fallback: boolean) =>
   z
@@ -74,9 +75,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const c = parsed.data;
   return {
     ...c,
+    // Accept "7475550123" or "(747) 555-0123" as well as E.164, so a hand-edited .env still matches.
     allowedDestinations: c.ALLOWED_DESTINATIONS
       ? c.ALLOWED_DESTINATIONS.split(',')
-          .map((s) => s.trim())
+          .map((s) => normalizePhone(s) ?? s.trim())
           .filter(Boolean)
       : null,
     corsOrigins: c.CORS_ORIGINS
@@ -84,6 +86,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
           .map((s) => s.trim().replace(/\/+$/, ''))
           .filter(Boolean)
       : null,
+    TWILIO_FROM_NUMBER: c.TWILIO_FROM_NUMBER ? (normalizePhone(c.TWILIO_FROM_NUMBER) ?? c.TWILIO_FROM_NUMBER) : undefined,
     telephonyConfigured: Boolean(
       c.TWILIO_ACCOUNT_SID && c.TWILIO_AUTH_TOKEN && c.TWILIO_FROM_NUMBER && c.PUBLIC_BASE_URL,
     ),

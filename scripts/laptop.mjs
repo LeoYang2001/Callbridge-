@@ -49,6 +49,16 @@ function parseEnv(text) {
   return out;
 }
 
+/** "7475550123" → "+17475550123" (US default); leaves numbers that already have "+" alone. */
+function toE164(input) {
+  const digits = input.replace(/\D/g, '');
+  if (!digits) return '';
+  if (input.trim().startsWith('+')) return `+${digits}`;
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`;
+  return `+${digits}`;
+}
+
 async function createEnv() {
   step('First run: creating .env (your keys stay on this laptop)');
   console.log(c.dim('  Press Enter to skip a value; you can edit .env later.\n'));
@@ -73,8 +83,8 @@ async function createEnv() {
   const openai = await ask('OpenAI API key (sk-…)');
   const sid = await ask('Twilio Account SID (AC…)');
   const token = await ask('Twilio Auth Token');
-  const from = await ask('Twilio phone number to call from (+1…)');
-  const allow = await ask('Your own mobile number to test with (+1…). Only this number can be called');
+  const from = toE164(await ask('Twilio phone number to call from (+1…)'));
+  const allow = toE164(await ask('Your own mobile number to test with (+1…). Only this number can be called'));
   const password = await ask('Access key for the app (enter it in the app Settings)', randomBytes(9).toString('base64url'));
   rl.close();
 

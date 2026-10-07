@@ -137,3 +137,12 @@ describe('phone numbers', () => {
     expect(blockedReason('+14155550123')).toBeNull();
   });
 });
+
+describe('config phone normalization', () => {
+  it('normalizes allowlist and caller numbers typed without +1', async () => {
+    const { loadConfig } = await import('../src/config');
+    const c = loadConfig({ ALLOWED_DESTINATIONS: '7475550123, +1 (415) 555-0199', TWILIO_FROM_NUMBER: '(415) 555-0100' } as NodeJS.ProcessEnv);
+    expect(c.allowedDestinations).toEqual(['+17475550123', '+14155550199']);
+    expect(c.TWILIO_FROM_NUMBER).toBe('+14155550100');
+  });
+});
