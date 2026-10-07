@@ -132,6 +132,14 @@ const shutdown = (code = 0) => {
 process.on('SIGINT', () => shutdown(0));
 process.on('SIGTERM', () => shutdown(0));
 
+// A quick tunnel doesn't come back after the Mac sleeps, and its URL changes on restart. Keep the
+// Mac awake while CallBridge runs (closing the lid still sleeps it); -w ends this with us.
+if (process.platform === 'darwin') {
+  const awake = spawn('caffeinate', ['-i', '-s', '-w', String(process.pid)], { stdio: 'ignore' });
+  awake.on('error', () => {});
+  children.push(awake);
+}
+
 function lanAddress() {
   for (const list of Object.values(networkInterfaces())) {
     for (const a of list ?? []) if (a.family === 'IPv4' && !a.internal) return a.address;
