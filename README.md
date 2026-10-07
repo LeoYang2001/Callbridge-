@@ -34,6 +34,9 @@ Scan the QR code and sign in with your phone number: with `AUTH_CODES=log` the 6
 
 ## Hosting on Cloudflare (byte2bite.tech)
 
+**Current laptop setup (permanent address):** `npm run laptop` serves the app and API at `https://callbridge.byte2bite.tech` through a named tunnel (`CLOUDFLARE_TUNNEL=callbridge`). It was set up once with `cloudflared tunnel login`, `cloudflared tunnel create callbridge`, and `cloudflared tunnel route dns callbridge callbridge.byte2bite.tech`. Because restaurant-sites holds the Worker routes `*.byte2bite.tech/*` and `*/*`, the zone also has a Worker route `callbridge.byte2bite.tech/*` with **no Worker**, so that one hostname reaches the tunnel (the most specific route wins). Don't delete that route.
+
+
 | Piece | URL | Runs on |
 | --- | --- | --- |
 | Web app (phone UI) | `https://callbridge.byte2bite.tech` | Cloudflare Pages: static, always up, rebuilt on every push |
