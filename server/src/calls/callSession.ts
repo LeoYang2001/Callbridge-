@@ -54,6 +54,7 @@ export class CallSession {
   private counterpartSpoke = false;
   private speechStoppedAt: number | null = null;
   private hangupRequested = false;
+  private lastTelephonyState: TelephonyCallState | null = null;
   private awaitingResponseDone = false;
   private hungUp = false;
   private finalizing = false;
@@ -131,6 +132,7 @@ export class CallSession {
         rec.metrics.dialedAt = Date.now();
       });
       this.log('telephony.call_created', providerCallId);
+      this.pollCallState(providerCallId);
 
       // Hard stop in case every other signal is lost (ring time + talk time + margin).
       this.timer((this.deps.maxCallSeconds + 90) * 1000, () => {
@@ -142,7 +144,26 @@ export class CallSession {
     }
   }
 
+  /**
+   * Safety net next to status callbacks: some accounts (e.g. Twilio's Limited trial) don't allow
+   * them, and webhooks can be lost. Polls until the call ends.
+   */
+  private pollCallState(providerCallId: string) {
+    const getState = this.deps.telephony.getCallState?.bind(this.deps.telephony);
+    if (!getState) return;
+    const tick = () => {
+      if (this.finalizing) return;
+      getState(providerCallId)
+        .then((state) => state && this.handleTelephonyState(state))
+        .catch(() => {})
+        .finally(() => !this.finalizing && this.timer(4_000, tick));
+    };
+    this.timer(4_000, tick);
+  }
+
   handleTelephonyState(state: TelephonyCallState) {
+    if (state === this.lastTelephonyState) return;
+    this.lastTelephonyState = state;
     this.log('telephony.status', state);
     if (state === 'answered' && !this.answered) {
       this.answered = true;

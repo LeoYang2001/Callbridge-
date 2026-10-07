@@ -19,39 +19,95 @@ export interface TwilioOptions {
 const escapeXml = (s: string) =>
   s.replace(/[<>&"']/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' })[c]!);
 
+type CallCreateOptions = Parameters<twilio.Twilio['calls']['create']>[0];
+
+/** Twilio's "Limited trial" plan rejects some call options with this error. */
+const isTrialRestriction = (err: unknown) => /trial account|disallowed parameter|limited parameter/i.test((err as Error)?.message ?? '');
+
 export class TwilioTelephony implements TelephonyProvider {
   readonly name = 'twilio';
   private readonly client: twilio.Twilio;
+  /** Index of the first call setup Twilio accepted, reused for later calls. */
+  private acceptedAttempt = 0;
 
-  constructor(private readonly opts: TwilioOptions) {
-    this.client = twilio(opts.accountSid, opts.authToken);
+  constructor(
+    private readonly opts: TwilioOptions,
+    client?: twilio.Twilio,
+    private readonly log: (msg: string) => void = () => {},
+  ) {
+    this.client = client ?? twilio(opts.accountSid, opts.authToken);
   }
 
   static statusCallbackUrl(publicBaseUrl: string, callId: string) {
     return `${publicBaseUrl}/twilio/status?callId=${encodeURIComponent(callId)}`;
   }
 
-  async placeCall(p: PlaceCallParams) {
-    const wsUrl = `${this.opts.publicBaseUrl.replace(/^http/, 'ws')}/twilio/media`;
-    // <Connect><Stream> gives a bidirectional media stream; the call stays up as long as the
-    // WebSocket does. No <Record> — recording is deliberately not enabled (consent varies by state).
-    const twiml =
-      `<Response><Connect><Stream url="${escapeXml(wsUrl)}">` +
-      `<Parameter name="callId" value="${escapeXml(p.callId)}"/>` +
-      `<Parameter name="token" value="${escapeXml(p.streamToken)}"/>` +
-      `</Stream></Connect></Response>`;
+  static twimlUrl(publicBaseUrl: string, callId: string) {
+    return `${publicBaseUrl}/twilio/twiml?callId=${encodeURIComponent(callId)}`;
+  }
 
-    const call = await this.client.calls.create({
-      to: p.to,
-      from: this.opts.fromNumber,
-      twiml,
-      timeout: 30, // seconds to ring before giving up
-      timeLimit: p.maxDurationSeconds,
+  /**
+   * TwiML that connects the answered call to our media WebSocket. <Connect><Stream> keeps the call
+   * up as long as the WebSocket is open. No <Record>: recording is deliberately not enabled
+   * (consent rules vary by state).
+   */
+  static streamTwiml(publicBaseUrl: string, callId: string, streamToken: string) {
+    const wsUrl = `${publicBaseUrl.replace(/^http/, 'ws')}/twilio/media`;
+    return (
+      `<Response><Connect><Stream url="${escapeXml(wsUrl)}">` +
+      `<Parameter name="callId" value="${escapeXml(callId)}"/>` +
+      `<Parameter name="token" value="${escapeXml(streamToken)}"/>` +
+      `</Stream></Connect></Response>`
+    );
+  }
+
+  /**
+   * Call setups from richest to most basic. Twilio's Limited trial rejects some options without
+   * saying which, so we fall back step by step; the session polls call status, so the call is
+   * still tracked if status callbacks end up disabled.
+   */
+  private attempts(p: PlaceCallParams): { label: string; options: CallCreateOptions }[] {
+    const base = { to: p.to, from: this.opts.fromNumber };
+    const twiml = TwilioTelephony.streamTwiml(this.opts.publicBaseUrl, p.callId, p.streamToken);
+    const url = TwilioTelephony.twimlUrl(this.opts.publicBaseUrl, p.callId);
+    const callbacks = {
       statusCallback: TwilioTelephony.statusCallbackUrl(this.opts.publicBaseUrl, p.callId),
       statusCallbackMethod: 'POST',
       statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
-    });
-    return { providerCallId: call.sid };
+    };
+    return [
+      { label: 'full', options: { ...base, twiml, timeout: 30, timeLimit: p.maxDurationSeconds, ...callbacks } },
+      { label: 'no time limits', options: { ...base, twiml, ...callbacks } },
+      { label: 'TwiML by URL', options: { ...base, url, method: 'POST', ...callbacks } },
+      { label: 'TwiML by URL, completion callback only', options: { ...base, url, method: 'POST', statusCallback: callbacks.statusCallback, statusCallbackMethod: 'POST' } },
+      { label: 'minimal', options: { ...base, url } },
+    ];
+  }
+
+  async placeCall(p: PlaceCallParams) {
+    const attempts = this.attempts(p);
+    let lastError: unknown;
+    for (let i = this.acceptedAttempt; i < attempts.length; i++) {
+      const { label, options } = attempts[i]!;
+      try {
+        const call = await this.client.calls.create(options);
+        if (i > 0) this.log(`Twilio accepted call setup "${label}"`);
+        this.acceptedAttempt = i;
+        return { providerCallId: call.sid };
+      } catch (err) {
+        lastError = err;
+        if (!isTrialRestriction(err)) throw err;
+        this.log(`Twilio rejected call setup "${label}": ${(err as Error).message}`);
+      }
+    }
+    throw new Error(
+      `${(lastError as Error)?.message ?? 'Twilio rejected the call'}. Twilio's Limited trial blocks this call; upgrade the account to Full access in the Twilio console.`,
+    );
+  }
+
+  async getCallState(providerCallId: string) {
+    const call = await this.client.calls(providerCallId).fetch();
+    return mapTwilioStatus(call.status);
   }
 
   async hangup(providerCallId: string) {

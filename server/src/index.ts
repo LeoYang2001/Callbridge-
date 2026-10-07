@@ -67,7 +67,7 @@ const telephony = config.telephonyConfigured
       authToken: config.TWILIO_AUTH_TOKEN!,
       fromNumber: config.TWILIO_FROM_NUMBER!,
       publicBaseUrl: config.PUBLIC_BASE_URL!,
-    })
+    }, undefined, (msg) => app.log.warn(msg))
   : null;
 const analyzer = config.OPENAI_API_KEY ? new OpenAIAnalyzer(config.OPENAI_API_KEY, config.ANALYSIS_MODEL) : null;
 

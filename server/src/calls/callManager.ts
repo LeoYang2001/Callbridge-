@@ -90,6 +90,11 @@ export class CallManager {
     return true;
   }
 
+  /** Stream token for a live call (used to serve its TwiML by URL). */
+  streamTokenFor(callId: string): string | null {
+    return this.sessions.get(callId)?.streamToken ?? null;
+  }
+
   get activeCount() {
     return this.sessions.size;
   }

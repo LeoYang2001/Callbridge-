@@ -18,6 +18,8 @@ export interface TelephonyProvider {
   readonly name: string;
   placeCall(params: PlaceCallParams): Promise<{ providerCallId: string }>;
   hangup(providerCallId: string): Promise<void>;
+  /** Current call state, polled as a fallback when status callbacks are delayed or disabled. */
+  getCallState?(providerCallId: string): Promise<TelephonyCallState | null>;
 }
 
 /** Normalized provider call states. */
