@@ -1,5 +1,6 @@
 import { timingSafeEqual } from 'node:crypto';
 import type { CallRecord, CallRequest } from '../../../shared/types';
+import { displayPhone } from '../../../shared/phone';
 import { findSensitiveData } from '../policy/sensitive';
 import type { MediaTransport, TelephonyCallState } from '../providers/telephony/types';
 import { blockedReason, normalizePhone } from '../util/phone';
@@ -41,7 +42,7 @@ export class CallManager {
     const blocked = blockedReason(to);
     if (blocked) throw new CallRejectedError(`This number cannot be called: ${blocked}.`);
     if (this.opts.allowedDestinations && !this.opts.allowedDestinations.includes(to)) {
-      throw new CallRejectedError('This number is not on the allowlist (ALLOWED_DESTINATIONS) for this deployment.', 403);
+      throw new CallRejectedError(`${displayPhone(to)} is not on the allowlist (ALLOWED_DESTINATIONS) for this deployment.`, 403);
     }
 
     const request: CallRequest = { ...input, to };
