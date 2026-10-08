@@ -14,7 +14,8 @@
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSSpeechRecognitionUsageDescription": "CallBridge shows your words as you speak, so you can see exactly what the assistant will get.",
-        "NSMicrophoneUsageDescription": "CallBridge uses the microphone while you hold the talk button."
+        "NSMicrophoneUsageDescription": "CallBridge uses the microphone while you hold the talk button.",
+        "NSPhotoLibraryUsageDescription": "CallBridge doesn't use your photos. This is required by a system library the app includes."
       },
       "bitcode": false
     },
