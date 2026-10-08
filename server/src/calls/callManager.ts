@@ -4,7 +4,7 @@ import { displayPhone } from '../../../shared/phone';
 import { findSensitiveData, sensitiveTextReason } from '../policy/sensitive';
 import type { MediaTransport, TelephonyCallState } from '../providers/telephony/types';
 import { blockedReason, normalizePhone } from '../util/phone';
-import { CallSession, newCallId, newCallRecord, type CallSessionDeps } from './callSession';
+import { CallSession, newCallId, newCallRecord, type CallSessionDeps, type ListenEvent } from './callSession';
 import type { CallStore } from './store';
 
 export class CallRejectedError extends Error {
@@ -112,6 +112,11 @@ export class CallManager {
     if (sensitive) return { error: `Not sent: ${sensitive}. The assistant must never be given that.`, status: 422 };
     session.sendUserMessage(text);
     return null;
+  }
+
+  /** Live audio of a call in progress, or null if it isn't live. */
+  listen(callId: string, fn: (event: ListenEvent) => void): (() => void) | null {
+    return this.sessions.get(callId)?.listen(fn) ?? null;
   }
 
   /** Hangs up a live call at the user's request. Returns false if it isn't live. */

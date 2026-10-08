@@ -86,6 +86,8 @@ export const answerQuestion = (s: Settings, callId: string, questionId: string, 
 export const sendCallMessage = (s: Settings, callId: string, text: string) =>
   postJson<{ ok: boolean }>(s, `/api/calls/${callId}/messages`, { text });
 
+export const listenTicket = (s: Settings, callId: string) => postJson<{ ticket: string }>(s, `/api/calls/${callId}/listen`, {});
+
 export const endCall = (s: Settings, id: string) => postJson<{ ok: boolean }>(s, `/api/calls/${id}/hangup`, {});
 
 /** One poll may take at most this long; a request frozen while the tab was in the background is dropped. */

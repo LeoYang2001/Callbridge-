@@ -40,6 +40,13 @@ const TERMINAL_FAILURES: Partial<Record<TelephonyCallState, CallResult['status']
 /** μ-law at 8 kHz: one byte per sample → 8 bytes per millisecond. */
 const ULAW_BYTES_PER_MS = 8;
 
+/**
+ * Live audio for the user's app: "them" is the other party (as Twilio sends it), "ai" is what
+ * the assistant says (sent in bursts, faster than real time), "clear" drops queued AI audio after
+ * an interruption, "end" when the call is over. Audio is base64 G.711 μ-law, 8 kHz.
+ */
+export type ListenEvent = { t: 'them' | 'ai'; a: string } | { t: 'clear' | 'end' };
+
 /** Default hold while the user answers a question in the app. */
 const DEFAULT_HOLD_MS = 60_000;
 /** While they hold, check in this often so the silence doesn't make them hang up. */
@@ -106,6 +113,8 @@ export class CallSession {
   private lastTurn: 'held' | 'quiet' | null = null;
   private readonly turnByItem = new Map<string, 'held' | 'quiet'>();
   private readonly cancelledItems = new Set<string>();
+  /** Apps listening to the call live (μ-law audio, both sides). */
+  private readonly listeners = new Set<(event: ListenEvent) => void>();
   /** Words they said while we kept talking; answered once we finish. */
   private heldText: string | null = null;
 
@@ -256,6 +265,7 @@ export class CallSession {
     transport.on('audio', (payload, ts) => {
       this.latestMediaTs = ts;
       this.gate.observe(payload, ts);
+      this.emitListen({ t: 'them', a: payload });
       this.agent?.sendAudio(payload);
     });
     transport.on('mark', (itemId) => {
@@ -305,6 +315,7 @@ export class CallSession {
         }
       }
       this.transport.sendAudio(payload);
+      this.emitListen({ t: 'ai', a: payload });
       this.currentItemSentMs += b64Bytes(payload) / ULAW_BYTES_PER_MS;
       this.transport.sendMark(itemId);
       this.unplayed.set(itemId, (this.unplayed.get(itemId) ?? 0) + 1);
@@ -447,11 +458,24 @@ export class CallSession {
       });
     }
     this.transport?.clearAudio();
+    this.emitListen({ t: 'clear' });
     this.update((r) => r.metrics.interruptions++);
     this.log('ai.interrupted', `${Math.round(heardMs)}ms heard · ${speechMs}ms speech`);
     // Twilio echoes marks for cleared audio; forgetting the items makes those echoes no-ops.
     this.unplayed.clear();
     this.currentItemId = null;
+  }
+
+  // ───────────────────────────── live listening ─────────────────────────────
+
+  /** The user's app listens to the call live. Returns a function that stops listening. */
+  listen(fn: (event: ListenEvent) => void): () => void {
+    this.listeners.add(fn);
+    return () => this.listeners.delete(fn);
+  }
+
+  private emitListen(event: ListenEvent) {
+    for (const fn of this.listeners) fn(event);
   }
 
   // ───────────────────────────── human in the loop ─────────────────────────────
@@ -701,6 +725,8 @@ export class CallSession {
   async finalize(failure?: CallResult['status']) {
     if (this.finalizing) return;
     this.finalizing = true;
+    this.emitListen({ t: 'end' });
+    this.listeners.clear();
     for (const t of this.timers) clearTimeout(t);
     this.timers.clear();
     // Questions still waiting when the call ends become follow-ups for the user.

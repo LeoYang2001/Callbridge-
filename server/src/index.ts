@@ -22,6 +22,7 @@ import { registerAuthRoutes } from './routes/auth';
 import { GooglePlaces } from './places/places';
 import { OpenAIResearcher } from './research/researcher';
 import { registerResearchRoutes } from './routes/research';
+import { registerListenRoutes } from './routes/listen';
 import { registerIntakeRoutes } from './routes/intake';
 import { registerTwilioRoutes } from './routes/twilio';
 
@@ -132,6 +133,7 @@ const checkDeps = {
 };
 registerApiRoutes(app, { config, manager, store, checkDeps, db });
 registerIntakeRoutes(app, { config, checkDeps, store });
+registerListenRoutes(app, { manager, store });
 registerResearchRoutes(app, {
   researcher: config.OPENAI_API_KEY
     ? new OpenAIResearcher(

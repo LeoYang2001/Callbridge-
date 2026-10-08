@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import type { CallRecord, CallStatus, UserAnswer, UserQuestion } from '../../shared/types';
 import { displayPhone } from '../../shared/phone';
 import { chime } from './alerts';
+import { startListening, type Listener } from './listen';
+import type { Settings } from './settings';
 
 const STATUS_TEXT: Record<CallStatus, string> = {
   preparing: 'Preparing…',
@@ -51,14 +53,16 @@ interface Props {
   onAnswer?: (questionId: string, answer: UserAnswer) => Promise<void>;
   /** Send the assistant a message mid-call. */
   onMessage?: (text: string) => Promise<void>;
+  /** For listening live (omitted in demo mode). */
+  settings?: Settings;
 }
 
-export function CallScreen({ call, demo, error, onDone, onFollowUp, onEnd, onAnswer, onMessage }: Props) {
+export function CallScreen({ call, demo, error, onDone, onFollowUp, onEnd, onAnswer, onMessage, settings }: Props) {
   const finished = call.status === 'completed' || call.status === 'failed';
-  return finished && call.result ? <ResultScreen call={call} demo={demo} onDone={onDone} onFollowUp={onFollowUp} /> : <LiveCall call={call} demo={demo} error={error} onDone={onDone} onEnd={onEnd} onAnswer={onAnswer} onMessage={onMessage} />;
+  return finished && call.result ? <ResultScreen call={call} demo={demo} onDone={onDone} onFollowUp={onFollowUp} /> : <LiveCall call={call} demo={demo} error={error} onDone={onDone} onEnd={onEnd} onAnswer={onAnswer} onMessage={onMessage} settings={settings} />;
 }
 
-function LiveCall({ call, demo, error, onDone, onEnd, onAnswer, onMessage }: Props) {
+function LiveCall({ call, demo, error, onDone, onEnd, onAnswer, onMessage, settings }: Props) {
   const now = useNow(true);
   const [ending, setEnding] = useState(false);
   const canEnd = Boolean(onEnd) && !demo && ['preparing', 'dialing', 'connected', 'in_progress'].includes(call.status);
@@ -86,6 +90,8 @@ function LiveCall({ call, demo, error, onDone, onEnd, onAnswer, onMessage }: Pro
       </div>
 
       {(error || call.status === 'failed') && <div className="alert">{error ?? call.failureReason ?? 'The call failed.'}</div>}
+
+      {settings && !demo && <ListenButton settings={settings} call={call} />}
 
       {call.request.involvement === 'handoff' ? (
         live && <div className="handoff-note">🤖 Handed off: the assistant won't interrupt you. You'll get the result when the call ends.</div>
@@ -124,6 +130,52 @@ function LiveCall({ call, demo, error, onDone, onEnd, onAnswer, onMessage }: Pro
 
 const fmtSlot = (date?: string, time?: string) =>
   date && time ? `${new Date(`${date}T${time}:00`).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })} ${time}` : null;
+
+/** Hear the call live: both sides, about a quarter second behind. Listen-only. */
+function ListenButton({ settings, call }: { settings: Settings; call: CallRecord }) {
+  const listener = useRef<Listener | null>(null);
+  const [on, setOn] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+  const active = ['dialing', 'connected', 'in_progress'].includes(call.status);
+  useEffect(() => () => listener.current?.stop(), []);
+  useEffect(() => {
+    if (!active && listener.current) {
+      listener.current.stop();
+      listener.current = null;
+      setOn(false);
+    }
+  }, [active]);
+  if (!active && !on) return null;
+
+  const toggle = async () => {
+    if (on) {
+      listener.current?.stop();
+      listener.current = null;
+      setOn(false);
+      return;
+    }
+    setNote(null);
+    try {
+      listener.current = await startListening(settings, call.id, (reason) => {
+        listener.current = null;
+        setOn(false);
+        setNote(reason);
+      });
+      setOn(true);
+    } catch (e) {
+      setNote((e as Error).message);
+    }
+  };
+
+  return (
+    <div className="listen">
+      <button type="button" className={`listen-btn ${on ? 'on' : ''}`} onClick={() => void toggle()} aria-pressed={on}>
+        {on ? '🔊 Listening live · tap to stop' : '🎧 Listen live'}
+      </button>
+      {note && <span className="muted">{note}</span>}
+    </div>
+  );
+}
 
 /** Lets the user steer mid-call: "tell them I'll be 10 minutes late". */
 function MessageBox({ onMessage }: { onMessage: (text: string) => Promise<void> }) {

@@ -458,6 +458,32 @@ describe('CallSession (simulated dentist call)', () => {
     });
   });
 
+  it('streams both sides of the call to a listening app, with a clear on interruption and an end', async () => {
+    const { store, agent, telephony, manager } = setup();
+    const created = manager.startCall(dentistRequest());
+    await waitFor(() => telephony.placed.length === 1);
+    const transport = new FakeTransport();
+    manager.attachMedia(created.id, (manager as any).sessions.get(created.id).streamToken, transport);
+    const heard: string[] = [];
+    const stop = manager.listen(created.id, (e) => heard.push('a' in e ? `${e.t}:${e.a}` : e.t))!;
+    transport.emit('audio', 'THEM1', 20);
+    agent.emit('utteranceStarted', 'a1', 'assistant');
+    agent.emit('audio', 'a1', 'AI1');
+    agent.emit('speechStarted');
+    frames(transport, 20, 30);
+    await waitFor(() => heard.includes('clear'));
+    stop();
+    transport.emit('audio', 'AFTER', 999);
+    expect(heard.slice(0, 2)).toEqual(['them:THEM1', 'ai:AI1']);
+    expect(heard).not.toContain('them:AFTER');
+    const again: string[] = [];
+    manager.listen(created.id, (e) => again.push(e.t));
+    manager.handleTelephonyState(created.id, 'completed');
+    await waitFor(() => store.get(created.id)!.status === 'completed', 8000);
+    expect(again).toContain('end');
+    expect(manager.listen(created.id, () => {})).toBeNull();
+  });
+
   it('hangs up when the user taps End call', async () => {
     const { store, telephony, manager } = setup();
     const created = manager.startCall(dentistRequest());

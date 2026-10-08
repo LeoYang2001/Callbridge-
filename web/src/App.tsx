@@ -297,6 +297,7 @@ export function App() {
             error={error}
             onDone={reset}
             onFollowUp={canTalk && !call.id.startsWith('demo-') ? () => followUpOn(call) : undefined}
+            settings={settings}
             onMessage={async (text) => {
               await sendCallMessage(settings, call.id, text);
             }}
