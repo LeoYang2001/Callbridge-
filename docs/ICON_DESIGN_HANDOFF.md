@@ -59,9 +59,13 @@ These are only prompts; the direction is yours.
 
 ## 6. What exists today
 
-- **The current icon is a placeholder, not a brand.** It's a blue (`#2557e8`) rounded square with a white handset and two small green dots (`web/public/icon.svg`). Replace it freely.
+- **The current icons are placeholders, not a brand.**
+  - The web app uses a blue (`#2557e8`) square with a white handset and two small green dots (`web/public/icon.svg`).
+  - The new iOS/Android app (`mobile/`, built with Expo) still shows Expo's default template icon.
+  
+  Replace both freely.
 - **The app's colors can change.** The UI uses an accent blue (`#2557e8` light, `#6f8fff` dark) and a "call" green (`#1a9e4b` / `#34c46b`) for the Start-call button and live-call indicators. The app will adopt whatever palette the icon sets; tell us the values.
-- **Byte2Bite is a separate business.** The founder's other company builds restaurant websites, with its own design system (Inter, a "spruce" accent). CallBridge doesn't need to resemble it unless the founder decides otherwise (see §10).
+- **Byte2Bite is a separate business.** The founder's other company builds restaurant websites, with its own design system (Inter, a "spruce" accent). CallBridge doesn't need to resemble it unless the founder decides otherwise (see §12).
 
 ## 7. iOS requirements
 
@@ -85,7 +89,19 @@ Check these against Apple's current Human Interface Guidelines for app icons bef
 
   Aim for **one clear silhouette** that is recognizable as a 40 px thumbnail.
 
-## 8. Also needed: web app icons
+## 8. Android and splash screen
+
+The mobile app is built with Expo, so the same project also ships on Android. From the same design:
+
+- **Android adaptive icon:** three 1024 × 1024 PNGs:
+  - **Foreground:** the mark, transparent around it.
+  - **Background:** a solid color or simple pattern.
+  - **Monochrome:** a one-color silhouette, which Android tints for themed icons.
+
+  Android crops these into circles, squircles and other shapes, and animates them. Keep the mark inside the central 66% of the canvas.
+- **Splash screen:** a simple version of the mark on a solid background color. It's shown at about 76 pt wide while the app loads. Also tell us the background color.
+
+## 9. Also needed: web app icons
 
 The same app runs in the browser at callbridge.byte2bite.tech and can be added to a home screen. From the same design:
 
@@ -96,7 +112,7 @@ The same app runs in the browser at callbridge.byte2bite.tech and can be added t
 
 These replace the files in `web/public/`.
 
-## 9. Deliverables
+## 10. Deliverables
 
 **Round 1: concepts**
 - 2 or 3 directions, roughly drawn.
@@ -104,13 +120,24 @@ These replace the files in `web/public/`.
 
 **Round 2: final** (for the chosen direction)
 1. A layered source file (Figma, Sketch or Illustrator), with each layer named.
-2. Exported layers for Icon Composer: background, plus 1–3 foreground layers, as SVG or 1024 px PNG.
+2. The **Icon Composer file** (`.icon`), if you have Apple's Icon Composer. It's the preferred iOS deliverable, and the app uses it directly. If you don't have it, send the exported layers instead (background plus 1–3 foreground layers, as SVG or 1024 px PNG), and engineering will assemble the file.
 3. Flat 1024 × 1024 PNGs for Default, Dark and Tinted.
-4. A small-size check sheet: 180, 120, 87, 60 and 40 px, in each appearance.
-5. The web set from §8.
-6. The color values, with a note on which should become the app's accent.
+4. The Android adaptive-icon layers and the splash image from §8.
+5. A small-size check sheet: 180, 120, 87, 60 and 40 px, in each appearance.
+6. The web set from §9.
+7. The color values, with a note on which should become the app's accent.
 
-## 10. How we'll judge it
+**Where the files go** (for engineering):
+
+| File | Replaces |
+| --- | --- |
+| Icon Composer file | `mobile/assets/expo.icon` |
+| 1024 px Default PNG | `mobile/assets/images/icon.png` (fallback) |
+| Android foreground / background / monochrome | `mobile/assets/images/android-icon-*.png`, plus `adaptiveIcon.backgroundColor` in `mobile/app.json` |
+| Splash image and color | `mobile/assets/images/splash-icon.png`, plus the `expo-splash-screen` `backgroundColor` in `mobile/app.json` |
+| Web icons | `web/public/icon.svg`, `icon-180.png`, `icon-192.png`, `icon-512.png`, and `mobile/assets/images/favicon.png` |
+
+## 11. How we'll judge it
 
 - **Recognizable at 40 px.**
 - **Never read as Phone, Messages or Translate** at a glance.
@@ -119,7 +146,7 @@ These replace the files in `web/public/`.
 - **No letters, flags or robot clichés.**
 - **Calm and trustworthy,** so you'd hand it a doctor's appointment.
 
-## 11. Open questions for the founder
+## 12. Open questions for the founder
 
 1. Is **CallBridge** the final name for the App Store?
 2. Should CallBridge show any family resemblance to Byte2Bite, or stand alone?
