@@ -58,9 +58,18 @@ const TURN_LEAD_IN_MS = 300;
 
 const sameLanguage = (a: string, b: string) => (languageCode(a) ?? a.toLowerCase()) === (languageCode(b) ?? b.toLowerCase());
 const hasWords = (text: string) => /[\p{L}\p{N}]/u.test(text);
-/** More than an acknowledgment: three or more words, or four or more CJK characters. */
-const isSubstantive = (text: string) =>
-  text.split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w)).length >= 3 || (text.match(/\p{Script=Han}/gu)?.length ?? 0) >= 4;
+/** Acknowledgments that mean "I'm listening", in the languages the app offers. */
+const BACKCHANNELS = new Set([
+  'ok', 'okay', 'mm', 'mmm', 'hm', 'hmm', 'mhm', 'mmhmm', 'uhhuh', 'uh', 'huh', 'yeah', 'yep', 'yes', 'right', 'sure', 'alright', 'gotcha', 'cool',
+  '嗯', '嗯嗯', '好', '好的', '对', '对对', '是', '是的', '哦', '噢', '行',
+  'はい', 'ええ', 'うん', 'そう', 'そうですか', 'なるほど', 'ああ', 'あー',
+  'sí', 'si', 'claro', 'vale', 'ajá', 'oui', 'ja', '네', '예', '응', 'vâng', 'dạ', 'oo', 'opo', 'да', 'ага',
+]);
+/** Only acknowledgments ("okay", "mm-hm", "嗯", "はい"); anything else (a greeting, a question) deserves an answer. */
+const isBackchannel = (text: string) => {
+  const tokens = text.toLowerCase().split(/[\s\p{P}]+/u).filter(Boolean);
+  return tokens.length > 0 && tokens.length <= 3 && tokens.every((t) => BACKCHANNELS.has(t.replace(/-/g, '')));
+};
 const b64Bytes = (b64: string) => Math.floor((b64.length * 3) / 4) - (b64.endsWith('==') ? 2 : b64.endsWith('=') ? 1 : 0);
 
 /**
@@ -349,7 +358,7 @@ export class CallSession {
         if (turn === 'quiet' && hasWords(clean)) {
           if (this.aiSpeaking()) this.heldText = clean;
           else this.respond();
-        } else if (turn === 'held' && isSubstantive(clean)) {
+        } else if (turn === 'held' && hasWords(clean) && !isBackchannel(clean)) {
           this.heldText = clean;
           this.answerHeldTurn();
         }

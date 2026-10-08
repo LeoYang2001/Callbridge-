@@ -187,6 +187,8 @@ export class OpenAIRealtimeAgent implements VoiceAgent {
         this.emitter.emit('toolCall', ev.call_id, ev.name, ev.arguments ?? '{}');
         break;
       case 'error':
+        // Cancelling a response that already finished is harmless (a barge-in raced its end).
+        if (ev.error?.code === 'response_cancel_not_active') break;
         if (this.awaitingCreated && ev.error?.code !== 'conversation_already_has_active_response') {
           this.awaitingCreated = false;
           this.responseActive = false;

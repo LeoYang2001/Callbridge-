@@ -293,6 +293,20 @@ describe('CallSession (simulated dentist call)', () => {
       expect(c.get().events.map((e) => e.type)).toContain('turn.held');
     });
 
+    it('answers a greeting said over the assistant, but not "はい" or "嗯"', async () => {
+      for (const [said, answered] of [['こんにちは', true], ['はい', false], ['嗯', false], ['Okay, sure.', false], ['Hello?', true]] as const) {
+        const c = await connected();
+        c.agent.emit('speechStarted');
+        c.advance(30, SILENT);
+        c.agent.emit('speechStopped');
+        c.agent.emit('utteranceStarted', 'c2', 'counterpart');
+        c.agent.emit('transcript', 'c2', 'counterpart', said);
+        c.agent.emit('responseDone');
+        c.transport.emit('mark', 'a1');
+        expect(c.agent.responses, said).toBe(c.responses + (answered ? 1 : 0));
+      }
+    });
+
     it('answers a real question asked over the assistant once it finishes', async () => {
       const c = await connected();
       // Quiet line: the gate can't confirm speech, so the assistant isn't cut off...

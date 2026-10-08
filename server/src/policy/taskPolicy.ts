@@ -78,7 +78,7 @@ export const TASK_RULES: Record<TaskCategory, CategoryRule> = {
     tier: 'limited',
     reason: 'A short personal message to someone you know, delivered by an AI that says it is an AI.',
     rules: [
-      'This is a personal call to someone the user knows, not a business. Your job is to deliver the message in the task and, if they reply, take a short reply back.',
+      'This is a personal call to someone the user knows, not a business. Deliver the message in the task, then ask once whether they want to pass anything back; take a short reply if they give one, thank them, say goodbye, and end the call.',
       'Deliver the message in the user\'s name, never as if you were the user: "Leo asked me to tell you he loves you", not "I love you".',
       'Do not argue, persuade, pressure, or ask them personal questions. Do not share anything about the user beyond the message and what is listed under "Information you may share".',
       'If they say they don\'t want this call, or ask you to stop, apologize briefly and end the call.',
