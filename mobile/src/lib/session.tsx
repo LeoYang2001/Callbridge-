@@ -89,6 +89,23 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   return <SessionContext.Provider value={api}>{children}</SessionContext.Provider>;
 }
 
+/**
+ * Development only: a signed-in session with sample data and no server, so screens can be
+ * previewed without signing in (see app/dev/preview.tsx).
+ */
+export function PreviewSessionProvider({ me, children }: { me: Me; children: ReactNode }) {
+  const conn = { serverUrl: 'https://preview.invalid', sessionToken: 'preview' };
+  const api: SessionApi = {
+    state: { status: 'signedIn', me, conn },
+    conn,
+    signedIn: async () => {},
+    signOut: async () => {},
+    setMe: () => {},
+    refreshMe: async () => {},
+  };
+  return <SessionContext.Provider value={api}>{children}</SessionContext.Provider>;
+}
+
 export function useSession() {
   const ctx = useContext(SessionContext);
   if (!ctx) throw new Error('useSession must be used inside SessionProvider');

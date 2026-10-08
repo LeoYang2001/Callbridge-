@@ -61,7 +61,7 @@ export function HoldToTalk({
           </Animated.View>
         </Pressable>
       </View>
-      <Text style={[type.small, { color: holding ? color.blue : color.secondary, fontWeight: '600' }]}>{holding ? 'Release to send' : label}</Text>
+      <Text style={[type.small, { color: color.blue, fontWeight: '600' }]}>{holding ? 'Release to send' : label}</Text>
     </View>
   );
 }

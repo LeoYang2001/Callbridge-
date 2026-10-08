@@ -54,8 +54,8 @@ function PhoneStep({ f }: { f: Form }) {
       {f.error ? <Text style={[type.small, { color: color.redText, marginBottom: 10 }]}>{f.error}</Text> : null}
       <PillButton title="Continue" onPress={f.sendCode} disabled={!f.phoneComplete} busy={f.busy} />
       {__DEV__ && (
-        <Text style={[type.caption, { textAlign: 'center', marginTop: 14 }]} onPress={() => router.push('/dev/glow')}>
-          Glow gallery (dev)
+        <Text style={[type.caption, { textAlign: 'center', marginTop: 14 }]}>
+          <Text onPress={() => router.push('/dev/glow')}>Glow gallery</Text> · <Text onPress={() => router.push('/dev/preview')}>Screen preview</Text> (dev)
         </Text>
       )}
     </View>

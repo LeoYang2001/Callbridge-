@@ -45,6 +45,7 @@ function Routes() {
             <Stack.Screen name="errands" />
           </Stack.Protected>
           <Stack.Screen name="dev/glow" />
+          <Stack.Screen name="dev/preview" />
           <Stack.Protected guard={!signedIn}>
             <Stack.Screen name="sign-in" />
           </Stack.Protected>
