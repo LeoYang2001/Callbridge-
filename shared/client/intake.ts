@@ -13,12 +13,26 @@ import { checkIntake, research, updateProfile, type Connection } from './api';
  * the call is placed.
  */
 
-export type IntakeStatus = 'connecting' | 'listening' | 'thinking' | 'searching' | 'speaking' | 'ended' | 'error';
+/**
+ * "listening": the user is speaking (open mic) or holding the talk button (push-to-talk);
+ * "yourTurn": push-to-talk only, waiting for the user to hold the button or tap a chip.
+ */
+export type IntakeStatus = 'connecting' | 'listening' | 'yourTurn' | 'thinking' | 'searching' | 'speaking' | 'ended' | 'error';
 
 export interface IntakeLine {
   id: string;
   role: 'user' | 'assistant';
   text: string;
+  /** Still being transcribed or spoken. */
+  partial?: boolean;
+}
+
+/** The question the assistant just asked, with answers to tap (push-to-talk). */
+export interface IntakeChoices {
+  question: string;
+  questionEn?: string;
+  choices: string[];
+  topic?: string;
 }
 
 export interface IntakeHandlers {
@@ -32,6 +46,8 @@ export interface IntakeHandlers {
   onProfile?: (me: Me) => void;
   /** What the research agent found: an answer, places to show as cards, and sources. */
   onResearch?: (result: ResearchResult) => void;
+  /** Push-to-talk: the question just asked and its answer chips. */
+  onChoices?: (choices: IntakeChoices) => void;
 }
 
 export interface IntakeOptions {
@@ -43,6 +59,8 @@ export interface IntakeOptions {
   followUpOf?: string;
   /** Seeds the draft, e.g. with the previous call's request. */
   initialDraft?: IntakeDraft;
+  /** Push-to-talk turns and answer chips (the mobile app). */
+  pushToTalk?: boolean;
 }
 
 export interface IntakeSessionControls {
@@ -52,6 +70,12 @@ export interface IntakeSessionControls {
   setMic: (on: boolean) => Promise<void>;
   /** Mutes or unmutes the assistant's voice; its words still appear on screen. */
   setSpeaker: (on: boolean) => void;
+  /** Push-to-talk: the user pressed the talk button (interrupts the assistant). */
+  startTurn?: () => Promise<void>;
+  /** Push-to-talk: released; sends what they said. */
+  endTurn?: () => void;
+  /** Push-to-talk: a tap too short to be speech; drops it. */
+  cancelTurn?: () => void;
   stop: () => void;
 }
 
@@ -84,13 +108,18 @@ export function createIntakeConversation(deps: {
   isOpen: () => boolean;
   /** The phone's location for "nearest …" searches, or null if unknown or not allowed. */
   locate: Locate;
+  pushToTalk?: boolean;
 }) {
   const { conn, ctx, handlers: h, send } = deps;
   let draft: IntakeDraft = { ...deps.initialDraft };
   const partial = new Map<string, string>();
+  const heard = new Map<string, string>();
   /** Typed before the data channel opened; sent as soon as it does. */
   const pendingTexts: string[] = [];
+  /** Tool calls in flight, by call id: answered once the whole assistant turn is done. */
+  const toolRuns = new Map<string, Promise<void>>();
   let textCount = 0;
+  const idle = (): IntakeStatus => (deps.pushToTalk ? 'yourTurn' : 'listening');
 
   const pushText = (text: string) => {
     send({ type: 'conversation.item.create', item: { type: 'message', role: 'user', content: [{ type: 'input_text', text }] } });
@@ -158,6 +187,16 @@ export function createIntakeConversation(deps: {
         return { saved: false, error: (e as Error).message };
       }
     }
+    if (name === 'show_choices') {
+      const choices = Array.isArray(args.choices) ? args.choices.map(String).filter(Boolean).slice(0, 4) : [];
+      h.onChoices?.({
+        question: String(args.question ?? ''),
+        questionEn: typeof args.question_en === 'string' ? args.question_en : undefined,
+        choices,
+        topic: typeof args.topic === 'string' ? args.topic : undefined,
+      });
+      return { shown: true };
+    }
     if (name === 'finish_intake' || name === 'finish_profile') {
       h.onReady();
       return { shown: true };
@@ -165,9 +204,22 @@ export function createIntakeConversation(deps: {
     return { error: `Unknown tool ${name}` };
   };
 
-  const reply = (callId: string, output: unknown) => {
-    send({ type: 'conversation.item.create', item: { type: 'function_call_output', call_id: callId, output: JSON.stringify(output) } });
-    send({ type: 'response.create' });
+  const output = (callId: string, value: unknown) =>
+    send({ type: 'conversation.item.create', item: { type: 'function_call_output', call_id: callId, output: JSON.stringify(value) } });
+
+  /**
+   * An assistant turn ended. If it called tools, the assistant answers their results in one
+   * new turn. Showing answer chips alongside a spoken question needs no answer; chips alone
+   * (nothing said yet) do.
+   */
+  const turnDone = async (items: { type?: string; name?: string; call_id?: string }[]) => {
+    const calls = items.filter((i) => i.type === 'function_call');
+    if (!calls.length) return;
+    const spoke = items.some((i) => i.type === 'message');
+    const others = calls.filter((c) => c.name !== 'show_choices');
+    await Promise.all(calls.map((c) => toolRuns.get(c.call_id ?? '') ?? Promise.resolve()));
+    calls.forEach((c) => toolRuns.delete(c.call_id ?? ''));
+    if (others.length || !spoke) send({ type: 'response.create' });
   };
 
   return {
@@ -175,6 +227,27 @@ export function createIntakeConversation(deps: {
     opened() {
       if (pendingTexts.length) pendingTexts.splice(0).forEach(pushText);
       else send({ type: 'response.create' });
+    },
+
+    /** Push-to-talk: the button went down. Stops the assistant and starts a fresh turn. */
+    startTurn() {
+      send({ type: 'response.cancel' });
+      send({ type: 'output_audio_buffer.clear' });
+      send({ type: 'input_audio_buffer.clear' });
+      h.onStatus('listening');
+    },
+
+    /** Push-to-talk: the button came up. Sends the turn and asks for the answer. */
+    endTurn() {
+      send({ type: 'input_audio_buffer.commit' });
+      send({ type: 'response.create' });
+      h.onStatus('thinking');
+    },
+
+    /** Push-to-talk: a tap too short to be speech. Drops it and waits again. */
+    cancelTurn() {
+      send({ type: 'input_audio_buffer.clear' });
+      h.onStatus(idle());
     },
 
     sendText(text: string) {
@@ -191,6 +264,12 @@ export function createIntakeConversation(deps: {
         return;
       }
       switch (ev.type) {
+        case 'conversation.item.input_audio_transcription.delta': {
+          const text = (heard.get(ev.item_id) ?? '') + (ev.delta ?? '');
+          heard.set(ev.item_id, text);
+          if (text.trim()) h.onLine({ id: ev.item_id, role: 'user', text: text.trim(), partial: true });
+          break;
+        }
         case 'input_audio_buffer.speech_started':
           h.onStatus('listening');
           break;
@@ -202,15 +281,16 @@ export function createIntakeConversation(deps: {
           break;
         case 'output_audio_buffer.stopped':
         case 'output_audio_buffer.cleared':
-          h.onStatus('listening');
+          h.onStatus(idle());
           break;
         case 'conversation.item.input_audio_transcription.completed':
+          heard.delete(ev.item_id);
           if (ev.transcript?.trim()) h.onLine({ id: ev.item_id, role: 'user', text: ev.transcript.trim() });
           break;
         case 'response.output_audio_transcript.delta': {
           const text = (partial.get(ev.item_id) ?? '') + (ev.delta ?? '');
           partial.set(ev.item_id, text);
-          h.onLine({ id: ev.item_id, role: 'assistant', text });
+          h.onLine({ id: ev.item_id, role: 'assistant', text, partial: true });
           break;
         }
         case 'response.output_audio_transcript.done':
@@ -218,10 +298,16 @@ export function createIntakeConversation(deps: {
           if (ev.transcript) h.onLine({ id: ev.item_id, role: 'assistant', text: ev.transcript });
           break;
         case 'response.function_call_arguments.done':
-          void runTool(ev.name, ev.arguments).then(
-            (output) => reply(ev.call_id, output),
-            (err: Error) => reply(ev.call_id, { error: err.message }),
+          toolRuns.set(
+            ev.call_id,
+            runTool(ev.name, ev.arguments).then(
+              (value) => void output(ev.call_id, value),
+              (err: Error) => void output(ev.call_id, { error: err.message }),
+            ),
           );
+          break;
+        case 'response.done':
+          void turnDone(ev.response?.output ?? []);
           break;
         case 'error':
           // Expected when typing interrupts nothing, or races a response that already started.

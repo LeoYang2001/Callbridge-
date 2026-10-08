@@ -23,12 +23,17 @@ function Routes() {
   }, [state.status]);
   if (state.status === 'loading') return null;
   const signedIn = state.status === 'signedIn';
+  // New accounts go through the profile interview first.
+  const onboarded = state.status === 'signedIn' && state.me.profile.onboarded;
   return (
     <ActiveCallProvider>
       <MenuProvider>
         {/* No headers and no tab bar: screens are transparent over the edge glow. */}
-        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' }, animation: 'fade' }}>
-          <Stack.Protected guard={signedIn}>
+        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' }, animation: 'none' }}>
+          <Stack.Protected guard={signedIn && !onboarded}>
+            <Stack.Screen name="onboarding" />
+          </Stack.Protected>
+          <Stack.Protected guard={onboarded}>
             <Stack.Screen name="index" />
             <Stack.Screen name="intake" />
             <Stack.Screen name="call/[id]" />

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { ScrollView, StyleSheet, View, type ViewStyle } from 'react-native';
+import Animated, { FadeIn } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 /**
@@ -15,12 +16,14 @@ export function Screen({ children, scroll = false, top, bottom, padding = 24, st
   ) : (
     <View style={[{ flex: 1, paddingHorizontal: padding }, style]}>{children}</View>
   );
+  // Screens are transparent over the glow, so a stack cross-fade would show both at once; each
+  // screen fades itself in instead (300 ms, as designed).
   return (
-    <View style={[s.root, { paddingTop: insets.top, paddingBottom: Math.max(insets.bottom, 12) }]}>
+    <Animated.View entering={FadeIn.duration(300)} style={[s.root, { paddingTop: insets.top, paddingBottom: Math.max(insets.bottom, 12) }]}>
       {top}
       {body}
       {bottom}
-    </View>
+    </Animated.View>
   );
 }
 

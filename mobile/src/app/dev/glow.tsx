@@ -2,6 +2,7 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import { useGlow } from '@/glow/GlowContext';
+import { useSession } from '@/lib/session';
 import type { GlowMode } from '@/glow/modes';
 import { type } from '@/theme/tokens';
 import { Chip, PillButton } from '@/ui/Button';
@@ -11,6 +12,7 @@ const MODES: GlowMode[] = ['idle', 'listen', 'speak', 'think', 'ready', 'ring', 
 
 /** Development only: every edge-glow mode, to compare with the prototype. */
 export default function GlowGallery() {
+  const signedIn = useSession().state.status === 'signedIn';
   const [mode, setMode] = useState<GlowMode>('idle');
   const [left, setLeft] = useState(30);
   useEffect(() => {
@@ -31,7 +33,7 @@ export default function GlowGallery() {
           ))}
         </View>
       </View>
-      <PillButton title="Back" kind="white" onPress={() => router.back()} />
+      <PillButton title="Back" kind="white" onPress={() => (router.canGoBack() ? router.back() : router.replace(signedIn ? '/' : '/sign-in'))} />
     </Screen>
   );
 }

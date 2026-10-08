@@ -18,6 +18,7 @@ import { Body, Button, Card, Choice, ErrorText, Field, Label, Row, Screen, Title
 const STATUS_TEXT = {
   connecting: 'Connecting…',
   listening: 'Listening',
+  yourTurn: 'Your turn',
   thinking: 'Thinking…',
   searching: 'Looking it up…',
   speaking: 'Speaking',

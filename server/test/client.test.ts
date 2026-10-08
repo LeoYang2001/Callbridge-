@@ -40,13 +40,48 @@ describe('intake conversation', () => {
     return { c, sent, drafts, lines, open: () => (isOpen = true) };
   }
 
-  it('keeps the draft from update_request and answers the tool call', async () => {
+  it('keeps the draft from update_request and answers once the assistant turn is done', async () => {
     const { c, sent, drafts } = conversation();
     c.handle(JSON.stringify({ type: 'response.function_call_arguments.done', name: 'update_request', call_id: 'f1', arguments: '{"counterpart_name":"Tabito","phone_number":"9015551234"}' }));
-    await vi.waitFor(() => expect(sent).toHaveLength(2));
+    await vi.waitFor(() => expect(sent).toHaveLength(1));
     expect(drafts.at(-1)).toEqual({ counterpartName: 'Tabito', phoneNumber: '9015551234' });
     expect(sent[0]).toMatchObject({ type: 'conversation.item.create', item: { type: 'function_call_output', call_id: 'f1', output: '{"saved":true}' } });
-    expect(sent[1]).toEqual({ type: 'response.create' });
+    c.handle(JSON.stringify({ type: 'response.done', response: { output: [{ type: 'message' }, { type: 'function_call', name: 'update_request', call_id: 'f1' }] } }));
+    await vi.waitFor(() => expect(sent.at(-1)).toEqual({ type: 'response.create' }));
+    expect(sent).toHaveLength(2);
+  });
+
+  it('shows answer chips without making the assistant speak again, unless it said nothing', async () => {
+    const sent: any[] = [];
+    const shown: unknown[] = [];
+    const chips = createIntakeConversation({
+      conn: { serverUrl: 'https://cb.test', sessionToken: 'tok' },
+      ctx: { userName: 'Leo', userLanguage: 'Chinese (Mandarin)', timezone: 'America/Chicago' },
+      handlers: { onStatus: () => {}, onLine: () => {}, onDraft: () => {}, onCheck: () => {}, onReady: () => {}, onChoices: (x) => shown.push(x) },
+      send: (e) => (sent.push(e), true),
+      isOpen: () => true,
+      locate: async () => null,
+      pushToTalk: true,
+    });
+    const args = JSON.stringify({ question: '您以前去过吗？', question_en: 'Have you been there before?', choices: ['是，老患者', '第一次去'], topic: '是否老患者？' });
+    chips.handle(JSON.stringify({ type: 'response.function_call_arguments.done', name: 'show_choices', call_id: 's1', arguments: args }));
+    chips.handle(JSON.stringify({ type: 'response.done', response: { output: [{ type: 'message' }, { type: 'function_call', name: 'show_choices', call_id: 's1' }] } }));
+    await vi.waitFor(() => expect(shown).toHaveLength(1));
+    expect(shown[0]).toEqual({ question: '您以前去过吗？', questionEn: 'Have you been there before?', choices: ['是，老患者', '第一次去'], topic: '是否老患者？' });
+    await new Promise((r) => setTimeout(r, 20));
+    expect(sent.filter((e) => e.type === 'response.create')).toHaveLength(0);
+
+    chips.handle(JSON.stringify({ type: 'response.function_call_arguments.done', name: 'show_choices', call_id: 's2', arguments: args }));
+    chips.handle(JSON.stringify({ type: 'response.done', response: { output: [{ type: 'function_call', name: 'show_choices', call_id: 's2' }] } }));
+    await vi.waitFor(() => expect(sent.filter((e) => e.type === 'response.create')).toHaveLength(1));
+  });
+
+  it('push-to-talk: clears on press, commits and asks for an answer on release', () => {
+    const { c, sent } = conversation();
+    c.startTurn();
+    expect(sent.map((e) => e.type)).toEqual(['response.cancel', 'output_audio_buffer.clear', 'input_audio_buffer.clear']);
+    c.endTurn();
+    expect(sent.slice(-2).map((e) => e.type)).toEqual(['input_audio_buffer.commit', 'response.create']);
   });
 
   it('sends what was typed before the channel opened, once it opens', () => {
@@ -65,7 +100,7 @@ describe('intake conversation', () => {
     vi.stubGlobal('fetch', fetch);
     const { c, sent } = conversation();
     c.handle(JSON.stringify({ type: 'response.function_call_arguments.done', name: 'research', call_id: 'r1', arguments: '{"question":"nearest taqueria"}' }));
-    await vi.waitFor(() => expect(sent).toHaveLength(2));
+    await vi.waitFor(() => expect(sent).toHaveLength(1));
     const [url, init] = fetch.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe('https://cb.test/api/research');
     expect(JSON.parse(init.body as string)).toMatchObject({ question: 'nearest taqueria', depth: 'quick', lat: 35.1, lng: -90 });
@@ -81,5 +116,13 @@ describe('device language', () => {
     expect(languageFromLocale('fil-PH')).toBe('Tagalog');
     expect(languageFromLocale('es-MX')).toBe('Spanish');
     expect(languageFromLocale('nl-NL')).toBe('English');
+  });
+});
+
+describe('app languages', () => {
+  it('gives every offered language a transcription hint except Hmong', async () => {
+    const { APP_LANGUAGES, languageCode } = await import('../../shared/languages');
+    expect(APP_LANGUAGES).toHaveLength(30);
+    expect(APP_LANGUAGES.filter((l) => !languageCode(l.name)).map((l) => l.name)).toEqual(['Hmong']);
   });
 });

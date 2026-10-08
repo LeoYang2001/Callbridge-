@@ -27,6 +27,7 @@ interface Props {
 const STATUS_TEXT: Record<IntakeStatus, string> = {
   connecting: 'Connecting…',
   listening: 'Listening',
+  yourTurn: 'Your turn',
   thinking: 'Thinking…',
   searching: 'Looking it up…',
   speaking: 'Speaking',

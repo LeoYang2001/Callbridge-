@@ -5,7 +5,8 @@ import { draftToRequest } from '../../../shared/intake';
 import { REALTIME_VOICES, type IntakeDraft, type IntakeSession } from '../../../shared/types';
 import { buildFollowUpSection, buildIntakeInstructions, checkRequest, INTAKE_TOOLS, type CheckDeps } from '../agent/intake';
 import { languageCode } from '../../../shared/languages';
-import { buildProfileInstructions, PROFILE_TOOLS } from '../agent/profileIntake';
+import { buildAppOnboardingInstructions, buildProfileInstructions, PROFILE_TOOLS } from '../agent/profileIntake';
+import { pushToTalkSection, SHOW_CHOICES_TOOL } from '../agent/pushToTalk';
 import type { CallStore } from '../calls/store';
 import { profileForPrompt } from '../profile/profile';
 import type { AppConfig } from '../config';
@@ -23,6 +24,8 @@ const SessionSchema = ContextSchema.extend({
   followUpOf: z.string().uuid().optional(),
   /** "profile" runs the profile interview instead of setting up a call. */
   mode: z.enum(['call', 'profile']).default('call'),
+  /** The mobile app: push-to-talk turns and answer chips (the web app keeps the open mic). */
+  pushToTalk: z.boolean().default(false),
 });
 
 /** The draft is model output relayed by the browser, so it's shape-checked like any input. */
@@ -67,10 +70,15 @@ export function registerIntakeRoutes(app: FastifyInstance, deps: { config: AppCo
     const previous = ctx.followUpOf ? store.getOrLoad(ctx.followUpOf) : undefined;
     if (ctx.followUpOf && previous?.userId !== req.user!.id) return reply.code(404).send({ error: 'That call is no longer on the server.' });
     const isProfile = ctx.mode === 'profile';
-    const instructions = isProfile
-      ? buildProfileInstructions(profile, ctx)
-      : buildIntakeInstructions({ ...ctx, today: localToday(ctx.timezone), profile: profileForPrompt(profile) }) +
-        (previous ? buildFollowUpSection(previous, ctx.userName, ctx.userLanguage) : '');
+    const ptt = ctx.pushToTalk;
+    const instructions =
+      (isProfile
+        ? ptt && !profile.onboarded
+          ? buildAppOnboardingInstructions(profile, ctx)
+          : buildProfileInstructions(profile, ctx)
+        : buildIntakeInstructions({ ...ctx, today: localToday(ctx.timezone), profile: profileForPrompt(profile) }) +
+          (previous ? buildFollowUpSection(previous, ctx.userName, ctx.userLanguage) : '')) + (ptt ? pushToTalkSection(ctx.userLanguage) : '');
+    const tools = [...(isProfile ? PROFILE_TOOLS : INTAKE_TOOLS), ...(ptt ? [SHOW_CHOICES_TOOL] : [])];
 
     const secret = await openai.realtime.clientSecrets.create({
       expires_after: { anchor: 'created_at', seconds: SECRET_TTL_SECONDS },
@@ -83,11 +91,12 @@ export function registerIntakeRoutes(app: FastifyInstance, deps: { config: AppCo
           input: {
             noise_reduction: { type: 'near_field' },
             transcription: { model: config.TRANSCRIPTION_MODEL, ...(languageCode(ctx.userLanguage) ? { language: languageCode(ctx.userLanguage) } : {}) },
-            turn_detection: { type: 'semantic_vad', eagerness: 'auto', create_response: true, interrupt_response: true },
+            // Push-to-talk: the app commits each turn when the button is released.
+            turn_detection: ptt ? null : { type: 'semantic_vad', eagerness: 'auto', create_response: true, interrupt_response: true },
           },
           output: { voice: ctx.voice ?? config.REALTIME_VOICE },
         },
-        tools: (isProfile ? PROFILE_TOOLS : INTAKE_TOOLS).map((t) => ({ type: 'function' as const, ...t })),
+        tools: tools.map((t) => ({ type: 'function' as const, ...t })),
         tool_choice: 'auto',
         ...(/^gpt-realtime-2/.test(config.REALTIME_MODEL) ? { reasoning: { effort: config.REALTIME_REASONING_EFFORT } } : {}),
       },

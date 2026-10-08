@@ -95,11 +95,7 @@ function BandRing({ band, width, height, spin, pulse, still }: { band: Band; wid
 
 function TraceRing({ trace, width, height, end }: { trace: Trace; width: number; height: number; end: SharedValue<number> }) {
   const R = radius.device - 2;
-  const path = useMemo(() => {
-    const p = Skia.Path.Make();
-    p.addRRect(rrect(rect(2, 2, width - 4, height - 4), R, R));
-    return p;
-  }, [width, height, R]);
+  const path = useMemo(() => Skia.Path.RRect(rrect(rect(2, 2, width - 4, height - 4), R, R)), [width, height, R]);
   return (
     <Path path={path} style="stroke" strokeWidth={trace.width} strokeCap="round" start={0} end={end}>
       {trace.blur ? <BlurMask blur={trace.blur} style="normal" respectCTM /> : null}

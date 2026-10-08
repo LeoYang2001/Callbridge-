@@ -43,9 +43,12 @@ async function openMic(): Promise<MediaStreamTrack> {
 
 export async function startIntake(conn: Connection, ctx: IntakeContext, h: IntakeHandlers, opts: IntakeOptions): Promise<IntakeSessionControls> {
   h.onStatus('connecting');
+  const ptt = Boolean(opts.pushToTalk);
   // Ask for the mic before minting the key, so a slow permission prompt can't outlast it.
+  // Push-to-talk keeps the track muted except while the talk button is held.
   let micTrack: MediaStreamTrack | null = opts.mic ? await openMic() : null;
-  const session = await createIntakeSession(conn, { ...ctx, followUpOf: opts.followUpOf, mode: opts.mode ?? 'call' });
+  if (micTrack && ptt) micTrack.enabled = false;
+  const session = await createIntakeSession(conn, { ...ctx, followUpOf: opts.followUpOf, mode: opts.mode ?? 'call', pushToTalk: ptt });
   routeAudioForVoiceChat();
 
   const pc = new RTCPeerConnection({});
@@ -69,6 +72,7 @@ export async function startIntake(conn: Connection, ctx: IntakeContext, h: Intak
     send: (event) => dc.readyState === 'open' && (dc.send(JSON.stringify(event)), true),
     isOpen: () => dc.readyState === 'open',
     locate: currentLocation,
+    pushToTalk: ptt,
   });
 
   let stopped = false;
@@ -98,7 +102,11 @@ export async function startIntake(conn: Connection, ctx: IntakeContext, h: Intak
     stop();
     throw err;
   }
-  h.onStatus('listening');
+  h.onStatus(ptt ? 'yourTurn' : 'listening');
+
+  /** Push-to-talk: the end of a word is still in flight when the finger lifts. */
+  const TAIL_MS = 250;
+  let releaseTimer: ReturnType<typeof setTimeout> | undefined;
 
   return {
     sendText: conversation.sendText,
@@ -116,6 +124,27 @@ export async function startIntake(conn: Connection, ctx: IntakeContext, h: Intak
     setSpeaker: (on) => {
       speakerOn = on;
       if (remoteTrack) remoteTrack.enabled = on;
+    },
+    startTurn: async () => {
+      clearTimeout(releaseTimer);
+      if (!micTrack) {
+        micTrack = await openMic();
+        await audio.sender.replaceTrack(micTrack);
+      }
+      micTrack.enabled = true;
+      conversation.startTurn();
+    },
+    endTurn: () => {
+      clearTimeout(releaseTimer);
+      releaseTimer = setTimeout(() => {
+        if (micTrack) micTrack.enabled = false;
+        conversation.endTurn();
+      }, TAIL_MS);
+    },
+    cancelTurn: () => {
+      clearTimeout(releaseTimer);
+      if (micTrack) micTrack.enabled = false;
+      conversation.cancelTurn();
     },
     stop,
   };

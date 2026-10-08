@@ -102,7 +102,7 @@ export const startCall = (s: Connection, req: CallRequest) => postJson<CallRecor
 export const listCalls = (s: Connection) => request<CallSummary[]>(s, '/api/calls');
 export const getCall = (s: Connection, id: string) => request<CallRecord>(s, `/api/calls/${id}`);
 
-export const createIntakeSession = (s: Connection, context: IntakeContext & { followUpOf?: string; mode?: 'call' | 'profile' }) =>
+export const createIntakeSession = (s: Connection, context: IntakeContext & { followUpOf?: string; mode?: 'call' | 'profile'; pushToTalk?: boolean }) =>
   postJson<IntakeSession>(s, '/api/intake/session', context);
 
 export const checkIntake = (s: Connection, context: IntakeContext, draft: IntakeDraft) =>
