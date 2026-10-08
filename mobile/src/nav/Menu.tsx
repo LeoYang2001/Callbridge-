@@ -1,12 +1,14 @@
 import { router, usePathname, type Href } from 'expo-router';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import Animated, { FadeIn, FadeInUp, FadeOut } from 'react-native-reanimated';
+import Animated, { FadeInUp, SlideInRight, SlideOutRight, useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { languageCode } from '@shared/languages';
 import { clock, useActiveCall, useCallSeconds } from '@/call/ActiveCall';
 import { EdgeGlow } from '@/glow/EdgeGlow';
+import { haptic } from '@/lib/haptics';
 import { useSession } from '@/lib/session';
+import { EdgeSwipe, peek } from './EdgeSwipe';
 import { color, type } from '@/theme/tokens';
 import { Icon } from '@/ui/Icon';
 
@@ -23,16 +25,24 @@ const ITEMS: { href: Href; match: (p: string) => boolean; en: string; local: Rec
   { href: '/me', match: (p) => p.startsWith('/me'), en: 'Me', local: { zh: '我的设置', es: 'Yo', vi: 'Tôi', ko: '나', tl: 'Ako', ja: '設定' } },
 ];
 
-const MenuContext = createContext<{ open: () => void; close: () => void }>({ open: () => {}, close: () => {} });
+const MenuContext = createContext<{ open: () => void; close: () => void; hint: () => void }>({ open: () => {}, close: () => {}, hint: () => {} });
 export const useMenu = () => useContext(MenuContext);
 
-export function MenuProvider({ children }: { children: ReactNode }) {
+/** enabled: the edge swipe works (signed in and past onboarding). */
+export function MenuProvider({ children, enabled }: { children: ReactNode; enabled: boolean }) {
   const [shown, setShown] = useState(false);
-  const open = useCallback(() => setShown(true), []);
+  const progress = useSharedValue(0);
+  const open = useCallback(() => {
+    haptic.commit();
+    setShown(true);
+  }, []);
   const close = useCallback(() => setShown(false), []);
+  const hint = useCallback(() => peek(progress), [progress]);
   return (
-    <MenuContext.Provider value={{ open, close }}>
-      {children}
+    <MenuContext.Provider value={{ open, close, hint }}>
+      <EdgeSwipe enabled={enabled && !shown} onOpen={open} progress={progress}>
+        {children}
+      </EdgeSwipe>
       {shown && <MenuOverlay onClose={close} />}
     </MenuContext.Provider>
   );
@@ -53,13 +63,14 @@ function MenuOverlay({ onClose }: { onClose: () => void }) {
     if (pending.current) onClose();
   }, [path, onClose]);
   const go = (href: Href) => {
+    haptic.select();
     pending.current = true;
     if (href === path) onClose();
     else router.navigate(href);
   };
 
   return (
-    <Animated.View entering={FadeIn.duration(250)} exiting={FadeOut.duration(200)} style={[StyleSheet.absoluteFill, s.overlay]}>
+    <Animated.View entering={SlideInRight.duration(280)} exiting={SlideOutRight.duration(220)} style={[StyleSheet.absoluteFill, s.overlay]}>
       <EdgeGlow mode="idle" />
       <View style={{ height: insets.top }} />
       <View style={s.head}>

@@ -16,6 +16,7 @@ import { Bars } from '@/ui/Bars';
 import { HoldToTalk, MicState } from '@/ui/HoldToTalk';
 import { Screen } from '@/ui/Screen';
 import PhoneBook from '../contacts';
+import ContactScreen from '../contacts/[id]';
 import CallScreen from '../index';
 import MeScreen from '../me';
 import NotificationsScreen from '../notifications';
@@ -34,6 +35,7 @@ const ME: Me = {
     preferences: [],
     contacts: [
       { id: 'sd', name: 'Smile Dental', phone: '+19015550142', relationship: 'dentist', language: 'English', notes: ['Asks for the insurance card at check-in'], callCount: 4, lastOutcome: '已预约：10月8日周四 下午2:00' },
+      { id: 'long', name: 'Memphis Family & Cosmetic Dentistry of Germantown', phone: '+19015550177', relationship: 'dentist (the new one)', language: 'English', address: '7690 Farmington Blvd, Suite 210, Germantown, TN 38138', notes: ['Asks for the insurance card and a photo ID at check-in, and wants new patients 15 minutes early'], callCount: 1, lastOutcome: '已预约：10月20日周二 上午9:30，需要带保险卡和身份证' },
       { id: 'ts', name: 'Tabito Sato', phone: '+19015552290', relationship: 'friend', language: 'Japanese', notes: [], callCount: 3, lastOutcome: '已转达：今晚的读经去不了' },
       { id: 'm', name: 'Maria', phone: '+17472836440', relationship: 'girlfriend', notes: [], callCount: 12 },
     ],
@@ -115,9 +117,9 @@ const DONE: CallRecord = {
   },
 } as CallRecord;
 
-const VIEWS = ['home', 'asks', 'searching', 'found', 'review', 'ringing', 'live', 'hold', 'result', 'no answer', 'book', 'me', 'notif'] as const;
+const VIEWS = ['home', 'contact', 'asks', 'searching', 'found', 'review', 'ringing', 'live', 'hold', 'result', 'no answer', 'book', 'me', 'notif'] as const;
 type V = (typeof VIEWS)[number];
-const GLOW: Record<V, GlowMode> = { home: 'idle', asks: 'idle', searching: 'think', found: 'idle', review: 'ready', ringing: 'ring', live: 'hair', hold: 'hold', result: 'done', 'no answer': 'fail', book: 'none', me: 'none', notif: 'none' };
+const GLOW: Record<V, GlowMode> = { home: 'idle', asks: 'idle', searching: 'think', found: 'idle', review: 'ready', ringing: 'ring', live: 'hair', hold: 'hold', result: 'done', 'no answer': 'fail', book: 'none', me: 'none', notif: 'none', contact: 'none' };
 
 export default function Preview() {
   const params = useLocalSearchParams<{ v?: string }>();
@@ -125,7 +127,7 @@ export default function Preview() {
   return (
     <PreviewSessionProvider me={ME}>
       <View style={{ flex: 1 }}>
-        {v === 'home' ? <CallScreen /> : v === 'book' ? <PhoneBook /> : v === 'me' ? <MeScreen /> : v === 'notif' ? <NotificationsScreen /> : <Static v={v} />}
+        {v === 'home' ? <CallScreen /> : v === 'book' ? <PhoneBook /> : v === 'contact' ? <ContactPreview /> : v === 'me' ? <MeScreen /> : v === 'notif' ? <NotificationsScreen /> : <Static v={v} />}
         <View style={{ position: 'absolute', bottom: 34, left: 0, right: 0 }}>
           <ScrollView horizontal contentContainerStyle={{ gap: 6, paddingHorizontal: 12 }} showsHorizontalScrollIndicator={false}>
             {VIEWS.map((x) => (
@@ -139,7 +141,12 @@ export default function Preview() {
   );
 }
 
-function Static({ v }: { v: Exclude<V, 'home' | 'book' | 'me' | 'notif'> }) {
+/** The contact screen reads its id from the route; the preview shows the long-text contact. */
+function ContactPreview() {
+  return <ContactScreen />;
+}
+
+function Static({ v }: { v: Exclude<V, 'home' | 'book' | 'me' | 'notif' | 'contact'> }) {
   useGlow(GLOW[v], v === 'hold' ? 28 / 30 : 1);
   if (v === 'ringing' || v === 'live' || v === 'hold' || v === 'result' || v === 'no answer') {
     const noAnswer = { ...CALL, status: 'failed', questions: [], failureReason: '没人接听，20分钟后再试。', result: undefined } as unknown as CallRecord;

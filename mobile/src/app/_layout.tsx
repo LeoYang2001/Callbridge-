@@ -1,4 +1,5 @@
-import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import { DefaultTheme, Stack, ThemeProvider, usePathname } from 'expo-router';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
@@ -17,6 +18,7 @@ const theme = { ...DefaultTheme, colors: { ...DefaultTheme.colors, background: '
 
 function Routes() {
   const { state } = useSession();
+  const path = usePathname();
   useNotifications();
   useEffect(() => {
     if (state.status !== 'loading') void SplashScreen.hideAsync();
@@ -27,7 +29,7 @@ function Routes() {
   const onboarded = state.status === 'signedIn' && state.me.profile.onboarded;
   return (
     <ActiveCallProvider>
-      <MenuProvider>
+      <MenuProvider enabled={onboarded || (__DEV__ && path.startsWith('/dev/preview'))}>
         {/* No headers and no tab bar: screens are transparent over the edge glow. */}
         <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' }, animation: 'none' }}>
           <Stack.Protected guard={signedIn && !onboarded}>
@@ -60,15 +62,17 @@ function Routes() {
 
 export default function RootLayout() {
   return (
-    <SessionProvider>
-      <GlowProvider>
-        <ThemeProvider value={theme}>
-          <ToastProvider>
-            <StatusBar style="dark" />
-            <Routes />
-          </ToastProvider>
-        </ThemeProvider>
-      </GlowProvider>
-    </SessionProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SessionProvider>
+        <GlowProvider>
+          <ThemeProvider value={theme}>
+            <ToastProvider>
+              <StatusBar style="dark" />
+              <Routes />
+            </ToastProvider>
+          </ThemeProvider>
+        </GlowProvider>
+      </SessionProvider>
+    </GestureHandlerRootView>
   );
 }

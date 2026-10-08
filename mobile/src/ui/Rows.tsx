@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { haptic } from '@/lib/haptics';
 import { color, type } from '@/theme/tokens';
 import { Icon } from './Icon';
 
@@ -8,25 +9,38 @@ export function Group({ children }: { children: ReactNode }) {
   return <View style={s.group}>{children}</View>;
 }
 
-/** One row: a label (with an optional second line) and a value, control, or chevron. */
-export function Row({ label, sub, value, right, onPress, last }: { label: string; sub?: string; value?: string; right?: ReactNode; onPress?: () => void; last?: boolean }) {
+/**
+ * One row: a label (with an optional second line) and a value, control, or chevron. Long
+ * values wrap to two lines and shrink before they push anything off screen; a control too wide
+ * to share the line (a segmented control) goes `below` the label.
+ */
+export function Row({ label, sub, value, right, below, onPress, last }: { label: string; sub?: string; value?: string; right?: ReactNode; below?: ReactNode; onPress?: () => void; last?: boolean }) {
   const body = (
-    <View style={[s.row, !last && s.divider]}>
-      <View style={{ flex: 1, gap: 2 }}>
-        <Text style={[type.callout, { fontSize: 15 }]}>{label}</Text>
-        {sub ? <Text style={[type.caption, { fontSize: 12.5 }]}>{sub}</Text> : null}
+    <View style={[s.wrap, !last && s.divider]}>
+      <View style={s.row}>
+        <View style={s.labels}>
+          <Text style={[type.callout, { fontSize: 15 }]}>{label}</Text>
+          {sub ? <Text style={[type.caption, { fontSize: 12.5 }]}>{sub}</Text> : null}
+        </View>
+        {value ? (
+          <Text style={s.value} numberOfLines={2}>
+            {value}
+          </Text>
+        ) : null}
+        {right}
+        {onPress && !right ? <Icon name="chevron" size={12} color={color.tertiary} /> : null}
       </View>
-      {value ? (
-        <Text style={[type.callout, { fontSize: 15, color: color.secondary }]} numberOfLines={1}>
-          {value}
-        </Text>
-      ) : null}
-      {right}
-      {onPress && !right ? <Icon name="chevron" size={12} color={color.tertiary} /> : null}
+      {below ? <View style={{ paddingBottom: 12 }}>{below}</View> : null}
     </View>
   );
   return onPress ? (
-    <Pressable onPress={onPress} style={({ pressed }) => pressed && { opacity: 0.6 }}>
+    <Pressable
+      onPress={() => {
+        haptic.tap();
+        onPress();
+      }}
+      style={({ pressed }) => pressed && { opacity: 0.6 }}
+    >
       {body}
     </Pressable>
   ) : (
@@ -40,6 +54,9 @@ export function SectionLabel({ children }: { children: string }) {
 
 const s = StyleSheet.create({
   group: { backgroundColor: color.white, borderRadius: 20, borderWidth: 1, borderColor: color.divider, paddingHorizontal: 16 },
+  wrap: {},
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 54, paddingVertical: 10 },
+  labels: { flex: 1, minWidth: 90, gap: 2 },
+  value: { ...type.callout, fontSize: 15, color: color.secondary, flexShrink: 1, maxWidth: '60%', textAlign: 'right' },
   divider: { borderBottomWidth: 1, borderBottomColor: color.divider },
 });

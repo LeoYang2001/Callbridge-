@@ -26,7 +26,7 @@ export default function Notifications() {
           left={
             <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/me'))} hitSlop={8} style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
               <Icon name="back" size={14} color={color.blue} />
-              <Text style={[type.small, { color: color.blue, fontWeight: '500' }]}>Me</Text>
+              <Text style={[type.small, { color: color.blue, fontWeight: '500', flexShrink: 1 }]} numberOfLines={1}>Me</Text>
             </Pressable>
           }
           center={<Text style={[type.bodyStrong, { fontSize: 16 }]}>Notifications</Text>}

@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { displayPhone } from '@shared/phone';
 import type { UserAnswer } from '@shared/types';
@@ -11,6 +11,7 @@ import { useGlow } from '@/glow/GlowContext';
 import type { GlowMode } from '@/glow/modes';
 import { useCall, useListen } from '@/hooks/useCall';
 import { useStartCall } from '@/hooks/useStartCall';
+import { haptic } from '@/lib/haptics';
 import { useSignedIn } from '@/lib/session';
 import { color, type } from '@/theme/tokens';
 import { Icon } from '@/ui/Icon';
@@ -63,6 +64,17 @@ export default function CallScreen() {
           ? 'wrapping'
           : 'result';
 
+  // Feel the moments that matter: connected, someone holding for you, how it ended.
+  const lastPhase = useRef(phase);
+  useEffect(() => {
+    const was = lastPhase.current;
+    lastPhase.current = phase;
+    if (was === phase || was === 'loading' || !call) return;
+    if (phase === 'live' && was === 'ringing') haptic.connected();
+    else if (phase === 'hold') haptic.attention();
+    else if (phase === 'result') (outcomeOf(call).good ? haptic.success : haptic.failure)();
+  }, [phase, call]);
+
   const glow: GlowMode =
     phase === 'ringing' ? 'ring' : phase === 'hold' ? 'hold' : phase === 'live' || phase === 'wrapping' ? (composer ? 'msg' : 'hair') : phase === 'result' && call ? (outcomeOf(call).good ? 'done' : 'fail') : 'none';
   useGlow(glow, phase === 'hold' ? remaining / total : 1);
@@ -91,7 +103,7 @@ export default function CallScreen() {
       left={
         <Pressable onPress={leave} hitSlop={8} style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
           <Icon name="back" size={14} color={color.blue} />
-          <Text style={[type.small, { color: color.blue, fontWeight: '500' }]}>{phase === 'result' ? 'Home' : 'Leave'}</Text>
+          <Text style={[type.small, { color: color.blue, fontWeight: '500', flexShrink: 1 }]} numberOfLines={1}>{phase === 'result' ? 'Home' : 'Leave'}</Text>
         </Pressable>
       }
       center={

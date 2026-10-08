@@ -68,7 +68,7 @@ export default function Import() {
           left={
             <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/contacts'))} hitSlop={8} style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
               <Icon name="back" size={14} color={color.blue} />
-              <Text style={[type.small, { color: color.blue, fontWeight: '500' }]}>Phone book</Text>
+              <Text style={[type.small, { color: color.blue, fontWeight: '500', flexShrink: 1 }]} numberOfLines={1}>Phone book</Text>
             </Pressable>
           }
         />

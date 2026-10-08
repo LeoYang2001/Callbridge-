@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { haptic } from '@/lib/haptics';
 import { color, type } from '@/theme/tokens';
 
 type Kind = 'black' | 'blue' | 'green' | 'red' | 'amber' | 'white' | 'ghost';
@@ -40,7 +41,10 @@ export function PillButton({
       accessibilityRole="button"
       accessibilityState={{ disabled: disabled || busy }}
       disabled={disabled || busy}
-      onPress={onPress}
+      onPress={() => {
+        (kind === 'green' || kind === 'red' || kind === 'amber' ? haptic.commit : haptic.tap)();
+        onPress();
+      }}
       style={({ pressed }) => [
         s.pill,
         { height, borderRadius: height / 2, backgroundColor: BG[kind] },
@@ -67,7 +71,10 @@ export function Chip({ title, onPress, variant = 'answer', selected }: { title: 
   return (
     <Pressable
       accessibilityRole="button"
-      onPress={onPress}
+      onPress={() => {
+        haptic.select();
+        onPress();
+      }}
       style={({ pressed }) => [
         variant === 'suggestion' ? s.suggestion : s.answer,
         variant === 'blue' && s.blueChip,
@@ -86,7 +93,10 @@ export function RoundButton({ onPress, size = 56, bg = color.white, children, la
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
-      onPress={onPress}
+      onPress={() => {
+        (bg === color.red || bg === color.green ? haptic.commit : haptic.tap)();
+        onPress();
+      }}
       hitSlop={8}
       style={({ pressed }) => [{ width: size, height: size, borderRadius: size / 2, backgroundColor: bg, alignItems: 'center', justifyContent: 'center' }, ring && s.ring, pressed && s.pressed]}
     >

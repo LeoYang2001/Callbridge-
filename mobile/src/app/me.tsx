@@ -56,7 +56,10 @@ export default function Me() {
             }}
           />
         )}
-        <Row label="Default call mode" right={<View style={{ width: 200 }}><Segmented options={[{ value: 'supervised', label: 'In the loop' }, { value: 'handoff', label: 'Hand off' }]} value={prefs.involvement} onChange={prefs.setInvolvement} /></View>} />
+        <Row
+          label="Default call mode"
+          below={<Segmented options={[{ value: 'supervised', label: 'Stay in the loop' }, { value: 'handoff', label: 'Hand it off' }]} value={prefs.involvement} onChange={prefs.setInvolvement} />}
+        />
         <Row label="Extra charges" value={profile.maxChargeUsd ? `Up to $${profile.maxChargeUsd}` : 'Ask me first'} onPress={() => toggle('charges')} />
         {open === 'charges' && <Chips options={CHARGES.map(String)} label={(n) => (n === '0' ? 'Ask me first' : `Up to $${n}`)} value={String(profile.maxChargeUsd ?? 0)} onPick={(n) => void save({ maxChargeUsd: Number(n) })} />}
         <Row label="Hold for my answer" sub="How long the other party waits while you decide" value={`${profile.holdSeconds ?? 30} s`} onPress={() => toggle('hold')} last={open !== 'hold'} />

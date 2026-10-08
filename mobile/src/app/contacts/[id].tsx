@@ -23,7 +23,7 @@ export default function ContactScreen() {
   const back = (
     <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/contacts'))} hitSlop={8} style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
       <Icon name="back" size={14} color={color.blue} />
-      <Text style={[type.small, { color: color.blue, fontWeight: '500' }]}>Phone book</Text>
+      <Text style={[type.small, { color: color.blue, fontWeight: '500', flexShrink: 1 }]} numberOfLines={1}>Phone book</Text>
     </Pressable>
   );
   if (!c) {
@@ -52,7 +52,7 @@ export default function ContactScreen() {
     >
       <View style={{ alignItems: 'center', gap: 10, marginTop: 6 }}>
         <Avatar name={c.name} size={84} />
-        <Text style={type.h2}>{c.name}</Text>
+        <Text style={[type.h2, { textAlign: 'center' }]}>{c.name}</Text>
         {c.relationship ? <Pill>{c.relationship}</Pill> : null}
       </View>
       <PillButton title="Call with the assistant" kind="green" onPress={() => router.push({ pathname: '/', params: { contact: c.id } })} icon={<Icon name="phone" size={17} color={color.white} />} style={{ marginTop: 8 }} />

@@ -15,7 +15,10 @@ import { usePhoneBook } from '@/hooks/usePhoneBook';
 import { usePreferences } from '@/hooks/usePreferences';
 import { useStartCall } from '@/hooks/useStartCall';
 import { useSignedIn } from '@/lib/session';
+import * as SecureStore from 'expo-secure-store';
+import { useMenu } from '@/nav/Menu';
 import { MenuButton } from '@/nav/MenuButton';
+import { useToast } from '@/ui/Toast';
 import { RequestCard } from '@/talk/RequestCard';
 import { Found, Searching, UserBubble } from '@/talk/Research';
 import { Review } from '@/talk/Review';
@@ -100,13 +103,29 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
 
   // One talk button for every view, so a press that starts on Home carries on into Listening.
   const [homeSpot, setHomeSpot] = useState<number | null>(null);
+  const insets = useSafeAreaInsets();
+  const { height } = useWindowDimensions();
+  const bottomCenter = height - Math.max(insets.bottom, 12) - 8 - 20 - 12 - 42;
+  const target = view === 'home' && homeSpot != null ? homeSpot : bottomCenter;
+  // The button never moves under a finger: while held it stays where the press began (and at
+  // that size); it settles into its next place after release.
+  const [pressedAt, setPressedAt] = useState<{ center: number; big: boolean } | null>(null);
+  const center = pressedAt?.center ?? target;
+  const big = pressedAt?.big ?? view === 'home';
   const dock = (
     <TalkDock
       view={view}
-      homeCenterY={homeSpot}
+      center={center}
+      big={big}
       holding={intake.holding}
-      onPressIn={() => void intake.pressTalk()}
-      onRelease={intake.releaseTalk}
+      onPressIn={() => {
+        setPressedAt({ center: target, big: view === 'home' });
+        void intake.pressTalk();
+      }}
+      onRelease={(tooShort) => {
+        setPressedAt(null);
+        void intake.releaseTalk(tooShort);
+      }}
       disabled={intake.status === 'connecting' && !intake.holding}
       speakerOn={intake.speakerOn}
       onToggleSpeaker={intake.toggleSpeaker}
@@ -130,7 +149,7 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
         </Text>
       </View>
     );
-    const top = (
+    const header = (
       <TopBar
         left={
           <Pressable onPress={view === 'review' ? () => setReviewing(false) : cancel} style={s.pill} hitSlop={6}>
@@ -143,7 +162,7 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
 
     if (view === 'review') {
       return (
-        <Screen top={top} padding={0}>
+        <Screen top={header} padding={0}>
           <Review
             draft={intake.draft}
             check={intake.check}
@@ -167,14 +186,16 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
 
     if (view === 'listening') {
       const heard = lastUser?.partial ? lastUser.text : '';
+      // Your words appear just above your finger, wherever the button is.
+      const top = insets.top + 60;
       return (
-        <Screen top={top} bottom={controls} padding={34}>
-          <View style={s.middle}>
+        <Screen top={header} padding={34}>
+          <View style={[s.listening, { top, height: Math.max(120, center - (big ? 100 : 80) - top) }]}>
             <View style={s.label}>
               <Bars color={color.blue} />
               <Text style={[type.label, { color: color.blue }]}>Listening · release to send</Text>
             </View>
-            <Text style={[type.transcript, { minHeight: 86 }]}>
+            <Text style={type.transcript} numberOfLines={6}>
               {heard}
               <Text style={{ color: color.blue }}>|</Text>
             </Text>
@@ -185,7 +206,7 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
 
     if (view === 'research') {
       return (
-        <Screen top={top} padding={20}>
+        <Screen top={header} padding={20}>
           <ScrollView contentContainerStyle={{ paddingTop: 16 }}>
             <Searching asked={lastUser?.text} />
           </ScrollView>
@@ -200,7 +221,7 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
     const heard = lastUser?.partial ? lastUser.text : '';
     const showRequest = Boolean(intake.draft.counterpartName || intake.draft.task);
     return (
-      <Screen top={top} bottom={controls} padding={0}>
+      <Screen top={header} bottom={controls} padding={0}>
         <ScrollView contentContainerStyle={s.asks} showsVerticalScrollIndicator={false}>
           <View style={s.label}>
             {speaking ? <Bars color={color.violet} /> : null}
@@ -233,8 +254,25 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
   }
 }
 
+const EDGE_HINT_KEY = 'callbridge.edgeHint.v1';
+
 function Home({ onSpot, onSuggestion }: { onSpot: (centerY: number) => void; onSuggestion: (text: string) => void }) {
   const spot = useRef<View>(null);
+  const { hint } = useMenu();
+  const toast = useToast();
+  // Once: show where the menu lives (there's no menu button).
+  useEffect(() => {
+    let t: ReturnType<typeof setTimeout> | undefined;
+    void SecureStore.getItemAsync(EDGE_HINT_KEY).then((seen) => {
+      if (seen) return;
+      t = setTimeout(() => {
+        hint();
+        toast('Swipe in from the right edge for the menu');
+        void SecureStore.setItemAsync(EDGE_HINT_KEY, '1');
+      }, 900);
+    });
+    return () => clearTimeout(t);
+  }, [hint, toast]);
   const { me } = useSignedIn();
   const name = me.profile.name;
   const hour = new Date().getHours();
@@ -306,7 +344,8 @@ const HOME_BUTTON_BLOCK = 104 + 12 + 20;
  */
 function TalkDock({
   view,
-  homeCenterY,
+  center,
+  big,
   holding,
   onPressIn,
   onRelease,
@@ -315,7 +354,10 @@ function TalkDock({
   onToggleSpeaker,
 }: {
   view: View_;
-  homeCenterY: number | null;
+  /** Where the button's center sits on screen (window y). */
+  center: number;
+  /** Home's large button (also while a press that began on Home is held). */
+  big: boolean;
   holding: boolean;
   onPressIn: () => void;
   onRelease: (tooShort: boolean) => void;
@@ -323,13 +365,8 @@ function TalkDock({
   speakerOn: boolean;
   onToggleSpeaker: () => void;
 }) {
-  const insets = useSafeAreaInsets();
-  const { height } = useWindowDimensions();
-  const home = view === 'home';
+  const home = big;
   const hidden = view === 'review' || view === 'research';
-  // Where the button's center goes: over Home's spot, or in the bottom controls.
-  const bottomCenter = height - Math.max(insets.bottom, 12) - 8 - 20 - 12 - 42;
-  const center = home && homeCenterY != null ? homeCenterY : bottomCenter;
   const y = useSharedValue(center);
   useEffect(() => {
     y.value = withTiming(center, { duration: 350 });
@@ -343,7 +380,7 @@ function TalkDock({
           <Icon name={speakerOn ? 'speaker' : 'speakerOff'} size={20} />
         </RoundButton>
       </Animated.View>
-      <HoldToTalk holding={holding} onPressIn={onPressIn} onRelease={onRelease} size={home ? 104 : 84} label={home ? 'Hold to talk' : 'Hold to answer'} disabled={disabled} />
+      <HoldToTalk holding={holding} onPressIn={onPressIn} onRelease={onRelease} size={home ? 104 : 84} label={view === 'home' || (home && holding) ? 'Hold to talk' : 'Hold to answer'} disabled={disabled} />
       <Animated.View style={[{ width: 58, alignItems: 'center' }, sides]}>
         <MicState on={holding} />
       </Animated.View>
@@ -362,6 +399,7 @@ const s = StyleSheet.create({
   pill: { height: 36, borderRadius: 18, backgroundColor: color.surface, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center' },
   ready: { ...type.label, textTransform: 'none', letterSpacing: 0, color: color.blue, backgroundColor: color.blueTint, borderRadius: 99, paddingHorizontal: 11, paddingVertical: 5, overflow: 'hidden' },
   middle: { flex: 1, justifyContent: 'center', gap: 14 },
+  listening: { position: 'absolute', left: 34, right: 34, justifyContent: 'flex-end', gap: 14 },
   label: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   dock: { position: 'absolute', left: 0, right: 0, top: 0, height: 120, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 28 },
   asks: { flexGrow: 1, justifyContent: 'center', gap: 14, paddingHorizontal: 34, paddingVertical: 16 },

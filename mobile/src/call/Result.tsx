@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { addToCalendar, destinationOf, openDirections } from '@/lib/afterCall';
+import { haptic } from '@/lib/haptics';
 import type { CallRecord } from '@shared/types';
 import { color, type } from '@/theme/tokens';
 import { PillButton } from '@/ui/Button';
@@ -69,7 +70,10 @@ export function Result({
             onPress={async () => {
               const err = await addToCalendar(call);
               setNote(err);
-              if (!err) setAdded(true);
+              if (!err) {
+                setAdded(true);
+                haptic.success();
+              }
             }}
           />
         ) : o.good ? (

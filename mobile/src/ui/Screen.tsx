@@ -38,10 +38,12 @@ export function TopBar({ left, center, right }: { left?: ReactNode; center?: Rea
   );
 }
 
+// The sides share the room equally so the center stays centered; long side labels shrink
+// instead of running into the title.
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: 'transparent' },
-  bar: { flexDirection: 'row', alignItems: 'center', minHeight: 52, paddingHorizontal: 18 },
-  side: { width: 80, justifyContent: 'center' },
+  bar: { flexDirection: 'row', alignItems: 'center', minHeight: 52, paddingHorizontal: 18, gap: 8 },
+  side: { flex: 1, flexBasis: 0, justifyContent: 'center', alignItems: 'flex-start' },
   right: { alignItems: 'flex-end' },
-  center: { flex: 1, alignItems: 'center' },
+  center: { flexShrink: 1, maxWidth: '60%', alignItems: 'center' },
 });

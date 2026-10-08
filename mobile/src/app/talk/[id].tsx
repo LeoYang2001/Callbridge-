@@ -110,7 +110,7 @@ function Conversation({ call, draft }: { call: CallRecord; draft: IntakeDraft })
           left={
             <Pressable onPress={back} hitSlop={8} style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
               <Icon name="back" size={14} color={color.blue} />
-              <Text style={[type.small, { color: color.blue, fontWeight: '500' }]}>Done</Text>
+              <Text style={[type.small, { color: color.blue, fontWeight: '500', flexShrink: 1 }]} numberOfLines={1}>Done</Text>
             </Pressable>
           }
           center={<Text style={[type.bodyStrong, { fontSize: 16 }]}>Talk it over</Text>}

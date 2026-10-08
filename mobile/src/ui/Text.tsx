@@ -30,12 +30,16 @@ export function StatusPill({ name }: { name: TagName }) {
 /** A small rounded pill for relationships, prices, languages. */
 export function Pill({ children, bg = color.surface, fg = color.ink }: { children: ReactNode; bg?: string; fg?: string }) {
   return (
-    <View style={[s.pill, { backgroundColor: bg }]}>
-      <Text style={[type.caption, { color: fg, fontWeight: '500' }]}>{children}</Text>
+    <View style={[s.pill, s.inline, { backgroundColor: bg }]}>
+      <Text style={[type.caption, { color: fg, fontWeight: '500' }]} numberOfLines={1}>
+        {children}
+      </Text>
     </View>
   );
 }
 
 const s = StyleSheet.create({
   pill: { borderRadius: 99, paddingHorizontal: 10, paddingVertical: 4, alignSelf: 'flex-start' },
+  /** Pill (unlike StatusPill) follows its parent's alignment, so it can sit centered. */
+  inline: { alignSelf: 'auto', flexShrink: 1 },
 });

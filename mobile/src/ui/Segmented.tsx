@@ -1,4 +1,5 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { haptic } from '@/lib/haptics';
 import { color, type } from '@/theme/tokens';
 
 /** Two or three options in one rounded track (Stay in the loop | Hand it off). */
@@ -8,7 +9,10 @@ export function Segmented<T extends string>({ options, value, onChange }: { opti
       {options.map((o) => {
         const on = o.value === value;
         return (
-          <Pressable key={o.value} accessibilityRole="radio" accessibilityState={{ selected: on }} onPress={() => onChange(o.value)} style={[s.seg, on && s.on]}>
+          <Pressable key={o.value} accessibilityRole="radio" accessibilityState={{ selected: on }} onPress={() => {
+              if (!on) haptic.select();
+              onChange(o.value);
+            }} style={[s.seg, on && s.on]}>
             <Text style={[type.small, { color: on ? color.ink : color.secondary, fontWeight: on ? '600' : '500' }]} numberOfLines={1}>
               {o.label}
             </Text>

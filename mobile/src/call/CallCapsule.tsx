@@ -5,6 +5,7 @@ import Animated, { FadeIn, FadeOut, useAnimatedStyle, useSharedValue, withRepeat
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { UserAnswer } from '@shared/types';
 import { answerQuestion } from '@/lib/api';
+import { haptic } from '@/lib/haptics';
 import { useSession } from '@/lib/session';
 import { color, type } from '@/theme/tokens';
 import { Icon } from '@/ui/Icon';
@@ -39,6 +40,12 @@ export function CallCapsule() {
     }, 6000);
     return () => clearTimeout(t);
   }, [finished, dismiss]);
+
+  // A question while the user is elsewhere in the app: tap them on the wrist, so to speak.
+  const pendingId = call?.questions?.find((q) => q.status === 'pending')?.id;
+  useEffect(() => {
+    if (pendingId && !path.startsWith('/call/')) haptic.attention();
+  }, [pendingId, path]);
 
   if (!call || path.startsWith('/call/')) return null;
   if (!live && !finishedShown) return null;

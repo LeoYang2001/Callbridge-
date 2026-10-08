@@ -1,6 +1,7 @@
 import { useRef } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, withTiming } from 'react-native-reanimated';
+import { haptic } from '@/lib/haptics';
 import { color, type } from '@/theme/tokens';
 import { Icon } from './Icon';
 import { useToast } from './Toast';
@@ -48,11 +49,13 @@ export function HoldToTalk({
           disabled={disabled}
           onPressIn={() => {
             downAt.current = Date.now();
+            haptic.talkDown();
             onPressIn();
           }}
           onPressOut={() => {
             const tooShort = Date.now() - downAt.current < MIN_HOLD_MS;
             if (tooShort) toast('Hold the button while you speak');
+            else haptic.talkUp();
             onRelease(tooShort);
           }}
         >
