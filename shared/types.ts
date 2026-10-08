@@ -228,6 +228,24 @@ export interface CallMetrics {
   turnLatenciesMs: number[];
   interruptions: number;
   toolCalls: number;
+  /** What the call used, from OpenAI's own counts (summed over every response). */
+  usage?: CallUsage;
+  /** Estimated cost in USD at list prices (Twilio's own price lands later, on its invoice). */
+  costUsd?: { openai: number; twilio: number; total: number };
+}
+
+/** Realtime tokens, as OpenAI reports them per response. */
+export interface CallUsage {
+  audioIn: number;
+  /** Audio input billed at the cached rate (re-read conversation history). */
+  audioInCached: number;
+  textIn: number;
+  textInCached: number;
+  audioOut: number;
+  textOut: number;
+  /** Input transcription (the other party's words as text), in tokens. */
+  transcriptionIn: number;
+  responses: number;
 }
 
 export interface CallLogEvent {

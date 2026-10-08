@@ -11,6 +11,7 @@ import { localToday } from '../util/time';
 import { languageCode } from '../../../shared/languages';
 import { SpeechGate } from './speechGate';
 import type { CallStore } from './store';
+import { addUsage, callCost, pricesFromEnv, type Prices } from '../usage/cost';
 
 export interface CallSessionDeps {
   store: CallStore;
@@ -31,6 +32,8 @@ export interface CallSessionDeps {
    * question, after its translation into the user's language, or without it if that's slow.
    */
   onQuestion?: (callId: string, question: UserQuestion) => void;
+  /** List prices for the call's cost estimate (default: from env). */
+  prices?: Prices;
   /** Called exactly once, when the session is fully finished. */
   onFinished: (callId: string) => void;
 }
@@ -390,6 +393,8 @@ export class CallSession {
     });
 
     agent.on('toolCall', (callId, name, args) => this.handleToolCall(callId, name, args));
+
+    agent.on('usage', (u) => this.update((r) => (r.metrics.usage = addUsage(r.metrics.usage, u))));
 
     agent.on('responseDone', () => {
       this.awaitingResponseDone = false;
@@ -761,7 +766,10 @@ export class CallSession {
         if (!r.unresolvedQuestions.includes(q.question)) r.unresolvedQuestions.push(q.question);
       }
     });
-    this.update((r) => (r.metrics.endedAt = Date.now()));
+    this.update((r) => {
+      r.metrics.endedAt = Date.now();
+      r.metrics.costUsd = callCost(r, this.deps.prices ?? pricesFromEnv());
+    });
     this.log('call.ended', this.record.endReason ?? failure);
 
     try {

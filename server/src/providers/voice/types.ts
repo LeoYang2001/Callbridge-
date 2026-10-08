@@ -25,6 +25,8 @@ export interface VoiceAgentEvents {
   transcript: (itemId: string, speaker: 'assistant' | 'counterpart', text: string) => void;
   toolCall: (callId: string, name: string, args: string) => void;
   responseDone: () => void;
+  /** OpenAI's token counts for one response, or for one input transcription. */
+  usage: (u: Partial<import('../../../../shared/types').CallUsage>) => void;
   /** Named `failure` rather than `error` so a missing listener never throws. */
   failure: (message: string, fatal: boolean) => void;
   closed: () => void;

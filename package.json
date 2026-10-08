@@ -2,7 +2,7 @@
   "name": "callbridge",
   "private": true,
   "version": "0.1.0",
-  "description": "Multilingual AI phone assistant \u2014 web MVP (Phase 0)",
+  "description": "Multilingual AI phone assistant — web MVP (Phase 0)",
   "workspaces": [
     "server",
     "web"
@@ -14,7 +14,8 @@
     "build": "npm run build -w web",
     "start": "npm run start -w server",
     "typecheck": "npm run typecheck -w server && npm run typecheck -w web",
-    "test": "npm run test -w server"
+    "test": "npm run test -w server",
+    "usage": "node scripts/usage-report.mjs"
   },
   "devDependencies": {
     "concurrently": "^9.2.4",
