@@ -1,0 +1,1047 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&amp;family=Geist+Mono:wght@400;500&amp;family=Noto+Sans+SC:wght@300;400;500;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#e9ebef;font-family:Geist,'Noto Sans SC',system-ui,sans-serif;color:#121418;-webkit-font-smoothing:antialiased}
+a{color:#2557e8;text-decoration:none}a:hover{color:#1a3fb0}
+.dv-turn{padding:44px 48px 36px;border-bottom:1px solid rgba(0,0,0,.08);scroll-margin-top:16px}
+.dv-thd{display:flex;align-items:baseline;gap:10px;margin:0 0 20px}
+.dv-tid{font:600 10px 'Geist Mono',ui-monospace,monospace;padding:3px 7px;background:#121418;color:#fff;border-radius:4px;text-decoration:none}
+.dv-tname{font:600 13px/1.2 Geist,system-ui,sans-serif;color:#121418}
+.dv-opts{display:flex;flex-wrap:wrap;gap:40px 36px;align-items:flex-start}
+.dv-opt{flex:none;display:flex;flex-direction:column;gap:14px;scroll-margin-top:16px}
+.dv-oid{font:600 10.5px 'Geist Mono',ui-monospace,monospace;padding:3px 7px;background:rgba(0,0,0,.08);color:#121418;border-radius:5px;text-decoration:none}
+.dv-olabel{display:flex;align-items:baseline;gap:8px;font:400 12px/1.3 Geist,system-ui,sans-serif;color:rgba(0,0,0,.6);max-width:410px}
+.dv-opt:target .dv-oid{background:#2557e8;color:#fff}
+.dv-next{margin:28px 0 0;font:12px/1.5 Geist,system-ui,sans-serif;color:rgba(0,0,0,.55)}
+@keyframes cbSpin{to{transform:rotate(360deg)}}
+@keyframes cbBreathe{0%,100%{transform:scale(1)}50%{transform:scale(1.05)}}
+@keyframes cbPulse{0%{transform:scale(1);opacity:.7}100%{transform:scale(2.6);opacity:0}}
+@keyframes cbBar{0%,100%{transform:scaleY(.35)}50%{transform:scaleY(1)}}
+@keyframes cbGlow{0%,100%{opacity:.6}50%{opacity:1}}
+@keyframes cbChase{to{stroke-dashoffset:-100}}
+@keyframes cbRing{0%,100%{opacity:.12}45%{opacity:1}}
+</style>
+</helmet>
+<section class="dv-turn" id="t3">
+<div class="dv-thd"><a class="dv-tid" href="#t3">3</a><span class="dv-tname">The aura (<a class="dv-oid" href="#2a">2a</a>) and the hairline (<a class="dv-oid" href="#2c">2c</a>), carried through a whole call</span></div>
+<div style="max-width:1240px;margin:0 0 36px;display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px;font-size:14px;line-height:1.55;color:#4a4f5a">
+<div><b style="color:#121418">Aura</b> means the assistant is talking with <i>you</i>. It's wide, soft and moving.</div>
+<div><b style="color:#121418">Hairline</b> means a phone line is involved: getting ready, ringing, or live. It's thin and steady.</div>
+<div><b style="color:#121418">Color</b> shows who's involved: blue is the assistant, green is the other person or a good outcome, violet is them waiting on you, amber is "didn't work".</div>
+<div><b style="color:#121418">Tempo</b> shows urgency: fast while the assistant speaks or a question waits, a ring-rhythm pulse while dialing, still once it's over.</div>
+</div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="3a"><div class="dv-olabel"><a class="dv-oid" href="#3a">3a</a>Assistant speaking. The same aura as listening, but faster and fuller, so you can tell who's talking without reading the label. Quick-answer chips under the question.</div>
+<div style="width:390px;height:844px;border-radius:56px;overflow:hidden;position:relative;background:#fff;color:#121418;box-shadow:0 0 0 11px #16181c,0 0 0 12px #3a3d43,0 40px 80px rgba(20,30,60,.22);margin:12px;display:flex;flex-direction:column">
+{{ edgeSpeak }}
+<div style="height:54px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:4px 30px 0 40px;font-size:16px;font-weight:600;position:relative;z-index:5"><span>9:41</span><div style="position:absolute;left:50%;top:12px;transform:translateX(-50%);width:120px;height:35px;border-radius:20px;background:#000"></div><span style="display:flex;gap:5px;align-items:center"><svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"></rect><rect x="5" y="5.5" width="3" height="6.5" rx="1"></rect><rect x="10" y="3" width="3" height="9" rx="1"></rect><rect x="15" y="0" width="3" height="12" rx="1"></rect></svg><svg width="26" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".4"></rect><rect x="2" y="2" width="20" height="9" rx="2" fill="currentColor"></rect></svg></span></div>
+<div style="position:relative;display:flex;justify-content:space-between;padding:6px 22px 0">
+<div style="display:flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:18px;background:#f4f5f7;font-size:13px;font-weight:500"><span style="color:#69707d">I speak</span>Mandarin</div>
+<div style="display:flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:18px;background:#f4f5f7;font-size:13px;font-weight:500"><span style="color:#69707d">Voice</span>Marin</div>
+</div>
+<div style="position:relative;flex:1;display:flex;flex-direction:column;justify-content:center;gap:14px;padding:0 34px">
+<div style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;letter-spacing:.08em;color:#5b3cc4">{{ barsBlue }}SPEAKING</div>
+<div style="font-size:31px;line-height:1.38;font-weight:500;letter-spacing:-.01em;text-wrap:pretty">好的，Smile Dental。您以前在那里看过牙吗？</div>
+<div style="font-size:14px;line-height:1.5;color:#69707d">Got it, Smile Dental. Have you been there before?</div>
+<div style="display:flex;gap:8px;margin-top:10px"><span style="height:40px;display:flex;align-items:center;padding:0 16px;border-radius:20px;background:#fff;box-shadow:0 0 0 1px #e1e4e9;font-size:15px;font-weight:500">是，老患者</span><span style="height:40px;display:flex;align-items:center;padding:0 16px;border-radius:20px;background:#fff;box-shadow:0 0 0 1px #e1e4e9;font-size:15px;font-weight:500">第一次去</span></div>
+</div>
+<div style="position:relative;margin:0 18px;background:#fff;border:1px solid #e1e4e9;border-radius:22px;padding:14px 16px;display:flex;flex-direction:column;gap:8px">
+<div style="display:flex;justify-content:space-between;align-items:center"><span style="font-size:15px;font-weight:600">Smile Dental</span><span style="font-size:12px;color:#69707d;flex:none;white-space:nowrap">3 of 5 details</span></div>
+<div style="display:flex;gap:4px"><span style="flex:1;height:3px;border-radius:2px;background:#2557e8"></span><span style="flex:1;height:3px;border-radius:2px;background:#2557e8"></span><span style="flex:1;height:3px;border-radius:2px;background:#2557e8"></span><span style="flex:1;height:3px;border-radius:2px;background:#e1e4e9"></span><span style="flex:1;height:3px;border-radius:2px;background:#e1e4e9"></span></div>
+<div style="font-size:13px;color:#69707d">预约洗牙 · 下周下午 · <span style="color:#5b3cc4">是否老患者？</span></div>
+</div>
+<div style="position:relative;display:flex;justify-content:center;align-items:center;gap:28px;padding:22px 0 44px">
+<div style="width:58px;height:58px;border-radius:50%;background:#f4f5f7;display:grid;place-items:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5v5h3.5L12 18V6L7.5 9.5H4z"></path><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"></path></svg></div>
+<div style="width:74px;height:74px;border-radius:50%;background:#121418;display:grid;place-items:center;color:#fff"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2.5"></rect></svg></div>
+<div style="width:58px;height:58px;border-radius:50%;background:#f4f5f7;display:grid;place-items:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="6" width="18" height="12" rx="2.5"></rect><path d="M7 10h.01M10.5 10h.01M14 10h.01M17 10h.01M8 14h8"></path></svg></div>
+</div>
+<div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:#121418"></div>
+</div></div>
+
+<div class="dv-opt" id="3b"><div class="dv-olabel"><a class="dv-oid" href="#3b">3b</a>Review &amp; confirm. The aura narrows into a still blue hairline: we've stopped talking and the line is ready. Tapping Call turns it green.</div>
+<div style="width:390px;height:844px;border-radius:56px;overflow:hidden;position:relative;background:#fbfbfd;color:#121418;box-shadow:0 0 0 11px #16181c,0 0 0 12px #3a3d43,0 40px 80px rgba(20,30,60,.22);margin:12px;display:flex;flex-direction:column">
+{{ edgeReady }}
+<div style="height:54px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:4px 30px 0 40px;font-size:16px;font-weight:600;position:relative;z-index:5"><span>9:41</span><div style="position:absolute;left:50%;top:12px;transform:translateX(-50%);width:120px;height:35px;border-radius:20px;background:#000"></div><span style="display:flex;gap:5px;align-items:center"><svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"></rect><rect x="5" y="5.5" width="3" height="6.5" rx="1"></rect><rect x="10" y="3" width="3" height="9" rx="1"></rect><rect x="15" y="0" width="3" height="12" rx="1"></rect></svg><svg width="26" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".4"></rect><rect x="2" y="2" width="20" height="9" rx="2" fill="currentColor"></rect></svg></span></div>
+<div style="position:relative;display:flex;justify-content:space-between;align-items:center;padding:6px 22px 0"><div style="height:36px;display:flex;align-items:center;gap:2px;font-size:14px;font-weight:500;color:#2557e8"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 5l-7 7 7 7"></path></svg>Keep talking</div><span style="font-size:12px;font-weight:600;color:#2557e8;background:#e6edfd;border-radius:99px;padding:5px 11px;white-space:nowrap;flex:none">Ready to call</span></div>
+<div style="position:relative;padding:22px 30px 0;display:flex;flex-direction:column;gap:4px"><span style="font-size:30px;font-weight:600;letter-spacing:-.01em">确认这通电话</span><span style="font-size:14px;color:#69707d">Check the details before the assistant dials.</span></div>
+<div style="position:relative;margin:18px 22px 0;background:#fff;border-radius:22px;padding:4px 16px;box-shadow:0 0 0 1px #eef0f3">
+<div style="display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid #eef0f3;font-size:14.5px"><span style="color:#69707d;flex:none;white-space:nowrap">Calling</span><span style="font-weight:600;white-space:nowrap">Smile Dental</span></div>
+<div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #eef0f3;font-size:14.5px"><span style="color:#69707d">Number</span><span style="font-family:'Geist Mono',monospace;font-size:13.5px">(901) 555-0142</span></div>
+<div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #eef0f3;font-size:14.5px"><span style="color:#69707d">Speaks</span><span>English</span></div>
+<div style="display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid #eef0f3;font-size:14.5px"><span style="color:#69707d">Goal</span><span style="text-align:right">预约洗牙 · 下周下午<br><span style="font-size:12.5px;color:#69707d">Book a cleaning, next week, afternoon</span></span></div>
+<div style="display:flex;justify-content:space-between;gap:16px;padding:12px 0;font-size:14.5px"><span style="color:#69707d;flex:none;white-space:nowrap">Extra charges</span><span style="white-space:nowrap">Ask me first</span></div>
+</div>
+<div style="position:relative;margin:12px 22px 0;display:flex;background:#eef0f3;border-radius:14px;padding:3px"><span style="flex:1;height:38px;border-radius:11px;background:#fff;display:grid;place-items:center;font-size:14px;font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.08)">Stay in the loop</span><span style="flex:1;height:38px;display:grid;place-items:center;font-size:14px;font-weight:500;color:#69707d">Hand it off</span></div>
+<div style="position:relative;margin:12px 30px 0;font-size:12.5px;line-height:1.5;color:#69707d;text-wrap:pretty">The assistant will say it's an AI calling for Wei, and ask you before agreeing to anything you haven't allowed.</div>
+<div style="position:relative;margin-top:auto;padding:0 22px 44px"><div style="height:58px;border-radius:29px;background:#1a9e4b;color:#fff;display:flex;align-items:center;justify-content:center;gap:10px;font-size:17px;font-weight:600"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6.5 3.5h3l1.5 4-2 1.5a11 11 0 0 0 6 6l1.5-2 4 1.5v3a2 2 0 0 1-2 2A16 16 0 0 1 4.5 5.5a2 2 0 0 1 2-2z"></path></svg>Call Smile Dental</div></div>
+<div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:#121418"></div>
+</div></div>
+
+<div class="dv-opt" id="3c"><div class="dv-olabel"><a class="dv-oid" href="#3c">3c</a><span>Ringing. The green hairline pulses with each ring, like the line itself is calling out. It goes steady (as in <a href="#2c">2c</a>) when they pick up.</span></div>
+<div style="width:390px;height:844px;border-radius:56px;overflow:hidden;position:relative;background:#f7f8fa;color:#121418;box-shadow:0 0 0 11px #16181c,0 0 0 12px #3a3d43,0 40px 80px rgba(20,30,60,.22);margin:12px;display:flex;flex-direction:column">
+{{ edgeRing }}
+<div style="height:54px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:4px 30px 0 40px;font-size:16px;font-weight:600;position:relative;z-index:5"><span>9:41</span><div style="position:absolute;left:50%;top:12px;transform:translateX(-50%);width:120px;height:35px;border-radius:20px;background:#000"></div><span style="display:flex;gap:5px;align-items:center"><svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"></rect><rect x="5" y="5.5" width="3" height="6.5" rx="1"></rect><rect x="10" y="3" width="3" height="9" rx="1"></rect><rect x="15" y="0" width="3" height="12" rx="1"></rect></svg><svg width="26" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".4"></rect><rect x="2" y="2" width="20" height="9" rx="2" fill="currentColor"></rect></svg></span></div>
+<div style="position:relative;flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 34px;gap:8px">
+<span style="font-size:12px;font-weight:600;letter-spacing:.08em;color:#137a3a">RINGING · 3</span>
+<span style="font-size:40px;line-height:1.15;font-weight:600;letter-spacing:-.02em">Smile Dental</span>
+<span style="font-family:'Geist Mono',monospace;font-size:16px;color:#69707d">(901) 555-0142</span>
+<span style="font-size:15px;line-height:1.5;margin-top:18px;text-wrap:pretty">接通后，助手会先说明自己是替您打电话的 AI。</span>
+<span style="font-size:13px;line-height:1.45;color:#69707d">When they answer, the assistant first says it's an AI calling for you.</span>
+</div>
+<div style="position:relative;padding:0 34px 26px;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;gap:4px"><span style="flex:1;height:3px;border-radius:2px;background:#1a9e4b"></span><span style="flex:1;height:3px;border-radius:2px;background:#1a9e4b;opacity:.5"></span><span style="flex:1;height:3px;border-radius:2px;background:#d5d9e0"></span><span style="flex:1;height:3px;border-radius:2px;background:#d5d9e0"></span><span style="flex:1;height:3px;border-radius:2px;background:#d5d9e0"></span><span style="flex:1;height:3px;border-radius:2px;background:#d5d9e0"></span><span style="flex:1;height:3px;border-radius:2px;background:#d5d9e0"></span></div>
+<span style="font-size:13px;color:#69707d">No answer after 6 rings? You'll get the choice to try again.</span>
+</div>
+<div style="position:relative;display:flex;justify-content:center;padding:0 0 44px"><div style="display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12px;color:#69707d"><div style="width:70px;height:70px;border-radius:50%;background:#e5402f;display:grid;place-items:center;color:#fff"><svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor"><path d="M2.6 13.4c5.2-4.5 13.6-4.5 18.8 0 .5.5.6 1.3.1 1.8l-1.6 1.7c-.4.4-1.1.5-1.6.2l-2.3-1.3c-.4-.2-.6-.7-.6-1.1v-1.6a11 11 0 0 0-6.8 0v1.6c0 .4-.2.9-.6 1.1l-2.3 1.3c-.5.3-1.2.2-1.6-.2l-1.6-1.7c-.5-.5-.4-1.3.1-1.8z"></path></svg></div>Cancel</div></div>
+<div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:#121418"></div>
+</div></div>
+
+<div class="dv-opt" id="3d"><div class="dv-olabel"><a class="dv-oid" href="#3d">3d</a>Messaging the assistant mid-call. The green hairline stays on (the call goes on), and a blue aura rises from the composer: this channel is private, just you and the assistant.</div>
+<div style="width:390px;height:844px;border-radius:56px;overflow:hidden;position:relative;background:#f7f8fa;color:#121418;box-shadow:0 0 0 11px #16181c,0 0 0 12px #3a3d43,0 40px 80px rgba(20,30,60,.22);margin:12px;display:flex;flex-direction:column">
+{{ edgeMsg }}
+<div style="height:54px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:4px 30px 0 40px;font-size:16px;font-weight:600;position:relative;z-index:5"><span>9:41</span><div style="position:absolute;left:50%;top:12px;transform:translateX(-50%);width:120px;height:35px;border-radius:20px;background:#000"></div><span style="display:flex;gap:5px;align-items:center"><svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"></rect><rect x="5" y="5.5" width="3" height="6.5" rx="1"></rect><rect x="10" y="3" width="3" height="9" rx="1"></rect><rect x="15" y="0" width="3" height="12" rx="1"></rect></svg><svg width="26" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".4"></rect><rect x="2" y="2" width="20" height="9" rx="2" fill="currentColor"></rect></svg></span></div>
+<div style="position:relative;text-align:center;display:flex;flex-direction:column;padding:6px 0 0"><span style="font-size:17px;font-weight:600">Smile Dental</span><span style="font-size:13px;color:#137a3a;font-weight:500;font-variant-numeric:tabular-nums">In progress · 02:51</span></div>
+<div style="position:relative;padding:40px 34px 0;display:flex;flex-direction:column;gap:8px">
+<div style="font-size:12px;font-weight:600;letter-spacing:.08em;color:#137a3a">THEM · FRONT DESK</div>
+<div style="font-size:24px;line-height:1.4;font-weight:500;text-wrap:pretty">“还有别的需要吗？”</div>
+<div style="font-size:14px;color:#69707d">Is there anything else I can help with?</div>
+</div>
+<div style="position:relative;margin-top:auto;padding:0 22px;display:flex;flex-direction:column;gap:10px">
+<div style="align-self:flex-end;max-width:86%;border:1.5px dashed #2557e8;background:rgba(255,255,255,.9);border-radius:20px 20px 6px 20px;padding:10px 14px;font-size:15px;line-height:1.4">问问能不能把我的电话号码改成新的</div>
+<div style="align-self:flex-end;display:flex;align-items:center;gap:6px;font-size:12px;color:#2557e8;font-weight:500"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="5" y="11" width="14" height="9" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>Private · the assistant asks next</div>
+<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px"><span style="height:34px;display:flex;align-items:center;padding:0 13px;border-radius:17px;background:#fff;font-size:13px;font-weight:500">让他们说慢一点</span><span style="height:34px;display:flex;align-items:center;padding:0 13px;border-radius:17px;background:#fff;font-size:13px;font-weight:500">有没有更早的时间</span><span style="height:34px;display:flex;align-items:center;padding:0 13px;border-radius:17px;background:#fff;font-size:13px;font-weight:500">可以结束了</span></div>
+</div>
+<div style="position:relative;display:flex;gap:8px;align-items:center;padding:12px 22px 44px">
+<div style="flex:1;height:50px;border-radius:25px;background:#fff;box-shadow:0 0 0 2px #2557e8;display:flex;align-items:center;padding:0 18px;font-size:15px;color:#121418">告诉助手…<span style="width:1.5px;height:20px;background:#2557e8;margin-left:2px"></span></div>
+<div style="width:50px;height:50px;border-radius:50%;background:#2557e8;color:#fff;display:grid;place-items:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"></path></svg></div>
+</div>
+<div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:#121418"></div>
+</div></div>
+
+<div class="dv-opt" id="3e"><div class="dv-olabel"><a class="dv-oid" href="#3e">3e</a>Hold question on the lock screen. The app can't light the device edge here, so the glow moves to the Live Activity card: violet and fast because someone's waiting.</div>
+<div style="width:390px;height:844px;border-radius:56px;overflow:hidden;position:relative;background:linear-gradient(180deg,#1a2238 0%,#0b1020 60%,#070a14 100%);color:#fff;box-shadow:0 0 0 11px #16181c,0 0 0 12px #3a3d43,0 40px 80px rgba(20,30,60,.22);margin:12px;display:flex;flex-direction:column">
+<div style="height:54px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:4px 30px 0 40px;font-size:16px;font-weight:600;position:relative;z-index:5"><span></span><div style="position:absolute;left:50%;top:12px;transform:translateX(-50%);width:120px;height:35px;border-radius:20px;background:#000"></div><span style="display:flex;gap:5px;align-items:center"><svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"></rect><rect x="5" y="5.5" width="3" height="6.5" rx="1"></rect><rect x="10" y="3" width="3" height="9" rx="1"></rect><rect x="15" y="0" width="3" height="12" rx="1"></rect></svg><svg width="26" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".4"></rect><rect x="2" y="2" width="20" height="9" rx="2" fill="currentColor"></rect></svg></span></div>
+<div style="display:flex;flex-direction:column;align-items:center;padding:18px 0 0"><span style="font-size:17px;font-weight:500;color:rgba(255,255,255,.8)">Thursday, October 8</span><span style="font-size:92px;line-height:1;font-weight:600;letter-spacing:-.03em">9:41</span></div>
+<div style="position:relative;margin:auto 14px 0;border-radius:28px">
+{{ cardAsk }}
+<div style="position:relative;margin:2.5px;border-radius:26px;background:rgba(22,20,40,.92);padding:16px 16px 14px;display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;justify-content:space-between;align-items:center"><span style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:#d8ccff"><span style="width:20px;height:20px;border-radius:6px;background:#2557e8;display:grid;place-items:center"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linejoin="round"><path d="M6.5 3.5h3l1.5 4-2 1.5a11 11 0 0 0 6 6l1.5-2 4 1.5v3a2 2 0 0 1-2 2A16 16 0 0 1 4.5 5.5a2 2 0 0 1 2-2z"></path></svg></span>Smile Dental · on hold for you</span><span style="font-size:15px;font-weight:600;color:#d8ccff;font-variant-numeric:tabular-nums">{{ sec2Label }}</span></div>
+<span style="font-size:19px;line-height:1.4;font-weight:600;text-wrap:pretty">要加做全套 X 光吗？需额外付 $80。</span>
+<span style="font-size:13px;line-height:1.4;color:rgba(255,255,255,.7)">Would they also like full X-rays? $80 extra.</span>
+<div style="display:flex;gap:8px;margin-top:2px"><span style="flex:1;height:44px;border-radius:22px;background:#5b3cc4;display:grid;place-items:center;font-size:15px;font-weight:600">Approve</span><span style="flex:1;height:44px;border-radius:22px;background:rgba(255,255,255,.12);display:grid;place-items:center;font-size:15px;font-weight:600">Decline</span><span style="height:44px;padding:0 16px;border-radius:22px;background:rgba(255,255,255,.12);display:grid;place-items:center;font-size:15px;font-weight:600">Open</span></div>
+</div>
+</div>
+<div style="display:flex;justify-content:space-between;padding:26px 46px 44px"><span style="width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,.14);display:grid;place-items:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"><path d="M8 3h8l-1 6h-6zM9 9h6v12H9z"></path></svg></span><span style="width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,.14);display:grid;place-items:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"></path><circle cx="12" cy="13" r="3.5"></circle></svg></span></div>
+<div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:#fff"></div>
+</div></div>
+
+<div class="dv-opt" id="3f"><div class="dv-olabel"><a class="dv-oid" href="#3f">3f</a>Booked. The hairline swells back into an aura, now green: a slow, celebratory glow while the assistant tells you the result. It fades out after a few seconds.</div>
+<div style="width:390px;height:844px;border-radius:56px;overflow:hidden;position:relative;background:#fff;color:#121418;box-shadow:0 0 0 11px #16181c,0 0 0 12px #3a3d43,0 40px 80px rgba(20,30,60,.22);margin:12px;display:flex;flex-direction:column">
+{{ edgeDone }}
+<div style="height:54px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:4px 30px 0 40px;font-size:16px;font-weight:600;position:relative;z-index:5"><span>9:41</span><div style="position:absolute;left:50%;top:12px;transform:translateX(-50%);width:120px;height:35px;border-radius:20px;background:#000"></div><span style="display:flex;gap:5px;align-items:center"><svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"></rect><rect x="5" y="5.5" width="3" height="6.5" rx="1"></rect><rect x="10" y="3" width="3" height="9" rx="1"></rect><rect x="15" y="0" width="3" height="12" rx="1"></rect></svg><svg width="26" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".4"></rect><rect x="2" y="2" width="20" height="9" rx="2" fill="currentColor"></rect></svg></span></div>
+<div style="position:relative;display:flex;justify-content:space-between;align-items:center;padding:6px 22px 0"><span style="font-size:14px;font-weight:500;color:#2557e8">Done</span><span style="font-size:13px;color:#69707d">Smile Dental · 4:12</span></div>
+<div style="position:relative;flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 34px;gap:10px">
+<span style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;letter-spacing:.08em;color:#137a3a"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>BOOKED</span>
+<span style="font-size:40px;line-height:1.15;font-weight:600;letter-spacing:-.02em">周四<br>下午 2:00</span>
+<span style="font-size:15px;color:#69707d">Thursday, October 8 · 2:00 pm · Cleaning</span>
+<div style="margin-top:18px;display:flex;flex-direction:column;gap:10px;font-size:15px;line-height:1.45">
+<div style="display:flex;gap:10px"><span style="width:6px;height:6px;border-radius:50%;background:#1a9e4b;margin-top:8px;flex:none"></span><span>带上保险卡<br><span style="font-size:12.5px;color:#69707d">Bring your insurance card</span></span></div>
+<div style="display:flex;gap:10px"><span style="width:6px;height:6px;border-radius:50%;background:#5b3cc4;margin-top:8px;flex:none"></span><span>X 光（$80）没答应，等您决定<br><span style="font-size:12.5px;color:#69707d">X-rays ($80) held for your decision</span></span></div>
+</div>
+</div>
+<div style="position:relative;display:flex;flex-direction:column;gap:8px;padding:0 22px 44px">
+<div style="height:54px;border-radius:27px;background:#121418;color:#fff;display:grid;place-items:center;font-size:16px;font-weight:600">Add to calendar</div>
+<div style="display:flex;gap:8px"><span style="flex:1;height:50px;border-radius:25px;background:#f4f5f7;display:grid;place-items:center;font-size:15px;font-weight:600">Talk it over</span><span style="flex:1;height:50px;border-radius:25px;background:#f4f5f7;display:grid;place-items:center;font-size:15px;font-weight:600">Transcript</span></div>
+</div>
+<div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:#121418"></div>
+</div></div>
+
+<div class="dv-opt" id="3g"><div class="dv-olabel"><a class="dv-oid" href="#3g">3g</a>Couldn't reach them. A still amber hairline: no motion, nothing to celebrate, just next steps. The color is a warning without being an alarm.</div>
+<div style="width:390px;height:844px;border-radius:56px;overflow:hidden;position:relative;background:#fffdf8;color:#121418;box-shadow:0 0 0 11px #16181c,0 0 0 12px #3a3d43,0 40px 80px rgba(20,30,60,.22);margin:12px;display:flex;flex-direction:column">
+{{ edgeFail }}
+<div style="height:54px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:4px 30px 0 40px;font-size:16px;font-weight:600;position:relative;z-index:5"><span>9:41</span><div style="position:absolute;left:50%;top:12px;transform:translateX(-50%);width:120px;height:35px;border-radius:20px;background:#000"></div><span style="display:flex;gap:5px;align-items:center"><svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"></rect><rect x="5" y="5.5" width="3" height="6.5" rx="1"></rect><rect x="10" y="3" width="3" height="9" rx="1"></rect><rect x="15" y="0" width="3" height="12" rx="1"></rect></svg><svg width="26" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".4"></rect><rect x="2" y="2" width="20" height="9" rx="2" fill="currentColor"></rect></svg></span></div>
+<div style="position:relative;display:flex;justify-content:space-between;align-items:center;padding:6px 22px 0"><span style="font-size:14px;font-weight:500;color:#2557e8">Done</span><span style="font-size:13px;color:#69707d">La Esquina · 0:48</span></div>
+<div style="position:relative;flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 34px;gap:10px">
+<span style="font-size:12px;font-weight:600;letter-spacing:.08em;color:#855600">NO ANSWER</span>
+<span style="font-size:36px;line-height:1.2;font-weight:600;letter-spacing:-.02em;text-wrap:pretty">没人接听</span>
+<span style="font-size:15px;line-height:1.5;color:#4a4f5a;text-wrap:pretty">响了 6 声，没有语音信箱。网上显示他们 11 点才开门。</span>
+<span style="font-size:13px;line-height:1.45;color:#69707d">Rang 6 times, no voicemail. Their listing says they open at 11.</span>
+</div>
+<div style="position:relative;display:flex;flex-direction:column;gap:8px;padding:0 22px 44px">
+<div style="height:58px;border-radius:20px;background:#121418;color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 18px;font-size:16px;font-weight:600"><span>Try again at 11:00</span><span style="font-size:13px;font-weight:500;color:rgba(255,255,255,.7)">in 1h 19m</span></div>
+<div style="height:54px;border-radius:20px;background:#fff;box-shadow:0 0 0 1px #eadfc4;display:flex;align-items:center;justify-content:space-between;padding:0 18px;font-size:15px;font-weight:600"><span>Call Taquería El Sol instead</span><span style="font-size:13px;font-weight:500;color:#137a3a">Open now</span></div>
+<div style="height:54px;border-radius:20px;background:#fff;box-shadow:0 0 0 1px #eadfc4;display:flex;align-items:center;padding:0 18px;font-size:15px;font-weight:600">Talk it over</div>
+</div>
+<div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:#121418"></div>
+</div></div>
+</div>
+<p class="dv-next">Try next: "make the glow progress through one clickable flow, 3a → 3b → 3c → 2c → 3f" · "a voicemail variant" · "dark-mode versions of the aura screens"</p>
+</section>
+<section class="dv-turn" id="t2">
+<div class="dv-thd"><a class="dv-tid" href="#t2">2</a><span class="dv-tname">Edge glow instead of the orb: light wraps the whole screen, and its motion tells you the state</span></div>
+<div style="max-width:1240px;margin:0 0 36px;font-size:14px;line-height:1.55;color:#4a4f5a;text-wrap:pretty">An original take in CallBridge's own colors (blue · violet · mint · green), not Apple's rainbow. Each state gets its own motion: <b>listening</b> breathes, <b>looking it up</b> chases, <b>on a call</b> is a steady hairline, <b>needs you</b> drains as a countdown, and in <b>hand-off</b> it dims to a low ember. Content comes from <a class="dv-oid" href="#1a">1a</a>, <a class="dv-oid" href="#1b">1b</a>, <a class="dv-oid" href="#1d">1d</a>, <a class="dv-oid" href="#1e">1e</a> and <a class="dv-oid" href="#1f">1f</a>, with the orb removed. <a class="dv-oid" href="#2d">2d</a> is live and shares its hold question with <a class="dv-oid" href="#1e">1e</a>.</div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="2a"><div class="dv-olabel"><a class="dv-oid" href="#2a">2a</a>Listening: a soft aura that rotates slowly and breathes. Your words appear in the middle while you speak.</div>
+<div style="width:390px;height:844px;border-radius:56px;overflow:hidden;position:relative;background:#fff;color:#121418;box-shadow:0 0 0 11px #16181c,0 0 0 12px #3a3d43,0 40px 80px rgba(20,30,60,.22);margin:12px;display:flex;flex-direction:column">
+{{ edgeAura }}
+<div style="height:54px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:4px 30px 0 40px;font-size:16px;font-weight:600;position:relative;z-index:5"><span>9:41</span><div style="position:absolute;left:50%;top:12px;transform:translateX(-50%);width:120px;height:35px;border-radius:20px;background:#000"></div><span style="display:flex;gap:5px;align-items:center"><svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"></rect><rect x="5" y="5.5" width="3" height="6.5" rx="1"></rect><rect x="10" y="3" width="3" height="9" rx="1"></rect><rect x="15" y="0" width="3" height="12" rx="1"></rect></svg><svg width="26" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".4"></rect><rect x="2" y="2" width="20" height="9" rx="2" fill="currentColor"></rect></svg></span></div>
+<div style="position:relative;display:flex;justify-content:space-between;padding:6px 22px 0">
+<div style="display:flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:18px;background:#f4f5f7;font-size:13px;font-weight:500"><span style="color:#69707d">I speak</span>Mandarin</div>
+<div style="display:flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:18px;background:#f4f5f7;font-size:13px;font-weight:500"><span style="color:#69707d">Voice</span>Marin</div>
+</div>
+<div style="position:relative;flex:1;display:flex;flex-direction:column;justify-content:center;gap:14px;padding:0 34px">
+<div style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;letter-spacing:.08em;color:#2557e8">{{ barsBlue }}LISTENING</div>
+<div style="font-size:31px;line-height:1.38;font-weight:500;letter-spacing:-.01em;text-wrap:pretty">打给我的牙医，下周约个洗牙，<span style="color:#9aa1ad">最好下午</span></div>
+<div style="font-size:14px;line-height:1.5;color:#69707d">Call my dentist, book a cleaning next week — afternoon if possible</div>
+</div>
+<div style="position:relative;display:flex;gap:8px;padding:0 22px">
+<div style="height:36px;display:flex;align-items:center;padding:0 14px;border-radius:18px;background:#f4f5f7;font-size:13px;font-weight:500">Skip this question</div>
+<div style="height:36px;display:flex;align-items:center;padding:0 14px;border-radius:18px;background:#f4f5f7;font-size:13px;font-weight:500">That's all</div>
+</div>
+<div style="position:relative;margin:10px 18px 0;background:#fff;border:1px solid #e1e4e9;border-radius:22px;padding:14px 14px 14px 16px;display:flex;align-items:center;gap:12px">
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+<div style="display:flex;align-items:center;gap:8px"><span style="font-size:15px;font-weight:600">Smile Dental</span><span style="font-size:11px;font-weight:600;color:#2557e8;background:#e6edfd;border-radius:99px;padding:2px 8px">in phone book</span></div>
+<div style="font-size:13px;color:#69707d">(901) 555-0142 · 预约洗牙</div>
+</div>
+<div style="flex:none;height:44px;padding:0 16px;border-radius:22px;background:#eef0f3;color:#9aa1ad;font-size:14px;font-weight:600;display:flex;align-items:center">Review &amp; call</div>
+</div>
+<div style="position:relative;display:flex;justify-content:center;align-items:center;gap:28px;padding:22px 0 44px">
+<div style="width:58px;height:58px;border-radius:50%;background:#f4f5f7;display:grid;place-items:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5v5h3.5L12 18V6L7.5 9.5H4z"></path><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"></path></svg></div>
+<div style="width:74px;height:74px;border-radius:50%;background:#2557e8;display:grid;place-items:center;color:#fff"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"></path></svg></div>
+<div style="width:58px;height:58px;border-radius:50%;background:#f4f5f7;display:grid;place-items:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="6" width="18" height="12" rx="2.5"></rect><path d="M7 10h.01M10.5 10h.01M14 10h.01M17 10h.01M8 14h8"></path></svg></div>
+</div>
+<div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:#121418"></div>
+</div></div>
+
+<div class="dv-opt" id="2b"><div class="dv-olabel"><a class="dv-oid" href="#2b">2b</a>Looking it up: two violet comets chase around the edge while it searches (a quick or a thorough lookup).</div>
+<div style="width:390px;height:844px;border-radius:56px;overflow:hidden;position:relative;background:#fff;color:#121418;box-shadow:0 0 0 11px #16181c,0 0 0 12px #3a3d43,0 40px 80px rgba(20,30,60,.22);margin:12px;display:flex;flex-direction:column">
+{{ edgeComet }}
+<div style="height:54px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:4px 30px 0 40px;font-size:16px;font-weight:600;position:relative;z-index:5"><span>9:41</span><div style="position:absolute;left:50%;top:12px;transform:translateX(-50%);width:120px;height:35px;border-radius:20px;background:#000"></div><span style="display:flex;gap:5px;align-items:center"><svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"></rect><rect x="5" y="5.5" width="3" height="6.5" rx="1"></rect><rect x="10" y="3" width="3" height="9" rx="1"></rect><rect x="15" y="0" width="3" height="12" rx="1"></rect></svg><svg width="26" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".4"></rect><rect x="2" y="2" width="20" height="9" rx="2" fill="currentColor"></rect></svg></span></div>
+<div style="position:relative;padding:16px 26px 0;display:flex;flex-direction:column;gap:2px">
+<div style="font-size:32px;line-height:1.15;font-weight:300;letter-spacing:-.02em">下午好，伟</div>
+<div style="font-size:32px;line-height:1.15;font-weight:600;letter-spacing:-.02em">想打给谁？</div>
+</div>
+<div style="position:relative;flex:1;padding:22px 20px 0;display:flex;flex-direction:column;gap:12px">
+<div style="align-self:flex-end;max-width:80%;background:#2557e8;color:#fff;padding:10px 14px;border-radius:20px 20px 6px 20px;font-size:15px;line-height:1.4">最近的墨西哥餐厅几点关门？</div>
+<div style="max-width:86%;background:#f4f5f7;border-radius:20px 20px 20px 6px;padding:11px 14px"><div style="font-size:15px;line-height:1.45">我查一下附近现在营业的墨西哥餐厅……</div><div style="font-size:12.5px;color:#69707d;margin-top:3px">Let me check which Mexican places nearby are open…</div></div>
+<div style="display:flex;flex-direction:column;gap:6px;padding:4px 4px 0">
+<div style="display:flex;justify-content:space-between;font-size:12px;font-weight:600;letter-spacing:.08em;color:#5b3cc4"><span>LOOKING IT UP · THOROUGH</span><span style="color:#69707d;letter-spacing:0;font-weight:500">about 30 s</span></div>
+<div style="height:4px;border-radius:2px;background:#eee9fc;overflow:hidden"><div style="width:58%;height:100%;background:#5b3cc4;border-radius:2px"></div></div>
+</div>
+<div style="border:1px solid #eef0f3;border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:8px"><div style="width:58%;height:12px;border-radius:6px;background:#eef0f3"></div><div style="width:82%;height:10px;border-radius:5px;background:#f4f5f7"></div><div style="width:40%;height:10px;border-radius:5px;background:#f4f5f7"></div></div>
+<div style="border:1px solid #eef0f3;border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:8px"><div style="width:46%;height:12px;border-radius:6px;background:#eef0f3"></div><div style="width:74%;height:10px;border-radius:5px;background:#f4f5f7"></div><div style="width:52%;height:10px;border-radius:5px;background:#f4f5f7"></div></div>
+</div>
+<div style="position:relative;display:flex;gap:8px;align-items:center;padding:12px 20px 44px">
+<div style="flex:1;height:50px;border-radius:25px;background:#f4f5f7;display:flex;align-items:center;padding:0 18px;font-size:15px;color:#69707d">Type or talk…</div>
+<div style="width:50px;height:50px;border-radius:50%;background:#eef0f3;color:#69707d;display:grid;place-items:center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M4 4l16 16"></path></svg></div>
+</div>
+<div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:#121418"></div>
+</div></div>
+
+<div class="dv-opt" id="2c"><div class="dv-olabel"><a class="dv-oid" href="#2c">2c</a>On a call: a crisp green hairline with a soft bloom, turning slowly. The latest line sits big in the middle with the original underneath.</div>
+<div style="width:390px;height:844px;border-radius:56px;overflow:hidden;position:relative;background:#f7f8fa;color:#121418;box-shadow:0 0 0 11px #16181c,0 0 0 12px #3a3d43,0 40px 80px rgba(20,30,60,.22);margin:12px;display:flex;flex-direction:column">
+{{ edgeHair }}
+<div style="height:54px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:4px 30px 0 40px;font-size:16px;font-weight:600;position:relative;z-index:5"><span>9:41</span><div style="position:absolute;left:50%;top:12px;transform:translateX(-50%);width:120px;height:35px;border-radius:20px;background:#000"></div><span style="display:flex;gap:5px;align-items:center"><svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"></rect><rect x="5" y="5.5" width="3" height="6.5" rx="1"></rect><rect x="10" y="3" width="3" height="9" rx="1"></rect><rect x="15" y="0" width="3" height="12" rx="1"></rect></svg><svg width="26" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".4"></rect><rect x="2" y="2" width="20" height="9" rx="2" fill="currentColor"></rect></svg></span></div>
+<div style="position:relative;display:grid;grid-template-columns:70px 1fr 70px;align-items:center;padding:6px 18px 0">
+<div style="height:36px;display:flex;align-items:center;gap:2px;font-size:14px;font-weight:500;color:#2557e8"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 5l-7 7 7 7"></path></svg>Leave</div>
+<div style="text-align:center;display:flex;flex-direction:column"><span style="font-size:17px;font-weight:600">Smile Dental</span><span style="font-size:13px;color:#137a3a;font-weight:500;font-variant-numeric:tabular-nums">In progress · 02:14</span></div>
+<div></div>
+</div>
+<div style="position:relative;flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 34px;gap:10px">
+<div style="font-size:14px;line-height:1.5;color:#9aa1ad;margin-bottom:26px">AI · 周五上午李先生不方便，周四下午 2 点可以吗？</div>
+<div style="font-size:12px;font-weight:600;letter-spacing:.08em;color:#137a3a">THEM · FRONT DESK</div>
+<div style="font-size:30px;line-height:1.38;font-weight:500;letter-spacing:-.01em;text-wrap:pretty">“周四下午 2 点可以，已经帮您登记了。”</div>
+<div style="font-size:15px;line-height:1.45;color:#69707d">Thursday at 2 works, I've got you down.</div>
+</div>
+<div style="position:relative;margin:0 20px;height:46px;border-radius:23px;background:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 18px;font-size:13px"><span style="display:flex;align-items:center;gap:8px;color:#69707d"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a9e4b" stroke-width="2.2" stroke-linecap="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>Told them it's an AI calling for Wei</span><span style="font-weight:600">Transcript</span></div>
+<div style="position:relative;display:flex;justify-content:center;align-items:flex-start;gap:30px;padding:24px 0 40px">
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12px;color:#69707d"><div style="width:58px;height:58px;border-radius:50%;background:#fff;display:grid;place-items:center;color:#121418"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 16v-4a8 8 0 0 1 16 0v4"></path><rect x="3" y="14" width="4" height="6" rx="1.5"></rect><rect x="17" y="14" width="4" height="6" rx="1.5"></rect></svg></div>Listen</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12px;color:#69707d"><div style="width:70px;height:70px;border-radius:50%;background:#e5402f;display:grid;place-items:center;color:#fff"><svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor"><path d="M2.6 13.4c5.2-4.5 13.600-4.5 18.8 0 .5.5.6 1.3.1 1.8l-1.6 1.7c-.4.4-1.1.5-1.6.2l-2.3-1.3c-.4-.2-.6-.7-.6-1.100v-1.6a11 11 0 0 0-6.8 0v1.6c0 .4-.2.9-.6 1.1l-2.3 1.3c-.5.3-1.2.2-1.6-.2l-1.6-1.7c-.5-.5-.4-1.3.1-1.8z"></path></svg></div>End call</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12px;color:#69707d"><div style="width:58px;height:58px;border-radius:50%;background:#fff;display:grid;place-items:center;color:#121418"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-8l-4 3v-3H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"></path></svg></div>Message</div>
+</div>
+<div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:#121418"></div>
+</div></div>
+
+<div class="dv-opt" id="2d"><div class="dv-olabel"><a class="dv-oid" href="#2d">2d</a>Needs you: the edge itself is the countdown, a violet line draining clockwise from the top. When you answer, it settles back to the green hairline. Live: tap Approve / Decline.</div>
+<div style="width:390px;height:844px;border-radius:56px;overflow:hidden;position:relative;background:#fbfaff;color:#121418;box-shadow:0 0 0 11px #16181c,0 0 0 12px #3a3d43,0 40px 80px rgba(20,30,60,.22);margin:12px;display:flex;flex-direction:column">
+{{ edgeHold }}
+<div style="height:54px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:4px 30px 0 40px;font-size:16px;font-weight:600;position:relative;z-index:5"><span>9:41</span><div style="position:absolute;left:50%;top:12px;transform:translateX(-50%);width:120px;height:35px;border-radius:20px;background:#000"></div><span style="display:flex;gap:5px;align-items:center"><svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"></rect><rect x="5" y="5.5" width="3" height="6.5" rx="1"></rect><rect x="10" y="3" width="3" height="9" rx="1"></rect><rect x="15" y="0" width="3" height="12" rx="1"></rect></svg><svg width="26" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".4"></rect><rect x="2" y="2" width="20" height="9" rx="2" fill="currentColor"></rect></svg></span></div>
+<div style="position:relative;text-align:center;display:flex;flex-direction:column;padding:6px 0 0"><span style="font-size:17px;font-weight:600">Smile Dental</span><span style="font-size:13px;color:{{ headerColor }};font-weight:500">{{ headerStatus }}</span></div>
+<sc-if value="{{ holdPending }}" hint-placeholder-val="{{ true }}">
+<div style="position:relative;flex:1;display:flex;flex-direction:column;padding:0 30px">
+<div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:12px">
+<div style="font-size:12px;font-weight:700;letter-spacing:.1em;color:#5b3cc4">THEY'RE ON HOLD FOR YOU</div>
+<div style="font-size:64px;line-height:1;font-weight:200;color:#5b3cc4;font-variant-numeric:tabular-nums;letter-spacing:-.02em">{{ secLabel }}</div>
+<div style="font-size:26px;line-height:1.38;font-weight:600;letter-spacing:-.01em;text-wrap:pretty;margin-top:8px">要加做全套 X 光吗？需额外付 $80。</div>
+<div style="font-size:14px;line-height:1.45;color:#4a4f5a">“Would they also like a full set of X-rays while they're here? That's $80 extra.”</div>
+<div style="display:flex;gap:6px;margin-top:4px"><span style="background:#eee9fc;color:#5b3cc4;border-radius:99px;padding:5px 11px;font-size:13px;font-weight:600">$80</span><span style="background:#eee9fc;color:#5b3cc4;border-radius:99px;padding:5px 11px;font-size:13px;font-weight:600">Thu Oct 8, 2:00 pm</span></div>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px;padding-bottom:44px">
+<div onClick="{{ approve }}" style="height:54px;border-radius:27px;background:#5b3cc4;color:#fff;display:grid;place-items:center;font-size:16px;font-weight:600;cursor:pointer" style-active="transform:scale(.98)">Approve</div>
+<div style="display:flex;gap:8px">
+<div onClick="{{ decline }}" style="flex:1;height:54px;border-radius:27px;background:#fff;box-shadow:0 0 0 1px #e1e4e9;display:grid;place-items:center;font-size:16px;font-weight:600;cursor:pointer" style-active="transform:scale(.98)">Decline</div>
+<div style="flex:1;height:54px;border-radius:27px;background:#fff;box-shadow:0 0 0 1px #e1e4e9;display:grid;place-items:center;font-size:16px;font-weight:600;color:#5b3cc4">Reply…</div>
+</div>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{ holdDone }}" hint-placeholder-val="{{ false }}">
+<div style="position:relative;flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:14px;padding:0 36px 80px">
+<div style="width:64px;height:64px;border-radius:50%;background:#e1f5e8;color:#1a9e4b;display:grid;place-items:center"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></div>
+<div style="font-size:19px;line-height:1.45;font-weight:500;text-wrap:pretty">{{ answerLine }}</div>
+<div style="font-size:14px;color:#69707d">Back to the call…</div>
+<div onClick="{{ replay }}" style="margin-top:8px;font-size:14px;font-weight:600;color:#5b3cc4;cursor:pointer">Replay the question</div>
+</div>
+</sc-if>
+<div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:#121418"></div>
+</div></div>
+
+<div class="dv-opt" id="2e"><div class="dv-olabel"><a class="dv-oid" href="#2e">2e</a>Two-tone sides: the left edge glows green when they talk, the right edge blue when the AI talks, matching the bubble sides. It swaps live.</div>
+<div style="width:390px;height:844px;border-radius:56px;overflow:hidden;position:relative;background:#fff;color:#121418;box-shadow:0 0 0 11px #16181c,0 0 0 12px #3a3d43,0 40px 80px rgba(20,30,60,.22);margin:12px;display:flex;flex-direction:column">
+{{ edgeSides }}
+<div style="height:54px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:4px 30px 0 40px;font-size:16px;font-weight:600;position:relative;z-index:5"><span>9:41</span><div style="position:absolute;left:50%;top:12px;transform:translateX(-50%);width:120px;height:35px;border-radius:20px;background:#000"></div><span style="display:flex;gap:5px;align-items:center"><svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"></rect><rect x="5" y="5.5" width="3" height="6.5" rx="1"></rect><rect x="10" y="3" width="3" height="9" rx="1"></rect><rect x="15" y="0" width="3" height="12" rx="1"></rect></svg><svg width="26" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".4"></rect><rect x="2" y="2" width="20" height="9" rx="2" fill="currentColor"></rect></svg></span></div>
+<div style="position:relative;display:flex;align-items:center;gap:10px;padding:6px 22px 0">
+<div style="flex:1;display:flex;flex-direction:column"><span style="font-size:17px;font-weight:600">Smile Dental</span><span style="font-size:13px;color:#69707d;font-variant-numeric:tabular-nums">In progress · 02:40 · Stay in the loop</span></div>
+<span style="font-size:12px;font-weight:600;border-radius:99px;padding:5px 11px;background:{{ speakerBg }};color:{{ speakerColor }}">{{ speakerLabel }}</span>
+</div>
+<div style="position:relative;flex:1;min-height:0;overflow:hidden;padding:16px 30px 0;display:flex;flex-direction:column;gap:12px;justify-content:flex-end">
+<div style="max-width:84%;display:flex;flex-direction:column;gap:3px"><span style="font-size:11px;font-weight:600;color:#137a3a;padding-left:6px">THEM</span><div style="background:#f4f5f7;border-radius:18px 18px 18px 6px;padding:10px 14px"><div style="font-size:15px;line-height:1.4">您好，Smile Dental，我是 Maria。有什么可以帮您？</div><div style="font-size:12.5px;color:#69707d;margin-top:3px">Thank you for calling Smile Dental, this is Maria. How can I help you?</div></div></div>
+<div style="align-self:flex-end;max-width:84%;display:flex;flex-direction:column;gap:3px;align-items:flex-end"><span style="font-size:11px;font-weight:600;color:#2557e8;padding-right:6px">AI FOR WEI</span><div style="background:#2557e8;color:#fff;border-radius:18px 18px 6px 18px;padding:10px 14px"><div style="font-size:15px;line-height:1.4">您好 Maria，我是李伟的 AI 语言助手，替他预约洗牙。</div><div style="font-size:12.5px;color:rgba(255,255,255,.78);margin-top:3px">Hi Maria, I'm Wei's AI language assistant, calling to schedule a cleaning.</div></div></div>
+<div style="max-width:84%;display:flex;flex-direction:column;gap:3px"><span style="font-size:11px;font-weight:600;color:#137a3a;padding-left:6px">THEM</span><div style="background:#f4f5f7;border-radius:18px 18px 18px 6px;padding:10px 14px"><div style="font-size:15px;line-height:1.4">好的。我是在和真人说话吗？</div><div style="font-size:12.5px;color:#69707d;margin-top:3px">Oh, okay. Am I talking to a real person?</div></div></div>
+<div style="align-self:flex-end;max-width:84%;display:flex;flex-direction:column;gap:3px;align-items:flex-end"><span style="font-size:11px;font-weight:600;color:#2557e8;padding-right:6px">AI FOR WEI</span><div style="background:#2557e8;color:#fff;border-radius:18px 18px 6px 18px;padding:10px 14px"><div style="font-size:15px;line-height:1.4">不是，我是李伟授权的 AI 助手。需要他决定的事，我会先问他。</div><div style="font-size:12.5px;color:rgba(255,255,255,.78);margin-top:3px">No, I'm an AI assistant authorized by Wei. If something needs his approval, I'll check with him.</div></div></div>
+</div>
+<div style="position:relative;display:flex;gap:8px;align-items:center;padding:14px 22px 44px">
+<div style="width:48px;height:48px;border-radius:50%;background:#f4f5f7;display:grid;place-items:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 16v-4a8 8 0 0 1 16 0v4"></path><rect x="3" y="14" width="4" height="6" rx="1.5"></rect><rect x="17" y="14" width="4" height="6" rx="1.5"></rect></svg></div>
+<div style="flex:1;height:48px;border-radius:24px;background:#f4f5f7;display:flex;align-items:center;padding:0 18px;font-size:15px;color:#69707d">Message the assistant…</div>
+<div style="width:48px;height:48px;border-radius:50%;background:#e5402f;color:#fff;display:grid;place-items:center"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M2.6 13.4c5.2-4.5 13.6-4.5 18.8 0 .5.5.6 1.3.1 1.8l-1.6 1.7c-.4.4-1.1.5-1.6.2l-2.3-1.3c-.4-.2-.6-.7-.6-1.1v-1.6a11 11 0 0 0-6.8 0v1.6c0 .4-.2.9-.6 1.1l-2.3 1.3c-.5.3-1.2.2-1.6-.2l-1.6-1.7c-.5-.5-.4-1.3.1-1.8z"></path></svg></div>
+</div>
+<div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:#121418"></div>
+</div></div>
+
+<div class="dv-opt" id="2f"><div class="dv-olabel"><a class="dv-oid" href="#2f">2f</a>Hand it off, as an ember: a dim glow rising from the bottom edge that breathes slowly. It says "working" without asking for your attention.</div>
+<div style="width:390px;height:844px;border-radius:56px;overflow:hidden;position:relative;background:#0b1020;color:#eceef2;box-shadow:0 0 0 11px #16181c,0 0 0 12px #3a3d43,0 40px 80px rgba(20,30,60,.22);margin:12px;display:flex;flex-direction:column">
+{{ edgeEmber }}
+<div style="height:54px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:4px 30px 0 40px;font-size:16px;font-weight:600;position:relative;z-index:5"><span>9:41</span><div style="position:absolute;left:50%;top:12px;transform:translateX(-50%);width:120px;height:35px;border-radius:20px;background:#000"></div><span style="display:flex;gap:5px;align-items:center"><svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"></rect><rect x="5" y="5.5" width="3" height="6.5" rx="1"></rect><rect x="10" y="3" width="3" height="9" rx="1"></rect><rect x="15" y="0" width="3" height="12" rx="1"></rect></svg><svg width="26" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".4"></rect><rect x="2" y="2" width="20" height="9" rx="2" fill="currentColor"></rect></svg></span></div>
+<div style="position:relative;display:flex;justify-content:space-between;align-items:center;padding:6px 20px 0">
+<div style="height:36px;display:flex;align-items:center;gap:2px;font-size:14px;font-weight:500;color:#9db4ff"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 5l-7 7 7 7"></path></svg>Leave</div>
+<span style="font-size:12px;font-weight:600;color:#50d184;background:#13301f;border-radius:99px;padding:5px 11px">Handed off</span>
+</div>
+<div style="position:relative;padding:40px 30px 0;display:flex;flex-direction:column;gap:4px">
+<span style="font-size:15px;color:#9aa1ad">Casa Oaxaca · Spanish</span>
+<span style="font-size:64px;line-height:1.05;font-weight:200;font-variant-numeric:tabular-nums;letter-spacing:-.02em">01:47</span>
+<span style="font-size:15px;color:#c8ccd6;margin-top:10px;line-height:1.5;text-wrap:pretty">助手不会打扰您，结束后告诉您结果。</span>
+<span style="font-size:13px;color:#9aa1ad;line-height:1.45">The assistant won't interrupt. You'll get the result at the end.</span>
+</div>
+<div style="position:relative;padding:28px 30px 0;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;gap:6px"><span style="flex:1;height:3px;border-radius:2px;background:#50d184"></span><span style="flex:1;height:3px;border-radius:2px;background:#50d184"></span><span style="flex:1;height:3px;border-radius:2px;background:#50d184"></span><span style="flex:1;height:3px;border-radius:2px;background:#50d184"></span><span style="flex:1;height:3px;border-radius:2px;background:#50d184;opacity:.45"></span><span style="flex:1;height:3px;border-radius:2px;background:#2a2f3f"></span><span style="flex:1;height:3px;border-radius:2px;background:#2a2f3f"></span></div>
+<span style="font-size:13px;color:#9aa1ad">Connected · told them it's an AI · in progress</span>
+</div>
+<div style="position:relative;margin:auto 18px 0;padding:14px 16px;border-radius:18px;background:rgba(255,255,255,.05);display:flex;flex-direction:column;gap:4px">
+<span style="font-size:11px;font-weight:600;letter-spacing:.08em;color:#9aa1ad">THEM · JUST NOW</span>
+<span style="font-size:17px;line-height:1.4;font-weight:500">“4 位，周六晚上 7:30，没问题。”</span>
+<span style="font-size:13px;color:#9aa1ad">Para cuatro, el sábado a las 7:30, perfecto.</span>
+</div>
+<div style="position:relative;display:flex;gap:10px;padding:14px 18px 44px">
+<div style="flex:1;height:54px;border-radius:27px;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;gap:8px;font-size:15px;font-weight:600"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 16v-4a8 8 0 0 1 16 0v4"></path><rect x="3" y="14" width="4" height="6" rx="1.5"></rect><rect x="17" y="14" width="4" height="6" rx="1.5"></rect></svg>Listen live</div>
+<div style="flex:1;height:54px;border-radius:27px;background:#3a1715;color:#ff7b70;display:flex;align-items:center;justify-content:center;gap:8px;font-size:15px;font-weight:600">End call</div>
+</div>
+<div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:#eceef2"></div>
+</div></div>
+</div>
+<p class="dv-next">Try next: "use the edge-glow system app-wide and drop the orb" · "combine <a class="dv-oid" href="#2c">2c</a>'s hairline with <a class="dv-oid" href="#2e">2e</a>'s speaker sides" · "make <a class="dv-oid" href="#2d">2d</a> the hold-question takeover and design the lock-screen notification to match"</p>
+</section>
+<section class="dv-turn" id="t1">
+<div class="dv-thd"><a class="dv-tid" href="#t1">1</a><span class="dv-tname">CallBridge mobile — first pass</span></div>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:28px;max-width:1240px;margin:0 0 48px;padding:28px 32px;background:#fff;border-radius:20px;border:1px solid rgba(0,0,0,.06)">
+<div style="display:flex;flex-direction:column;gap:10px">
+<div style="font-size:12px;font-weight:600;letter-spacing:.06em;color:#69707d">ASSUMPTIONS</div>
+<div style="font-size:14px;line-height:1.55;color:#121418;text-wrap:pretty">User is Wei Li (李伟), a Mandarin speaker in Memphis. UI labels are English (v1, per handoff); everything the assistant generates is Mandarin first, original/English underneath. Sign in, Review &amp; confirm, Result, Profile and Notifications are out of this round. The attached design-system project is empty, so colors come from the web client's tokens.</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:10px">
+<div style="font-size:12px;font-weight:600;letter-spacing:.06em;color:#69707d">THE ORB CARRIES STATE</div>
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+<div style="display:flex;flex-direction:column;align-items:center;gap:8px;font-size:12px;color:#69707d">{{ orbAssist40 }}<span>Listening / speaking</span></div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:8px;font-size:12px;color:#69707d">{{ orbThink40 }}<span>Thinking / looking up</span></div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:8px;font-size:12px;color:#69707d">{{ orbCall40 }}<span>On a call</span></div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:8px;font-size:12px;color:#69707d">{{ orbAsk40 }}<span>Needs you</span></div>
+</div>
+</div>
+<div style="display:flex;flex-direction:column;gap:10px">
+<div style="font-size:12px;font-weight:600;letter-spacing:.06em;color:#69707d">TYPE &amp; COLOR</div>
+<div style="font-size:14px;line-height:1.55;color:#121418;text-wrap:pretty">Geist for UI, Noto Sans SC for generated Chinese. Blue <span style="font-family:'Geist Mono',monospace;font-size:12px">#2557E8</span> for the assistant, green for live calls, violet when someone's waiting on you. Neutral grey surfaces so the orb is the only color on most screens. Hold-question countdowns on <a href="#1e">1e</a> and <a href="#1g">1g</a> are live: tap Approve / Decline.</div>
+</div>
+</div>
+
+<div style="display:flex;align-items:baseline;gap:12px;margin:0 0 22px"><span style="font-size:22px;font-weight:600;letter-spacing:-.01em">Home: start a call</span><span style="font-size:13px;color:#69707d">3 directions, each in a different moment of the conversation</span></div>
+<div class="dv-opts" style="margin-bottom:64px">
+
+<div class="dv-opt" id="1a"><div class="dv-olabel"><a class="dv-oid" href="#1a">1a</a>Orb hero. The assistant is speaking; its words fill the screen. The request card docks below and grows as details land.</div>
+<div style="width:390px;height:844px;border-radius:56px;overflow:hidden;position:relative;background:#eef1f6;color:#121418;box-shadow:0 0 0 11px #16181c,0 0 0 12px #3a3d43,0 40px 80px rgba(20,30,60,.22);margin:12px;display:flex;flex-direction:column">
+<div style="height:54px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:4px 30px 0 40px;font-size:16px;font-weight:600;position:relative;z-index:5"><span>9:41</span><div style="position:absolute;left:50%;top:12px;transform:translateX(-50%);width:120px;height:35px;border-radius:20px;background:#000"></div><span style="display:flex;gap:5px;align-items:center"><svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"></rect><rect x="5" y="5.5" width="3" height="6.5" rx="1"></rect><rect x="10" y="3" width="3" height="9" rx="1"></rect><rect x="15" y="0" width="3" height="12" rx="1"></rect></svg><svg width="26" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".4"></rect><rect x="2" y="2" width="20" height="9" rx="2" fill="currentColor"></rect></svg></span></div>
+<div style="display:flex;justify-content:space-between;padding:6px 18px 0">
+<div style="display:flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:18px;background:#fff;font-size:13px;font-weight:500"><span style="color:#69707d">I speak</span>Mandarin<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"></path></svg></div>
+<div style="display:flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:18px;background:#fff;font-size:13px;font-weight:500"><span style="color:#69707d">Voice</span>Marin<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"></path></svg></div>
+</div>
+<div style="position:relative;margin:12px 14px 0;height:408px;flex:none">
+{{ fieldAssist }}
+<div style="position:relative;height:100%;display:flex;flex-direction:column;align-items:center;text-align:center;padding:30px 28px 0;color:#fff">
+<div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;letter-spacing:.08em;color:#0a1a7a">{{ barsDark }}SPEAKING</div>
+<div style="margin-top:56px;font-size:25px;line-height:1.4;font-weight:500;text-wrap:pretty">“好的，帮您约 Smile Dental 洗牙。您是老患者吗？”</div>
+<div style="margin-top:10px;font-size:14px;line-height:1.45;color:rgba(255,255,255,.82);max-width:290px;text-wrap:pretty">Got it — a cleaning at Smile Dental. Are you an existing patient?</div>
+<div style="margin-top:auto;margin-bottom:-6px">{{ orbAssist130 }}</div>
+</div>
+</div>
+<div style="display:flex;gap:8px;padding:14px 18px 0;align-items:center">
+<div style="height:36px;display:flex;align-items:center;padding:0 14px;border-radius:18px;background:#fff;font-size:13px;font-weight:500">Skip this question</div>
+<div style="height:36px;display:flex;align-items:center;padding:0 14px;border-radius:18px;background:#fff;font-size:13px;font-weight:500">That's all</div>
+<div style="margin-left:auto;font-size:12px;color:#69707d">You: 下周，最好下午</div>
+</div>
+<div style="margin:10px 14px 0;background:#fff;border-radius:22px;padding:14px 14px 14px 16px;display:flex;align-items:center;gap:12px">
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+<div style="display:flex;align-items:center;gap:8px"><span style="font-size:15px;font-weight:600">Smile Dental</span><span style="font-size:11px;font-weight:600;color:#855600;background:#fff3d1;border-radius:99px;padding:2px 8px">Allowed · limits</span></div>
+<div style="font-size:13px;color:#69707d">(901) 555-0142 · 预约洗牙 · English</div>
+<div style="font-size:12px;color:#5b3cc4;font-weight:500">Still needed: 是否老患者 · 时间</div>
+</div>
+<div style="flex:none;height:44px;padding:0 16px;border-radius:22px;background:#e6edfd;color:#2557e8;font-size:14px;font-weight:600;display:flex;align-items:center">Review &amp; call</div>
+</div>
+<div style="display:flex;justify-content:center;align-items:center;gap:28px;margin-top:auto;padding-bottom:36px">
+<div style="width:60px;height:60px;border-radius:50%;background:#fff;display:grid;place-items:center;color:#121418"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5v5h3.5L12 18V6L7.5 9.5H4z"></path><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"></path></svg></div>
+<div style="width:76px;height:76px;border-radius:50%;background:#2557e8;display:grid;place-items:center;color:#fff;box-shadow:0 0 0 8px rgba(37,87,232,.14)"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"></path></svg></div>
+<div style="width:60px;height:60px;border-radius:50%;background:#fff;display:grid;place-items:center;color:#121418"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="6" width="18" height="12" rx="2.5"></rect><path d="M7 10h.01M10.5 10h.01M14 10h.01M17 10h.01M8 14h8"></path></svg></div>
+</div>
+<div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:#121418"></div>
+</div></div>
+
+<div class="dv-opt" id="1b"><div class="dv-olabel"><a class="dv-oid" href="#1b">1b</a>Conversation-forward. Glow lives behind a big greeting; research results arrive as tappable place cards with an unverified marker.</div>
+<div style="width:390px;height:844px;border-radius:56px;overflow:hidden;position:relative;background:#fff;color:#121418;box-shadow:0 0 0 11px #16181c,0 0 0 12px #3a3d43,0 40px 80px rgba(20,30,60,.22);margin:12px;display:flex;flex-direction:column">
+{{ glowTop }}
+<div style="height:54px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:4px 30px 0 40px;font-size:16px;font-weight:600;position:relative;z-index:5"><span>9:41</span><div style="position:absolute;left:50%;top:12px;transform:translateX(-50%);width:120px;height:35px;border-radius:20px;background:#000"></div><span style="display:flex;gap:5px;align-items:center"><svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"></rect><rect x="5" y="5.5" width="3" height="6.5" rx="1"></rect><rect x="10" y="3" width="3" height="9" rx="1"></rect><rect x="15" y="0" width="3" height="12" rx="1"></rect></svg><svg width="26" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".4"></rect><rect x="2" y="2" width="20" height="9" rx="2" fill="currentColor"></rect></svg></span></div>
+<div style="position:relative;padding:20px 24px 0;display:flex;flex-direction:column;gap:2px">
+<div style="font-size:34px;line-height:1.15;font-weight:300;letter-spacing:-.02em">下午好，伟</div>
+<div style="font-size:34px;line-height:1.15;font-weight:600;letter-spacing:-.02em">想打给谁？</div>
+</div>
+<div style="position:relative;flex:1;min-height:0;overflow:hidden;padding:18px 16px 0;display:flex;flex-direction:column;gap:10px">
+<div style="align-self:flex-end;max-width:80%;background:#2557e8;color:#fff;padding:10px 14px;border-radius:20px 20px 6px 20px;font-size:15px;line-height:1.4">最近的墨西哥餐厅几点关门？</div>
+<div style="display:flex;align-items:center;gap:8px;font-size:12px;color:#69707d;padding-left:4px">{{ orbThink20 }}Looked it up · thorough · 34 s</div>
+<div style="background:rgba(255,255,255,.9);border:1px solid #e1e4e9;border-radius:20px;padding:12px 14px;display:flex;flex-direction:column;gap:4px">
+<div style="font-size:15px;line-height:1.45">附近有 3 家墨西哥餐厅现在营业。最近的 La Esquina 营业到晚上 10 点。</div>
+<div style="font-size:12.5px;line-height:1.4;color:#69707d">3 Mexican places nearby are open now. The closest, La Esquina, closes at 10 pm.</div>
+<div style="display:flex;gap:10px;font-size:11.5px;color:#69707d;margin-top:4px"><span style="text-decoration:underline">Google Maps</span><span style="text-decoration:underline">yelp.com</span></div>
+</div>
+<div style="background:#fff;border:2px solid #1a9e4b;border-radius:18px;padding:11px 14px;display:flex;flex-direction:column;gap:3px">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:15px;font-weight:600">La Esquina Taqueria</span><span style="font-size:12px;color:#69707d">0.4 mi</span></div>
+<div style="font-size:12.5px;color:#69707d"><span style="color:#137a3a;font-weight:600">Open now</span> · 4.6 ★ (812) · 2117 Union Ave</div>
+<div style="font-size:13px;color:#137a3a">离您最近，营业到 22:00</div>
+<div style="font-size:12.5px;color:#121418;font-family:'Geist Mono',monospace">(901) 555-0187</div>
+</div>
+<div style="background:#fff;border:1px solid #e1e4e9;border-radius:18px;padding:11px 14px;display:flex;flex-direction:column;gap:3px">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:15px;font-weight:600">Taquería El Sol</span><span style="font-size:12px;color:#69707d">1.1 mi</span></div>
+<div style="font-size:12.5px;color:#69707d"><span style="color:#137a3a;font-weight:600">Open now</span> · 4.4 ★ (230)</div>
+<div style="display:flex;gap:8px;align-items:center;font-size:12.5px"><span style="font-family:'Geist Mono',monospace">(901) 555-0123</span><span style="font-size:11px;font-weight:600;color:#855600;background:#fff3d1;border-radius:99px;padding:2px 8px">Unverified · from a web page</span></div>
+</div>
+<div style="background:#fff;border:1px solid #e1e4e9;border-radius:18px;padding:11px 14px;display:flex;flex-direction:column;gap:3px">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:15px;font-weight:600">Casa Oaxaca</span><span style="font-size:12px;color:#69707d">1.8 mi</span></div>
+<div style="font-size:12.5px;color:#69707d">Closes 9 pm · 4.7 ★ · <span style="color:#2557e8">In your phone book as Casa Oaxaca</span></div>
+</div>
+</div>
+<div style="position:relative;padding:10px 14px 34px;background:linear-gradient(rgba(255,255,255,0),#fff 22%);display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;gap:8px"><div style="height:34px;display:flex;align-items:center;padding:0 13px;border-radius:17px;background:#eef0f3;font-size:13px;font-weight:500">Skip this question</div><div style="height:34px;display:flex;align-items:center;padding:0 13px;border-radius:17px;background:#eef0f3;font-size:13px;font-weight:500">That's all</div><div style="height:34px;display:flex;align-items:center;padding:0 13px;border-radius:17px;background:#eef0f3;font-size:13px;font-weight:500;color:#69707d">+2 more places</div></div>
+<div style="display:flex;gap:8px;align-items:center">
+<div style="flex:1;height:50px;border-radius:25px;background:#eef0f3;display:flex;align-items:center;padding:0 18px;font-size:15px;color:#69707d">Tap a place, or type…</div>
+<div style="width:50px;height:50px;border-radius:50%;background:#2557e8;color:#fff;display:grid;place-items:center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"></path></svg></div>
+</div>
+</div>
+<div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:#121418"></div>
+</div></div>
+
+<div class="dv-opt" id="1c"><div class="dv-olabel"><a class="dv-oid" href="#1c">1c</a>Request ring. The arc around the orb fills as who / why / language / number land. Here: two Marias, told apart by relationship and last 4 digits.</div>
+<div style="width:390px;height:844px;border-radius:56px;overflow:hidden;position:relative;background:#fbfbfd;color:#121418;box-shadow:0 0 0 11px #16181c,0 0 0 12px #3a3d43,0 40px 80px rgba(20,30,60,.22);margin:12px;display:flex;flex-direction:column">
+<div style="height:54px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:4px 30px 0 40px;font-size:16px;font-weight:600;position:relative;z-index:5"><span>9:41</span><div style="position:absolute;left:50%;top:12px;transform:translateX(-50%);width:120px;height:35px;border-radius:20px;background:#000"></div><span style="display:flex;gap:5px;align-items:center"><svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"></rect><rect x="5" y="5.5" width="3" height="6.5" rx="1"></rect><rect x="10" y="3" width="3" height="9" rx="1"></rect><rect x="15" y="0" width="3" height="12" rx="1"></rect></svg><svg width="26" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".4"></rect><rect x="2" y="2" width="20" height="9" rx="2" fill="currentColor"></rect></svg></span></div>
+<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 20px 0;font-size:13px;font-weight:500"><span style="color:#69707d">Mandarin · Marin</span><span style="color:#2557e8">Use the form</span></div>
+<div style="position:relative;height:270px;flex:none;display:grid;place-items:center">
+<svg width="250" height="250" viewBox="0 0 250 250" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) rotate(-90deg)"><circle cx="125" cy="125" r="118" fill="none" stroke="#e1e4e9" stroke-width="3"></circle><circle cx="125" cy="125" r="118" fill="none" stroke="url(#cbArc)" stroke-width="4" stroke-linecap="round" stroke-dasharray="741.4" stroke-dashoffset="444"></circle><defs><linearGradient id="cbArc" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5cc8ff"></stop><stop offset="1" stop-color="#2557e8"></stop></linearGradient></defs></svg>
+{{ orbAssist190 }}
+</div>
+<div style="display:flex;align-items:center;justify-content:center;gap:8px;font-size:12px;font-weight:600;letter-spacing:.08em;color:#2557e8">{{ barsBlue }}LISTENING</div>
+<div style="padding:14px 28px 0;text-align:center;display:flex;flex-direction:column;gap:6px">
+<div style="font-size:28px;font-weight:600;letter-spacing:-.01em">是哪位 Maria？</div>
+<div style="font-size:14px;line-height:1.5;color:#69707d;text-wrap:pretty">电话簿里有两位 Maria，说关系或号码后四位就行。<br><span style="font-size:12.5px">Two Marias in your phone book — say who or the last 4 digits.</span></div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:18px 16px 0">
+<div style="background:#fff;border-radius:22px;padding:14px;display:flex;flex-direction:column;gap:6px;box-shadow:0 0 0 2px #2557e8,0 8px 24px rgba(37,87,232,.12)">
+<div style="display:flex;justify-content:space-between;align-items:center"><div style="width:34px;height:34px;border-radius:50%;background:#ffe3ef;color:#b0306a;display:grid;place-items:center;font-size:14px;font-weight:600">M</div><span style="font-size:11px;font-weight:600;color:#2557e8;background:#e6edfd;border-radius:99px;padding:2px 8px">girlfriend</span></div>
+<div style="font-size:16px;font-weight:600">Maria</div>
+<div style="font-family:'Geist Mono',monospace;font-size:22px;letter-spacing:.04em">··· 6440</div>
+<div style="font-size:11.5px;color:#69707d">Mandarin · 3 days ago</div>
+</div>
+<div style="background:#fff;border-radius:22px;padding:14px;display:flex;flex-direction:column;gap:6px;box-shadow:0 0 0 1px #e1e4e9">
+<div style="display:flex;justify-content:space-between;align-items:center"><div style="width:34px;height:34px;border-radius:50%;background:#e1f5e8;color:#137a3a;display:grid;place-items:center;font-size:14px;font-weight:600">MS</div><span style="font-size:11px;font-weight:600;color:#69707d;background:#eef0f3;border-radius:99px;padding:2px 8px">landlord</span></div>
+<div style="font-size:16px;font-weight:600">Maria Santos</div>
+<div style="font-family:'Geist Mono',monospace;font-size:22px;letter-spacing:.04em">··· 1187</div>
+<div style="font-size:11.5px;color:#69707d">English · Sep 12</div>
+</div>
+</div>
+<div style="display:flex;gap:6px;padding:16px 16px 0;flex-wrap:wrap">
+<span style="font-size:12px;font-weight:600;border-radius:99px;padding:5px 10px;background:#e6edfd;color:#2557e8">Who · ?</span>
+<span style="font-size:12px;border-radius:99px;padding:5px 10px;background:#e1f5e8;color:#137a3a">Message · 今晚会晚到一小时</span>
+<span style="font-size:12px;border-radius:99px;padding:5px 10px;background:#eef0f3;color:#69707d">Language</span>
+<span style="font-size:12px;border-radius:99px;padding:5px 10px;background:#eef0f3;color:#69707d">Number</span>
+</div>
+<div style="display:flex;gap:8px;align-items:center;margin-top:auto;padding:0 14px 36px">
+<div style="flex:1;height:50px;border-radius:25px;background:#fff;box-shadow:0 0 0 1px #e1e4e9;display:flex;align-items:center;padding:0 18px;font-size:15px;color:#69707d">Type instead…</div>
+<div style="width:50px;height:50px;border-radius:50%;background:#2557e8;color:#fff;display:grid;place-items:center;box-shadow:0 0 0 6px rgba(37,87,232,.14)"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"></path></svg></div>
+</div>
+<div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:#121418"></div>
+</div></div>
+</div>
+
+<div style="display:flex;align-items:baseline;gap:12px;margin:0 0 22px"><span style="font-size:22px;font-weight:600;letter-spacing:-.01em">Live call</span><span style="font-size:13px;color:#69707d">3 directions + the hold-question takeover</span></div>
+<div class="dv-opts" style="margin-bottom:64px">
+
+<div class="dv-opt" id="1d"><div class="dv-olabel"><a class="dv-oid" href="#1d">1d</a>Orb hero, green while connected. Only the latest line, translated, big; original underneath. Transcript pulls up.</div>
+<div style="width:390px;height:844px;border-radius:56px;overflow:hidden;position:relative;background:#eef1f6;color:#121418;box-shadow:0 0 0 11px #16181c,0 0 0 12px #3a3d43,0 40px 80px rgba(20,30,60,.22);margin:12px;display:flex;flex-direction:column">
+<div style="height:54px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:4px 30px 0 40px;font-size:16px;font-weight:600;position:relative;z-index:5"><span>9:41</span><div style="position:absolute;left:50%;top:12px;transform:translateX(-50%);width:120px;height:35px;border-radius:20px;background:#000"></div><span style="display:flex;gap:5px;align-items:center"><svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"></rect><rect x="5" y="5.5" width="3" height="6.5" rx="1"></rect><rect x="10" y="3" width="3" height="9" rx="1"></rect><rect x="15" y="0" width="3" height="12" rx="1"></rect></svg><svg width="26" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".4"></rect><rect x="2" y="2" width="20" height="9" rx="2" fill="currentColor"></rect></svg></span></div>
+<div style="display:grid;grid-template-columns:70px 1fr 70px;align-items:center;padding:6px 16px 0">
+<div style="height:36px;display:flex;align-items:center;gap:2px;font-size:14px;font-weight:500;color:#2557e8"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 5l-7 7 7 7"></path></svg>Leave</div>
+<div style="text-align:center;display:flex;flex-direction:column"><span style="font-size:17px;font-weight:600">Smile Dental</span><span style="font-size:13px;color:#69707d;font-variant-numeric:tabular-nums">In progress · 02:14</span></div>
+<div></div>
+</div>
+<div style="display:flex;gap:4px;padding:12px 28px 0"><span style="flex:1;height:3px;border-radius:2px;background:#1a9e4b"></span><span style="flex:1;height:3px;border-radius:2px;background:#1a9e4b"></span><span style="flex:1;height:3px;border-radius:2px;background:#1a9e4b"></span><span style="flex:1;height:3px;border-radius:2px;background:#1a9e4b"></span><span style="flex:1;height:3px;border-radius:2px;background:#1a9e4b;opacity:.5"></span><span style="flex:1;height:3px;border-radius:2px;background:#d5d9e0"></span><span style="flex:1;height:3px;border-radius:2px;background:#d5d9e0"></span></div>
+<div style="position:relative;margin:14px 14px 0;height:452px;flex:none">
+{{ fieldCall }}
+<div style="position:relative;height:100%;display:flex;flex-direction:column;align-items:center;text-align:center;padding:30px 26px 0;color:#fff">
+<div style="font-size:13px;line-height:1.45;color:#0a4a2a;max-width:280px">AI · 周五上午李先生不方便，周四下午 2 点可以吗？</div>
+<div style="margin-top:44px;font-size:12px;font-weight:600;letter-spacing:.08em;color:rgba(255,255,255,.85)">THEM · FRONT DESK</div>
+<div style="margin-top:10px;font-size:26px;line-height:1.4;font-weight:500;text-wrap:pretty">“周四下午 2 点可以，已经帮您登记了。”</div>
+<div style="margin-top:10px;font-size:14px;line-height:1.45;color:rgba(255,255,255,.85)">Thursday at 2 works, I've got you down.</div>
+<div style="margin-top:auto;margin-bottom:-4px">{{ orbCall130 }}</div>
+</div>
+</div>
+<div style="margin:12px 14px 0;height:46px;border-radius:23px;background:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 18px;font-size:13px"><span style="display:flex;align-items:center;gap:8px;color:#69707d"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a9e4b" stroke-width="2.2" stroke-linecap="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>Told them it's an AI calling for Wei</span><span style="font-weight:600;display:flex;align-items:center;gap:4px">Transcript<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 15l6-6 6 6"></path></svg></span></div>
+<div style="display:flex;justify-content:center;align-items:flex-start;gap:30px;margin-top:auto;padding-bottom:30px">
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12px;color:#69707d"><div style="width:60px;height:60px;border-radius:50%;background:#fff;display:grid;place-items:center;color:#121418"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 16v-4a8 8 0 0 1 16 0v4"></path><rect x="3" y="14" width="4" height="6" rx="1.5"></rect><rect x="17" y="14" width="4" height="6" rx="1.5"></rect></svg></div>Listen</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12px;color:#69707d"><div style="width:72px;height:72px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ff8a5c,#e5402f 70%);display:grid;place-items:center;color:#fff;box-shadow:0 10px 24px rgba(229,64,47,.35)"><svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor"><path d="M2.6 13.4c5.2-4.5 13.6-4.5 18.8 0 .5.5.6 1.3.1 1.8l-1.6 1.7c-.4.4-1.1.5-1.6.2l-2.3-1.3c-.4-.2-.6-.7-.6-1.1v-1.6a11 11 0 0 0-6.8 0v1.6c0 .4-.2.9-.6 1.1l-2.3 1.3c-.5.3-1.2.2-1.6-.2l-1.6-1.7c-.5-.5-.4-1.3.1-1.8z"></path></svg></div>End call</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12px;color:#69707d"><div style="width:60px;height:60px;border-radius:50%;background:#fff;display:grid;place-items:center;color:#121418"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-8l-4 3v-3H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"></path></svg></div>Message</div>
+</div>
+<div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:#121418"></div>
+</div></div>
+
+<div class="dv-opt" id="1e"><div class="dv-olabel"><a class="dv-oid" href="#1e">1e</a>Transcript-first, Stay in the loop. Orb shrinks to a status capsule; a hold question pins on top with a live countdown. Try Approve / Decline.</div>
+<div style="width:390px;height:844px;border-radius:56px;overflow:hidden;position:relative;background:#f4f5f7;color:#121418;box-shadow:0 0 0 11px #16181c,0 0 0 12px #3a3d43,0 40px 80px rgba(20,30,60,.22);margin:12px;display:flex;flex-direction:column">
+<div style="height:54px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:4px 30px 0 40px;font-size:16px;font-weight:600;position:relative;z-index:5"><span>9:41</span><div style="position:absolute;left:50%;top:12px;transform:translateX(-50%);width:120px;height:35px;border-radius:20px;background:#000"></div><span style="display:flex;gap:5px;align-items:center"><svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"></rect><rect x="5" y="5.5" width="3" height="6.5" rx="1"></rect><rect x="10" y="3" width="3" height="9" rx="1"></rect><rect x="15" y="0" width="3" height="12" rx="1"></rect></svg><svg width="26" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".4"></rect><rect x="2" y="2" width="20" height="9" rx="2" fill="currentColor"></rect></svg></span></div>
+<div style="margin:6px 12px 0;background:#fff;border-radius:24px;padding:10px 14px 12px 10px;display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;align-items:center;gap:12px">
+<div style="flex:none">{{ orbHeader }}</div>
+<div style="flex:1;min-width:0;display:flex;flex-direction:column"><span style="font-size:16px;font-weight:600">Smile Dental</span><span style="font-size:13px;color:{{ headerColor }};font-weight:500;font-variant-numeric:tabular-nums">{{ headerStatus }}</span></div>
+<div style="height:34px;padding:0 12px;border-radius:17px;background:#eef0f3;display:flex;align-items:center;gap:6px;font-size:13px;font-weight:500"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 16v-4a8 8 0 0 1 16 0v4"></path><rect x="3" y="14" width="4" height="6" rx="1.5"></rect><rect x="17" y="14" width="4" height="6" rx="1.5"></rect></svg>Listen</div>
+<div style="width:34px;height:34px;border-radius:50%;background:#e5402f;color:#fff;display:grid;place-items:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M2.6 13.4c5.2-4.5 13.6-4.5 18.8 0 .5.5.6 1.3.1 1.8l-1.6 1.7c-.4.4-1.1.5-1.6.2l-2.3-1.3c-.4-.2-.6-.7-.6-1.1v-1.6a11 11 0 0 0-6.8 0v1.6c0 .4-.2.9-.6 1.1l-2.3 1.3c-.5.3-1.2.2-1.6-.2l-1.6-1.7c-.5-.5-.4-1.3.1-1.8z"></path></svg></div>
+</div>
+<div style="display:flex;gap:4px;padding:0 4px"><span style="flex:1;height:3px;border-radius:2px;background:#1a9e4b"></span><span style="flex:1;height:3px;border-radius:2px;background:#1a9e4b"></span><span style="flex:1;height:3px;border-radius:2px;background:#1a9e4b"></span><span style="flex:1;height:3px;border-radius:2px;background:#1a9e4b"></span><span style="flex:1;height:3px;border-radius:2px;background:#1a9e4b;opacity:.5"></span><span style="flex:1;height:3px;border-radius:2px;background:#e1e4e9"></span><span style="flex:1;height:3px;border-radius:2px;background:#e1e4e9"></span></div>
+</div>
+<sc-if value="{{ holdPending }}" hint-placeholder-val="{{ true }}">
+<div style="margin:10px 12px 0;background:#eee9fc;border-radius:24px;padding:16px;display:flex;flex-direction:column;gap:10px;box-shadow:0 0 0 2px #5b3cc4,0 12px 30px rgba(91,60,196,.18)">
+<div style="display:flex;justify-content:space-between;align-items:center">
+<span style="font-size:12px;font-weight:700;letter-spacing:.08em;color:#5b3cc4">THEY'RE ON HOLD FOR YOU</span>
+<div style="position:relative;width:48px;height:48px;display:grid;place-items:center"><svg width="48" height="48" viewBox="0 0 48 48" style="position:absolute;inset:0;transform:rotate(-90deg)"><circle cx="24" cy="24" r="21" fill="none" stroke="rgba(91,60,196,.18)" stroke-width="3.5"></circle><circle cx="24" cy="24" r="21" fill="none" stroke="#5b3cc4" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="131.9" stroke-dashoffset="{{ ringOff }}"></circle></svg><span style="font-size:13px;font-weight:700;color:#5b3cc4;font-variant-numeric:tabular-nums">{{ secLabel }}</span></div>
+</div>
+<div style="font-size:20px;line-height:1.4;font-weight:600;text-wrap:pretty">要加做全套 X 光吗？需额外付 $80。</div>
+<div style="font-size:13px;line-height:1.4;color:#4a4f5a">“Would they also like a full set of X-rays while they're here? That's $80 extra.”</div>
+<div style="display:flex;gap:6px"><span style="background:#fff;border-radius:99px;padding:4px 10px;font-size:13px;font-weight:600">$80</span><span style="background:#fff;border-radius:99px;padding:4px 10px;font-size:13px;font-weight:600">Thu Oct 8, 2:00 pm</span></div>
+<div style="display:flex;gap:8px;margin-top:2px">
+<div onClick="{{ approve }}" style="flex:1;height:48px;border-radius:16px;background:#5b3cc4;color:#fff;display:grid;place-items:center;font-size:16px;font-weight:600;cursor:pointer" style-active="transform:scale(.97)">Approve</div>
+<div onClick="{{ decline }}" style="flex:1;height:48px;border-radius:16px;background:#fff;display:grid;place-items:center;font-size:16px;font-weight:600;cursor:pointer" style-active="transform:scale(.97)">Decline</div>
+<div style="height:48px;padding:0 14px;border-radius:16px;display:grid;place-items:center;font-size:15px;font-weight:600;color:#5b3cc4">Reply…</div>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{ holdDone }}" hint-placeholder-val="{{ false }}">
+<div style="margin:10px 12px 0;background:#eef0f3;border-radius:16px;padding:11px 14px;display:flex;align-items:center;gap:10px;font-size:14px"><span style="flex:1">{{ answerLine }}</span><span onClick="{{ replay }}" style="color:#5b3cc4;font-weight:600;cursor:pointer;font-size:13px">Replay</span></div>
+</sc-if>
+<div style="flex:1;min-height:0;overflow:hidden;padding:14px 14px 0;display:flex;flex-direction:column;gap:12px;justify-content:flex-end">
+<div style="max-width:84%;display:flex;flex-direction:column;gap:3px"><span style="font-size:11px;font-weight:600;color:#69707d;padding-left:6px">THEM</span><div style="background:#fff;border-radius:18px 18px 18px 6px;padding:10px 14px"><div style="font-size:15px;line-height:1.4">我查一下……周五上午 10 点，或者周四下午 2 点。</div><div style="font-size:12.5px;color:#69707d;margin-top:3px">Let me see… Friday at 10 am, or Thursday at 2 pm.</div></div></div>
+<div style="align-self:flex-end;max-width:84%;display:flex;flex-direction:column;gap:3px;align-items:flex-end"><span style="font-size:11px;font-weight:600;color:#69707d;padding-right:6px">AI FOR WEI</span><div style="background:#2557e8;color:#fff;border-radius:18px 18px 6px 18px;padding:10px 14px"><div style="font-size:15px;line-height:1.4">周五上午不行，周四下午 2 点很好。</div><div style="font-size:12.5px;color:rgba(255,255,255,.78);margin-top:3px">Friday morning doesn't work for Wei, but Thursday at 2 pm would be great.</div></div></div>
+<div style="align-self:flex-end;max-width:84%;display:flex;flex-direction:column;gap:3px;align-items:flex-end"><span style="font-size:11px;font-weight:600;color:#69707d;padding-right:6px">YOU → ASSISTANT · NOT HEARD BY THEM</span><div style="background:transparent;border:1.5px dashed #9aa1ad;border-radius:18px 18px 6px 18px;padding:9px 14px;font-size:15px;line-height:1.4">告诉他们我可能晚到 10 分钟</div></div>
+<div style="max-width:84%;display:flex;flex-direction:column;gap:3px"><span style="font-size:11px;font-weight:600;color:#69707d;padding-left:6px">THEM</span><div style="background:#fff;border-radius:18px 18px 18px 6px;padding:10px 14px"><div style="font-size:15px;line-height:1.4">好的。另外要不要加做全套 X 光？额外 $80。</div><div style="font-size:12.5px;color:#69707d;margin-top:3px">Perfect. Would they also like a full set of X-rays? That's $80 extra.</div></div></div>
+<div style="align-self:flex-end;max-width:84%;display:flex;flex-direction:column;gap:3px;align-items:flex-end"><span style="font-size:11px;font-weight:600;color:#69707d;padding-right:6px">AI FOR WEI · INTERRUPTED</span><div style="background:#e6edfd;color:#121418;border-radius:18px 18px 6px 18px;padding:10px 14px"><div style="font-size:15px;line-height:1.4">请稍等，我需要先问一下——</div><div style="font-size:12.5px;color:#69707d;margin-top:3px">One moment, I need to check with—</div></div></div>
+</div>
+<div style="display:flex;gap:8px;align-items:center;padding:12px 14px 34px">
+<div style="flex:1;height:48px;border-radius:24px;background:#fff;display:flex;align-items:center;padding:0 18px;font-size:15px;color:#69707d">Message the assistant…</div>
+<div style="width:48px;height:48px;border-radius:50%;background:#2557e8;color:#fff;display:grid;place-items:center;opacity:.4"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"></path></svg></div>
+</div>
+<div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:#121418"></div>
+</div></div>
+
+<div class="dv-opt" id="1f"><div class="dv-olabel"><a class="dv-oid" href="#1f">1f</a>Hand it off, after dark. Calm mode: no questions, a vertical progress log, one line of live translation. Restaurant call in Spanish.</div>
+<div style="width:390px;height:844px;border-radius:56px;overflow:hidden;position:relative;background:#0b1020;color:#eceef2;box-shadow:0 0 0 11px #16181c,0 0 0 12px #3a3d43,0 40px 80px rgba(20,30,60,.22);margin:12px;display:flex;flex-direction:column">
+<div style="height:54px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:4px 30px 0 40px;font-size:16px;font-weight:600;position:relative;z-index:5"><span>9:41</span><div style="position:absolute;left:50%;top:12px;transform:translateX(-50%);width:120px;height:35px;border-radius:20px;background:#000"></div><span style="display:flex;gap:5px;align-items:center"><svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"></rect><rect x="5" y="5.5" width="3" height="6.5" rx="1"></rect><rect x="10" y="3" width="3" height="9" rx="1"></rect><rect x="15" y="0" width="3" height="12" rx="1"></rect></svg><svg width="26" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".4"></rect><rect x="2" y="2" width="20" height="9" rx="2" fill="currentColor"></rect></svg></span></div>
+<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 18px 0">
+<div style="height:36px;display:flex;align-items:center;gap:2px;font-size:14px;font-weight:500;color:#9db4ff"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 5l-7 7 7 7"></path></svg>Leave</div>
+<span style="font-size:12px;font-weight:600;color:#50d184;background:#13301f;border-radius:99px;padding:5px 11px">Handed off</span>
+</div>
+<div style="display:flex;align-items:center;gap:18px;padding:18px 24px 0">
+<div style="flex:none">{{ orbCall96 }}</div>
+<div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:24px;font-weight:600;letter-spacing:-.01em">Casa Oaxaca</span><span style="font-size:14px;color:#9aa1ad">Spanish · table for 4 · Sat</span><span style="font-size:28px;font-weight:300;font-variant-numeric:tabular-nums;margin-top:4px">01:47</span></div>
+</div>
+<div style="margin:22px 16px 0;padding:14px 16px;border-radius:18px;background:#171a2a;font-size:14px;line-height:1.5;color:#c8ccd6;text-wrap:pretty">助手不会打扰您。超出范围的请求会礼貌拒绝（“Wei 稍后跟进”），结束后告诉您结果。<div style="font-size:12.5px;color:#9aa1ad;margin-top:4px">The assistant won't interrupt. Anything outside your limits gets politely declined; you'll get the result at the end.</div></div>
+<div style="padding:24px 28px 0;display:flex;flex-direction:column">
+<div style="display:flex;gap:14px;align-items:center;height:34px;color:#9aa1ad;font-size:15px"><span style="width:18px;height:18px;border-radius:50%;background:#1a9e4b;display:grid;place-items:center;color:#0b1020"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>Dialing</div>
+<div style="display:flex;gap:14px;align-items:center;height:34px;color:#9aa1ad;font-size:15px"><span style="width:18px;height:18px;border-radius:50%;background:#1a9e4b;display:grid;place-items:center;color:#0b1020"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>Ringing</div>
+<div style="display:flex;gap:14px;align-items:center;height:34px;color:#9aa1ad;font-size:15px"><span style="width:18px;height:18px;border-radius:50%;background:#1a9e4b;display:grid;place-items:center;color:#0b1020"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>Connected · told them it's an AI</div>
+<div style="display:flex;gap:14px;align-items:center;height:34px;color:#fff;font-size:15px;font-weight:600"><span style="width:18px;height:18px;display:grid;place-items:center">{{ liveDot }}</span>In progress</div>
+<div style="display:flex;gap:14px;align-items:center;height:34px;color:#4f5666;font-size:15px"><span style="width:18px;height:18px;border-radius:50%;border:1.5px solid #343a4a"></span>Wrapping up</div>
+<div style="display:flex;gap:14px;align-items:center;height:34px;color:#4f5666;font-size:15px"><span style="width:18px;height:18px;border-radius:50%;border:1.5px solid #343a4a"></span>Done</div>
+</div>
+<div style="margin:auto 16px 0;padding:14px 16px;border-radius:18px;background:#13182a;display:flex;flex-direction:column;gap:4px">
+<span style="font-size:11px;font-weight:600;letter-spacing:.08em;color:#9aa1ad">THEM · JUST NOW</span>
+<span style="font-size:17px;line-height:1.4;font-weight:500">“4 位，周六晚上 7:30，没问题。”</span>
+<span style="font-size:13px;color:#9aa1ad">Para cuatro, el sábado a las 7:30, perfecto.</span>
+</div>
+<div style="display:flex;gap:10px;padding:14px 16px 36px">
+<div style="flex:1;height:54px;border-radius:27px;background:#1c2133;display:flex;align-items:center;justify-content:center;gap:8px;font-size:15px;font-weight:600"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 16v-4a8 8 0 0 1 16 0v4"></path><rect x="3" y="14" width="4" height="6" rx="1.5"></rect><rect x="17" y="14" width="4" height="6" rx="1.5"></rect></svg>Listen live</div>
+<div style="flex:1;height:54px;border-radius:27px;background:#3a1715;color:#ff7b70;display:flex;align-items:center;justify-content:center;gap:8px;font-size:15px;font-weight:600"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M2.6 13.4c5.2-4.5 13.6-4.5 18.8 0 .5.5.6 1.3.1 1.8l-1.6 1.7c-.4.4-1.1.5-1.6.2l-2.3-1.3c-.4-.2-.6-.7-.6-1.1v-1.6a11 11 0 0 0-6.8 0v1.6c0 .4-.2.9-.6 1.1l-2.3 1.3c-.5.3-1.2.2-1.6-.2l-1.6-1.7c-.5-.5-.4-1.3.1-1.8z"></path></svg>End call</div>
+</div>
+<div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:#eceef2"></div>
+</div></div>
+
+<div class="dv-opt" id="1g"><div class="dv-olabel"><a class="dv-oid" href="#1g">1g</a><span>Hold-question takeover (pairs with <a href="#1d">1d</a>). The field turns violet, the countdown wraps the orb. Info requests put Reply first, Decline reads "Don't share".</span></div>
+<div style="width:390px;height:844px;border-radius:56px;overflow:hidden;position:relative;background:#eef1f6;color:#121418;box-shadow:0 0 0 11px #16181c,0 0 0 12px #3a3d43,0 40px 80px rgba(20,30,60,.22);margin:12px;display:flex;flex-direction:column">
+<div style="height:54px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:4px 30px 0 40px;font-size:16px;font-weight:600;position:relative;z-index:5"><span>9:41</span><div style="position:absolute;left:50%;top:12px;transform:translateX(-50%);width:120px;height:35px;border-radius:20px;background:#000"></div><span style="display:flex;gap:5px;align-items:center"><svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"></rect><rect x="5" y="5.5" width="3" height="6.5" rx="1"></rect><rect x="10" y="3" width="3" height="9" rx="1"></rect><rect x="15" y="0" width="3" height="12" rx="1"></rect></svg><svg width="26" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".4"></rect><rect x="2" y="2" width="20" height="9" rx="2" fill="currentColor"></rect></svg></span></div>
+<div style="text-align:center;display:flex;flex-direction:column;padding:6px 0 0"><span style="font-size:17px;font-weight:600">Smile Dental</span><span style="font-size:13px;color:#5b3cc4;font-weight:500">On hold for you · 03:20</span></div>
+<div style="position:relative;margin:14px 14px 0;height:560px;flex:none">
+{{ fieldAsk }}
+<div style="position:relative;height:100%;display:flex;flex-direction:column;align-items:center;text-align:center;padding:26px 26px 0;color:#fff">
+<div style="font-size:12px;font-weight:700;letter-spacing:.1em;color:#2a1268">THEY NEED AN ANSWER</div>
+<div style="position:relative;width:200px;height:200px;display:grid;place-items:center;margin-top:18px">
+<svg width="200" height="200" viewBox="0 0 200 200" style="position:absolute;inset:0;transform:rotate(-90deg)"><circle cx="100" cy="100" r="94" fill="none" stroke="rgba(255,255,255,.22)" stroke-width="3"></circle><circle cx="100" cy="100" r="94" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="590.6" stroke-dashoffset="{{ bigOff }}"></circle></svg>
+{{ orbAsk150 }}
+<span style="position:absolute;font-size:30px;font-weight:300;font-variant-numeric:tabular-nums;color:#fff">{{ sec2Label }}</span>
+</div>
+<div style="margin-top:22px;font-size:23px;line-height:1.4;font-weight:600;text-wrap:pretty">诊所要您的保险会员号。要告诉他们吗？</div>
+<div style="margin-top:8px;font-size:14px;line-height:1.45;color:rgba(255,255,255,.85)">“Do you have their insurance member ID?”</div>
+<div style="margin-top:auto;width:100%;display:flex;flex-direction:column;gap:8px;padding-bottom:22px">
+<div style="height:52px;border-radius:26px;background:#fff;color:#2a1268;display:grid;place-items:center;font-size:16px;font-weight:600">Reply…</div>
+<div style="height:52px;border-radius:26px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.35);color:#fff;display:grid;place-items:center;font-size:16px;font-weight:600">Don't share</div>
+</div>
+</div>
+</div>
+<div style="padding:14px 28px 0;text-align:center;font-size:12.5px;line-height:1.5;color:#69707d;text-wrap:pretty">No answer in time? The assistant says you'll follow up. Card, SSN, password and account numbers can't be sent.</div>
+<div style="align-self:center;margin-top:10px;font-size:12px;font-weight:600;color:#5b3cc4;background:#eee9fc;border-radius:99px;padding:5px 12px">1 more question waiting</div>
+<div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:#121418"></div>
+</div></div>
+</div>
+
+<div style="display:flex;align-items:baseline;gap:12px;margin:0 0 22px"><span style="font-size:22px;font-weight:600;letter-spacing:-.01em">Navigation models</span><span style="font-size:13px;color:#69707d">Same idle Home, two ways to reach everything else</span></div>
+<div class="dv-opts" style="margin-bottom:64px">
+
+<div class="dv-opt" id="1h"><div class="dv-olabel"><a class="dv-oid" href="#1h">1h</a>Tab bar: Call · Calls · Phone book · Me. Predictable, one tap to history. A live call rides above as a banner.</div>
+<div style="width:390px;height:844px;border-radius:56px;overflow:hidden;position:relative;background:#f4f5f7;color:#121418;box-shadow:0 0 0 11px #16181c,0 0 0 12px #3a3d43,0 40px 80px rgba(20,30,60,.22);margin:12px;display:flex;flex-direction:column">
+<div style="height:54px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:4px 30px 0 40px;font-size:16px;font-weight:600;position:relative;z-index:5"><span>9:41</span><div style="position:absolute;left:50%;top:12px;transform:translateX(-50%);width:120px;height:35px;border-radius:20px;background:#000"></div><span style="display:flex;gap:5px;align-items:center"><svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"></rect><rect x="5" y="5.5" width="3" height="6.5" rx="1"></rect><rect x="10" y="3" width="3" height="9" rx="1"></rect><rect x="15" y="0" width="3" height="12" rx="1"></rect></svg><svg width="26" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".4"></rect><rect x="2" y="2" width="20" height="9" rx="2" fill="currentColor"></rect></svg></span></div>
+<div style="margin:6px 14px 0;height:46px;border-radius:23px;background:#e1f5e8;display:flex;align-items:center;gap:10px;padding:0 8px 0 16px;font-size:14px"><span style="width:10px;height:10px;display:grid;place-items:center">{{ liveDotLight }}</span><span style="font-weight:600;color:#137a3a">Live</span><span style="flex:1">Casa Oaxaca · 01:47</span><span style="height:32px;padding:0 12px;border-radius:16px;background:#fff;display:grid;place-items:center;font-size:13px;font-weight:600">Open</span></div>
+<div style="padding:22px 24px 0;display:flex;flex-direction:column;gap:2px"><span style="font-size:15px;color:#69707d">下午好，伟</span><span style="font-size:28px;font-weight:600;letter-spacing:-.01em">今天想打给谁？</span></div>
+<div style="height:290px;display:grid;place-items:center;flex:none">{{ orbAssist220 }}</div>
+<div style="text-align:center;font-size:13px;font-weight:600;letter-spacing:.06em;color:#2557e8">TAP THE ORB OR TYPE</div>
+<div style="display:flex;gap:8px;padding:16px 16px 0;flex-wrap:wrap;justify-content:center">
+<span style="height:36px;display:flex;align-items:center;padding:0 14px;border-radius:18px;background:#fff;font-size:13.5px">打给我的牙医</span>
+<span style="height:36px;display:flex;align-items:center;padding:0 14px;border-radius:18px;background:#fff;font-size:13.5px">告诉 Tabito 今晚去不了</span>
+<span style="height:36px;display:flex;align-items:center;padding:0 14px;border-radius:18px;background:#fff;font-size:13.5px">最近的墨西哥餐厅</span>
+</div>
+<div style="margin:16px 14px 0;background:#fff;border-radius:20px;padding:12px 16px;display:flex;align-items:center;gap:14px">
+<div style="display:flex;flex-direction:column;align-items:center;width:40px"><span style="font-size:11px;font-weight:600;color:#b42318">THU</span><span style="font-size:22px;font-weight:600;line-height:1">8</span></div>
+<div style="flex:1;display:flex;flex-direction:column"><span style="font-size:15px;font-weight:600">2:00 pm · Smile Dental</span><span style="font-size:13px;color:#69707d">洗牙</span></div>
+<span style="font-size:12px;color:#69707d">Upcoming</span>
+</div>
+<div style="margin-top:auto;display:grid;grid-template-columns:repeat(4,1fr);padding:10px 8px 30px;background:rgba(255,255,255,.92);border-top:1px solid #e1e4e9">
+<div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:600;color:#2557e8"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M6.5 3.5h3l1.5 4-2 1.5a11 11 0 0 0 6 6l1.5-2 4 1.5v3a2 2 0 0 1-2 2A16 16 0 0 1 4.5 5.5a2 2 0 0 1 2-2z"></path></svg>Call</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:500;color:#69707d"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5V12l3 2"></path></svg>Calls</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:500;color:#69707d"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="5" y="3.5" width="14" height="17" rx="2"></rect><circle cx="12" cy="10" r="2.5"></circle><path d="M8.5 16.5a4 4 0 0 1 7 0"></path></svg>Phone book</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:500;color:#69707d"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8.5" r="3.5"></circle><path d="M5 20a7 7 0 0 1 14 0"></path></svg>Me</div>
+</div>
+<div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:#121418"></div>
+</div></div>
+
+<div class="dv-opt" id="1i"><div class="dv-olabel"><a class="dv-oid" href="#1i">1i</a>Conversation-first. Home is only the assistant; calls and people live in a sheet you drag up. Profile from the avatar.</div>
+<div style="width:390px;height:844px;border-radius:56px;overflow:hidden;position:relative;background:#eef1f6;color:#121418;box-shadow:0 0 0 11px #16181c,0 0 0 12px #3a3d43,0 40px 80px rgba(20,30,60,.22);margin:12px;display:flex;flex-direction:column">
+<div style="height:54px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:4px 30px 0 40px;font-size:16px;font-weight:600;position:relative;z-index:5"><span>9:41</span><div style="position:absolute;left:50%;top:12px;transform:translateX(-50%);width:120px;height:35px;border-radius:20px;background:#000"></div><span style="display:flex;gap:5px;align-items:center"><svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"></rect><rect x="5" y="5.5" width="3" height="6.5" rx="1"></rect><rect x="10" y="3" width="3" height="9" rx="1"></rect><rect x="15" y="0" width="3" height="12" rx="1"></rect></svg><svg width="26" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".4"></rect><rect x="2" y="2" width="20" height="9" rx="2" fill="currentColor"></rect></svg></span></div>
+<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 18px 0">
+<div style="width:38px;height:38px;border-radius:50%;background:#121418;color:#fff;display:grid;place-items:center;font-size:15px;font-weight:600">W</div>
+<div style="display:flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:18px;background:#fff;font-size:13px;font-weight:500">Mandarin · Marin<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"></path></svg></div>
+</div>
+<div style="height:320px;display:grid;place-items:center;flex:none">{{ orbAssist240 }}</div>
+<div style="text-align:center;padding:0 30px;display:flex;flex-direction:column;gap:4px"><span style="font-size:26px;font-weight:600;letter-spacing:-.01em">想打给谁？</span><span style="font-size:14px;color:#69707d">Tap to talk, or type below</span></div>
+<div style="position:absolute;left:0;right:0;bottom:0;height:330px;background:#fff;border-radius:30px 30px 0 0;box-shadow:0 -10px 40px rgba(20,30,60,.12);padding:8px 16px 0;display:flex;flex-direction:column;gap:12px">
+<div style="width:40px;height:5px;border-radius:3px;background:#d5d9e0;align-self:center"></div>
+<div style="display:flex;gap:8px;align-items:center">
+<div style="flex:1;height:46px;border-radius:23px;background:#eef0f3;display:flex;align-items:center;padding:0 16px;font-size:15px;color:#69707d">Type, or search people…</div>
+<div style="width:46px;height:46px;border-radius:50%;background:#2557e8;color:#fff;display:grid;place-items:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"></path></svg></div>
+</div>
+<div style="display:flex;background:#eef0f3;border-radius:12px;padding:3px"><span style="flex:1;height:32px;border-radius:10px;background:#fff;display:grid;place-items:center;font-size:13px;font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.08)">Recent calls</span><span style="flex:1;height:32px;display:grid;place-items:center;font-size:13px;font-weight:500;color:#69707d">People</span></div>
+<div style="display:flex;flex-direction:column">
+<div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid #eef0f3"><div style="width:36px;height:36px;border-radius:50%;background:#e1f5e8;display:grid;place-items:center;font-size:13px;font-weight:600;color:#137a3a">SD</div><div style="flex:1;min-width:0;display:flex;flex-direction:column"><span style="font-size:15px;font-weight:600">Smile Dental</span><span style="font-size:13px;color:#69707d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">已预约：10月8日周四 下午2:00</span></div><span style="font-size:12px;color:#69707d">10:42</span></div>
+<div style="display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid #eef0f3"><div style="width:36px;height:36px;border-radius:50%;background:#ffe3ef;display:grid;place-items:center;font-size:13px;font-weight:600;color:#b0306a">M</div><div style="flex:1;min-width:0;display:flex;flex-direction:column"><span style="font-size:15px;font-weight:600">Maria</span><span style="font-size:13px;color:#69707d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">已转达：今晚会晚到一小时</span></div><span style="font-size:12px;color:#69707d">Mon</span></div>
+<div style="display:flex;align-items:center;gap:12px;padding:9px 0"><div style="width:36px;height:36px;border-radius:50%;background:#fff3d1;display:grid;place-items:center;font-size:13px;font-weight:600;color:#855600">TS</div><div style="flex:1;min-width:0;display:flex;flex-direction:column"><span style="font-size:15px;font-weight:600">Tabito Sato</span><span style="font-size:13px;color:#69707d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">已转达：今晚的读经去不了</span></div><span style="font-size:12px;color:#69707d">Sun</span></div>
+</div>
+</div>
+<div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:#121418"></div>
+</div></div>
+</div>
+
+<div style="display:flex;align-items:baseline;gap:12px;margin:0 0 22px"><span style="font-size:22px;font-weight:600;letter-spacing:-.01em">Talk it over · Phone book · Call history</span><span style="font-size:13px;color:#69707d">Shown in the tab-bar model; in <a class="dv-oid" href="#1i">1i</a> these open as full sheets</span></div>
+<div class="dv-opts">
+
+<div class="dv-opt" id="1j"><div class="dv-olabel"><a class="dv-oid" href="#1j">1j</a>Talk it over. Opens by saying how it went, answers from the record only, and sets up a follow-up that asks only what changes.</div>
+<div style="width:390px;height:844px;border-radius:56px;overflow:hidden;position:relative;background:#f4f5f7;color:#121418;box-shadow:0 0 0 11px #16181c,0 0 0 12px #3a3d43,0 40px 80px rgba(20,30,60,.22);margin:12px;display:flex;flex-direction:column">
+<div style="height:54px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:4px 30px 0 40px;font-size:16px;font-weight:600;position:relative;z-index:5"><span>9:41</span><div style="position:absolute;left:50%;top:12px;transform:translateX(-50%);width:120px;height:35px;border-radius:20px;background:#000"></div><span style="display:flex;gap:5px;align-items:center"><svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"></rect><rect x="5" y="5.5" width="3" height="6.5" rx="1"></rect><rect x="10" y="3" width="3" height="9" rx="1"></rect><rect x="15" y="0" width="3" height="12" rx="1"></rect></svg><svg width="26" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".4"></rect><rect x="2" y="2" width="20" height="9" rx="2" fill="currentColor"></rect></svg></span></div>
+<div style="display:grid;grid-template-columns:80px 1fr 80px;align-items:center;padding:6px 16px 0">
+<div style="height:36px;display:flex;align-items:center;gap:2px;font-size:14px;font-weight:500;color:#2557e8"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 5l-7 7 7 7"></path></svg>Result</div>
+<span style="text-align:center;font-size:17px;font-weight:600">Talk it over</span><div></div>
+</div>
+<div style="margin:12px 14px 0;display:flex;align-items:center;gap:14px;background:#fff;border-radius:22px;padding:12px 16px 12px 12px">
+<div style="flex:none">{{ orbAssist56 }}</div>
+<div style="display:flex;flex-direction:column;gap:2px;min-width:0"><span style="font-size:11px;font-weight:600;letter-spacing:.06em;color:#137a3a">BOOKED · SMILE DENTAL</span><span style="font-size:15px;font-weight:600">已预约：10月8日周四 下午 2:00</span><span style="font-size:12.5px;color:#69707d">Booked: Thu Oct 8, 2:00 pm</span></div>
+</div>
+<div style="flex:1;min-height:0;overflow:hidden;padding:16px 14px 0;display:flex;flex-direction:column;gap:12px">
+<div style="max-width:88%;background:#fff;border-radius:20px 20px 20px 6px;padding:12px 14px"><div style="font-size:15px;line-height:1.5">挺顺利的：周四下午 2 点洗牙约好了。诊所提出加做 $80 的 X 光，我没答应，等您决定。他们还要您的保险会员号。</div><div style="font-size:12.5px;line-height:1.4;color:#69707d;margin-top:4px">It went well: cleaning booked Thu at 2. They offered $80 X-rays — I held off for you. They also want your insurance member ID.</div></div>
+<div style="align-self:flex-end;max-width:80%;background:#2557e8;color:#fff;padding:10px 14px;border-radius:20px 20px 6px 20px;font-size:15px;line-height:1.4">需要带什么吗？</div>
+<div style="max-width:88%;background:#fff;border-radius:20px 20px 20px 6px;padding:12px 14px"><div style="font-size:15px;line-height:1.5">前台说就诊时带上保险卡就行。</div><div style="font-size:12.5px;line-height:1.4;color:#69707d;margin-top:4px">The front desk said to bring your insurance card to the visit.</div></div>
+<div style="align-self:flex-end;max-width:80%;background:#2557e8;color:#fff;padding:10px 14px;border-radius:20px 20px 6px 20px;font-size:15px;line-height:1.4">打回去，X 光也做吧</div>
+<div style="background:#fff;border-radius:22px;padding:14px;display:flex;flex-direction:column;gap:10px;box-shadow:0 0 0 1.5px #2557e8">
+<div style="font-size:11px;font-weight:600;letter-spacing:.06em;color:#2557e8">FOLLOW-UP CALL READY</div>
+<div style="display:flex;flex-direction:column;gap:6px;font-size:14px">
+<div style="display:flex;justify-content:space-between"><span style="color:#69707d">Who</span><span style="font-weight:500">Smile Dental · (901) 555-0142</span></div>
+<div style="display:flex;justify-content:space-between"><span style="color:#69707d">Changes</span><span style="font-weight:500">同意加做 X 光（$80）</span></div>
+<div style="display:flex;justify-content:space-between"><span style="color:#69707d">Extra charges</span><span style="font-weight:500">Up to $80</span></div>
+</div>
+<div style="height:46px;border-radius:23px;background:#2557e8;color:#fff;display:grid;place-items:center;font-size:15px;font-weight:600">Review &amp; call</div>
+</div>
+</div>
+<div style="display:flex;gap:8px;align-items:center;padding:12px 14px 34px">
+<div style="width:48px;height:48px;border-radius:50%;background:#fff;display:grid;place-items:center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5v5h3.5L12 18V6L7.5 9.5H4z"></path><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"></path></svg></div>
+<div style="flex:1;height:48px;border-radius:24px;background:#fff;display:flex;align-items:center;padding:0 18px;font-size:15px;color:#69707d">Ask about this call…</div>
+<div style="width:48px;height:48px;border-radius:50%;background:#2557e8;color:#fff;display:grid;place-items:center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"></path></svg></div>
+</div>
+<div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:#121418"></div>
+</div></div>
+
+<div class="dv-opt" id="1k"><div class="dv-olabel"><a class="dv-oid" href="#1k">1k</a>Phone book. Relationship and call language at a glance, last outcome in Mandarin. Two Marias coexist; numbers keep them apart.</div>
+<div style="width:390px;height:844px;border-radius:56px;overflow:hidden;position:relative;background:#f4f5f7;color:#121418;box-shadow:0 0 0 11px #16181c,0 0 0 12px #3a3d43,0 40px 80px rgba(20,30,60,.22);margin:12px;display:flex;flex-direction:column">
+<div style="height:54px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:4px 30px 0 40px;font-size:16px;font-weight:600;position:relative;z-index:5"><span>9:41</span><div style="position:absolute;left:50%;top:12px;transform:translateX(-50%);width:120px;height:35px;border-radius:20px;background:#000"></div><span style="display:flex;gap:5px;align-items:center"><svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"></rect><rect x="5" y="5.5" width="3" height="6.5" rx="1"></rect><rect x="10" y="3" width="3" height="9" rx="1"></rect><rect x="15" y="0" width="3" height="12" rx="1"></rect></svg><svg width="26" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".4"></rect><rect x="2" y="2" width="20" height="9" rx="2" fill="currentColor"></rect></svg></span></div>
+<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 20px 0"><span style="font-size:30px;font-weight:600;letter-spacing:-.02em">Phone book</span><div style="display:flex;gap:8px"><span style="height:36px;padding:0 14px;border-radius:18px;background:#fff;display:grid;place-items:center;font-size:13px;font-weight:600">Import</span><span style="width:36px;height:36px;border-radius:50%;background:#2557e8;color:#fff;display:grid;place-items:center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg></span></div></div>
+<div style="margin:14px 16px 0;height:44px;border-radius:14px;background:#fff;display:flex;align-items:center;gap:8px;padding:0 14px;font-size:15px;color:#69707d"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"></circle><path d="M16 16l4.5 4.5"></path></svg>Name, relationship, or number</div>
+<div style="margin:14px 16px 0;background:#fff;border-radius:22px;padding:2px 14px;display:flex;flex-direction:column">
+<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #eef0f3"><div style="width:42px;height:42px;border-radius:50%;background:#ffe3ef;display:grid;place-items:center;font-size:15px;font-weight:600;color:#b0306a">M</div><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><div style="display:flex;gap:6px;align-items:center"><span style="font-size:15px;font-weight:600">Maria</span><span style="font-size:11px;font-weight:600;color:#2557e8;background:#e6edfd;border-radius:99px;padding:1px 7px">girlfriend</span></div><span style="font-size:12.5px;color:#69707d">747-283-6440 · Mandarin · 12 calls</span><span style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">已转达：今晚会晚到一小时</span></div><span style="width:38px;height:38px;border-radius:50%;background:#e1f5e8;color:#1a9e4b;display:grid;place-items:center;flex:none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6.5 3.5h3l1.5 4-2 1.5a11 11 0 0 0 6 6l1.5-2 4 1.5v3a2 2 0 0 1-2 2A16 16 0 0 1 4.5 5.5a2 2 0 0 1 2-2z"></path></svg></span></div>
+<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #eef0f3"><div style="width:42px;height:42px;border-radius:50%;background:#e1f5e8;display:grid;place-items:center;font-size:15px;font-weight:600;color:#137a3a">SD</div><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><div style="display:flex;gap:6px;align-items:center"><span style="font-size:15px;font-weight:600">Smile Dental</span><span style="font-size:11px;font-weight:600;color:#2557e8;background:#e6edfd;border-radius:99px;padding:1px 7px">dentist</span></div><span style="font-size:12.5px;color:#69707d">(901) 555-0142 · English · 4 calls</span><span style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">已预约：10月8日周四 下午2:00</span></div><span style="width:38px;height:38px;border-radius:50%;background:#e1f5e8;color:#1a9e4b;display:grid;place-items:center;flex:none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6.5 3.5h3l1.5 4-2 1.5a11 11 0 0 0 6 6l1.5-2 4 1.5v3a2 2 0 0 1-2 2A16 16 0 0 1 4.5 5.5a2 2 0 0 1 2-2z"></path></svg></span></div>
+<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #eef0f3"><div style="width:42px;height:42px;border-radius:50%;background:#fff3d1;display:grid;place-items:center;font-size:15px;font-weight:600;color:#855600">TS</div><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><div style="display:flex;gap:6px;align-items:center"><span style="font-size:15px;font-weight:600">Tabito Sato</span><span style="font-size:11px;font-weight:600;color:#2557e8;background:#e6edfd;border-radius:99px;padding:1px 7px">friend</span></div><span style="font-size:12.5px;color:#69707d">(901) 555-2290 · Japanese · 3 calls</span><span style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">已转达：今晚的读经去不了</span></div><span style="width:38px;height:38px;border-radius:50%;background:#e1f5e8;color:#1a9e4b;display:grid;place-items:center;flex:none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6.5 3.5h3l1.5 4-2 1.5a11 11 0 0 0 6 6l1.5-2 4 1.5v3a2 2 0 0 1-2 2A16 16 0 0 1 4.5 5.5a2 2 0 0 1 2-2z"></path></svg></span></div>
+<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #eef0f3"><div style="width:42px;height:42px;border-radius:50%;background:#eee9fc;display:grid;place-items:center;font-size:15px;font-weight:600;color:#5b3cc4">LC</div><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><div style="display:flex;gap:6px;align-items:center"><span style="font-size:15px;font-weight:600">Lola Cruz</span><span style="font-size:11px;font-weight:600;color:#2557e8;background:#e6edfd;border-radius:99px;padding:1px 7px">tita</span></div><span style="font-size:12.5px;color:#69707d">+63 917 555 0148 · Tagalog · 2 calls</span><span style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">已转达：生日快乐，周日视频</span></div><span style="width:38px;height:38px;border-radius:50%;background:#e1f5e8;color:#1a9e4b;display:grid;place-items:center;flex:none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6.5 3.5h3l1.5 4-2 1.5a11 11 0 0 0 6 6l1.5-2 4 1.5v3a2 2 0 0 1-2 2A16 16 0 0 1 4.5 5.5a2 2 0 0 1 2-2z"></path></svg></span></div>
+<div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #eef0f3"><div style="width:42px;height:42px;border-radius:50%;background:#e1f5e8;display:grid;place-items:center;font-size:15px;font-weight:600;color:#137a3a">MS</div><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><div style="display:flex;gap:6px;align-items:center"><span style="font-size:15px;font-weight:600">Maria Santos</span><span style="font-size:11px;font-weight:600;color:#2557e8;background:#e6edfd;border-radius:99px;padding:1px 7px">landlord</span></div><span style="font-size:12.5px;color:#69707d">(901) 555-1187 · English · 1 call</span><span style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">水管维修：周三上午来</span></div><span style="width:38px;height:38px;border-radius:50%;background:#e1f5e8;color:#1a9e4b;display:grid;place-items:center;flex:none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6.5 3.5h3l1.5 4-2 1.5a11 11 0 0 0 6 6l1.5-2 4 1.5v3a2 2 0 0 1-2 2A16 16 0 0 1 4.5 5.5a2 2 0 0 1 2-2z"></path></svg></span></div>
+<div style="display:flex;align-items:center;gap:12px;padding:12px 0"><div style="width:42px;height:42px;border-radius:50%;background:#e6edfd;display:grid;place-items:center;font-size:15px;font-weight:600;color:#2557e8">妈</div><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><div style="display:flex;gap:6px;align-items:center"><span style="font-size:15px;font-weight:600">Mom</span><span style="font-size:11px;font-weight:600;color:#2557e8;background:#e6edfd;border-radius:99px;padding:1px 7px">mom</span></div><span style="font-size:12.5px;color:#69707d">(901) 555-0066 · Mandarin · added</span></div><span style="width:38px;height:38px;border-radius:50%;background:#e1f5e8;color:#1a9e4b;display:grid;place-items:center;flex:none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6.5 3.5h3l1.5 4-2 1.5a11 11 0 0 0 6 6l1.5-2 4 1.5v3a2 2 0 0 1-2 2A16 16 0 0 1 4.5 5.5a2 2 0 0 1 2-2z"></path></svg></span></div>
+</div>
+<div style="margin-top:auto;display:grid;grid-template-columns:repeat(4,1fr);padding:10px 8px 30px;background:rgba(255,255,255,.92);border-top:1px solid #e1e4e9">
+<div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:500;color:#69707d"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M6.5 3.5h3l1.5 4-2 1.5a11 11 0 0 0 6 6l1.5-2 4 1.5v3a2 2 0 0 1-2 2A16 16 0 0 1 4.5 5.5a2 2 0 0 1 2-2z"></path></svg>Call</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:500;color:#69707d"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5V12l3 2"></path></svg>Calls</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:600;color:#2557e8"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="5" y="3.5" width="14" height="17" rx="2"></rect><circle cx="12" cy="10" r="2.5"></circle><path d="M8.5 16.5a4 4 0 0 1 7 0"></path></svg>Phone book</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:500;color:#69707d"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8.5" r="3.5"></circle><path d="M5 20a7 7 0 0 1 14 0"></path></svg>Me</div>
+</div>
+<div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:#121418"></div>
+</div></div>
+
+<div class="dv-opt" id="1l"><div class="dv-olabel"><a class="dv-oid" href="#1l">1l</a>Contact. What calls taught us, the last outcome, and Call that opens Home with the contact already filled in.</div>
+<div style="width:390px;height:844px;border-radius:56px;overflow:hidden;position:relative;background:#f4f5f7;color:#121418;box-shadow:0 0 0 11px #16181c,0 0 0 12px #3a3d43,0 40px 80px rgba(20,30,60,.22);margin:12px;display:flex;flex-direction:column">
+<div style="height:54px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:4px 30px 0 40px;font-size:16px;font-weight:600;position:relative;z-index:5"><span>9:41</span><div style="position:absolute;left:50%;top:12px;transform:translateX(-50%);width:120px;height:35px;border-radius:20px;background:#000"></div><span style="display:flex;gap:5px;align-items:center"><svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"></rect><rect x="5" y="5.5" width="3" height="6.5" rx="1"></rect><rect x="10" y="3" width="3" height="9" rx="1"></rect><rect x="15" y="0" width="3" height="12" rx="1"></rect></svg><svg width="26" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".4"></rect><rect x="2" y="2" width="20" height="9" rx="2" fill="currentColor"></rect></svg></span></div>
+<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 16px 0">
+<div style="height:36px;display:flex;align-items:center;gap:2px;font-size:14px;font-weight:500;color:#2557e8"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 5l-7 7 7 7"></path></svg>Phone book</div>
+<span style="font-size:14px;font-weight:500;color:#2557e8">Edit</span>
+</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:16px 24px 0;text-align:center">
+<div style="width:84px;height:84px;border-radius:50%;background:#e1f5e8;display:grid;place-items:center;font-size:28px;font-weight:600;color:#137a3a">SD</div>
+<span style="font-size:26px;font-weight:600;letter-spacing:-.01em;margin-top:4px">Smile Dental</span>
+<div style="display:flex;gap:6px"><span style="font-size:12px;font-weight:600;color:#2557e8;background:#e6edfd;border-radius:99px;padding:3px 10px">dentist</span><span style="font-size:12px;font-weight:600;color:#69707d;background:#eef0f3;border-radius:99px;padding:3px 10px">clinic</span></div>
+</div>
+<div style="display:flex;gap:10px;padding:18px 16px 0">
+<div style="flex:1;height:54px;border-radius:27px;background:#1a9e4b;color:#fff;display:flex;align-items:center;justify-content:center;gap:8px;font-size:16px;font-weight:600"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6.5 3.5h3l1.5 4-2 1.5a11 11 0 0 0 6 6l1.5-2 4 1.5v3a2 2 0 0 1-2 2A16 16 0 0 1 4.5 5.5a2 2 0 0 1 2-2z"></path></svg>Call</div>
+</div>
+<div style="margin:14px 16px 0;background:#fff;border-radius:20px;padding:4px 16px">
+<div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid #eef0f3;font-size:14px"><span style="color:#69707d">Number</span><span style="font-family:'Geist Mono',monospace;font-size:13.5px">(901) 555-0142</span></div>
+<div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid #eef0f3;font-size:14px"><span style="color:#69707d">Address</span><span>1830 Poplar Ave, Memphis</span></div>
+<div style="display:flex;justify-content:space-between;padding:11px 0;border-bottom:1px solid #eef0f3;font-size:14px"><span style="color:#69707d">Call language</span><span>English</span></div>
+<div style="display:flex;justify-content:space-between;padding:11px 0;font-size:14px"><span style="color:#69707d">Calls</span><span>4</span></div>
+</div>
+<div style="margin:12px 16px 0;background:#e1f5e8;border-radius:20px;padding:14px 16px;display:flex;flex-direction:column;gap:3px">
+<span style="font-size:11px;font-weight:600;letter-spacing:.06em;color:#137a3a">LAST CALL · TODAY</span>
+<span style="font-size:15px;font-weight:600">已预约：10月8日周四 下午 2:00 洗牙</span>
+</div>
+<div style="margin:12px 16px 0;background:#fff;border-radius:20px;padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+<span style="font-size:11px;font-weight:600;letter-spacing:.06em;color:#69707d">LEARNED ON CALLS</span>
+<div style="display:flex;flex-direction:column;gap:1px"><span style="font-size:14.5px">就诊时需出示保险卡</span><span style="font-size:12.5px;color:#69707d">Asks for the insurance card at check-in</span></div>
+<div style="display:flex;flex-direction:column;gap:1px"><span style="font-size:14.5px">前台 Maria 一般上午接电话</span><span style="font-size:12.5px;color:#69707d">Maria at the front desk usually answers mornings</span></div>
+</div>
+<div style="margin-top:auto;padding:0 0 40px;text-align:center;font-size:15px;font-weight:500;color:#b42318">Delete contact</div>
+<div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:#121418"></div>
+</div></div>
+
+<div class="dv-opt" id="1m"><div class="dv-olabel"><a class="dv-oid" href="#1m">1m</a>Import, after the OS picker. Pick a number when there are several, set relationship and language, update instead of duplicating.</div>
+<div style="width:390px;height:844px;border-radius:56px;overflow:hidden;position:relative;background:#f4f5f7;color:#121418;box-shadow:0 0 0 11px #16181c,0 0 0 12px #3a3d43,0 40px 80px rgba(20,30,60,.22);margin:12px;display:flex;flex-direction:column">
+<div style="height:54px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:4px 30px 0 40px;font-size:16px;font-weight:600;position:relative;z-index:5"><span>9:41</span><div style="position:absolute;left:50%;top:12px;transform:translateX(-50%);width:120px;height:35px;border-radius:20px;background:#000"></div><span style="display:flex;gap:5px;align-items:center"><svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"></rect><rect x="5" y="5.5" width="3" height="6.5" rx="1"></rect><rect x="10" y="3" width="3" height="9" rx="1"></rect><rect x="15" y="0" width="3" height="12" rx="1"></rect></svg><svg width="26" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".4"></rect><rect x="2" y="2" width="20" height="9" rx="2" fill="currentColor"></rect></svg></span></div>
+<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 20px 0"><span style="font-size:14px;font-weight:500;color:#2557e8">Cancel</span><span style="font-size:17px;font-weight:600">Import 3 contacts</span><span style="width:46px"></span></div>
+<div style="padding:10px 24px 0;font-size:13px;line-height:1.45;color:#69707d;text-align:center;text-wrap:pretty">Only these names and numbers are sent to CallBridge. Relationship and language are optional.</div>
+<div style="flex:1;min-height:0;overflow:hidden;padding:14px 14px 0;display:flex;flex-direction:column;gap:10px">
+<div style="background:#fff;border-radius:22px;padding:14px;display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;align-items:center;gap:10px"><div style="width:36px;height:36px;border-radius:50%;background:#fff3d1;display:grid;place-items:center;font-size:13px;font-weight:600;color:#855600">KT</div><span style="font-size:16px;font-weight:600">Kenji Tanaka</span></div>
+<div style="display:flex;flex-direction:column;gap:6px">
+<div style="display:flex;align-items:center;gap:10px;height:40px;padding:0 12px;border-radius:12px;box-shadow:0 0 0 2px #2557e8;font-size:14px"><span style="width:16px;height:16px;border-radius:50%;border:5px solid #2557e8;box-sizing:border-box"></span><span style="flex:1">mobile</span><span style="font-family:'Geist Mono',monospace;font-size:13px">(901) 555-3301</span></div>
+<div style="display:flex;align-items:center;gap:10px;height:40px;padding:0 12px;border-radius:12px;box-shadow:0 0 0 1px #e1e4e9;font-size:14px;color:#69707d"><span style="width:16px;height:16px;border-radius:50%;border:1.5px solid #c3c8d0;box-sizing:border-box"></span><span style="flex:1">work</span><span style="font-family:'Geist Mono',monospace;font-size:13px">(901) 555-8800</span></div>
+</div>
+<div style="display:flex;gap:6px;flex-wrap:wrap"><span style="font-size:13px;padding:6px 12px;border-radius:99px;background:#e6edfd;color:#2557e8;font-weight:600">friend</span><span style="font-size:13px;padding:6px 12px;border-radius:99px;background:#eef0f3">coworker</span><span style="font-size:13px;padding:6px 12px;border-radius:99px;background:#eef0f3">family</span><span style="font-size:13px;padding:6px 12px;border-radius:99px;background:#eef0f3">+ other</span></div>
+<div style="display:flex;justify-content:space-between;align-items:center;font-size:14px;padding-top:2px"><span style="color:#69707d">Call language</span><span style="font-weight:500;display:flex;align-items:center;gap:4px">Japanese<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"></path></svg></span></div>
+</div>
+<div style="background:#fff;border-radius:22px;padding:14px;display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;align-items:center;gap:10px"><div style="width:36px;height:36px;border-radius:50%;background:#eee9fc;display:grid;place-items:center;font-size:13px;font-weight:600;color:#5b3cc4">AR</div><div style="flex:1;display:flex;flex-direction:column"><span style="font-size:16px;font-weight:600">Ate Rosa</span><span style="font-size:12.5px;color:#69707d;font-family:'Geist Mono',monospace">+63 917 555 0172</span></div></div>
+<div style="display:flex;gap:6px;flex-wrap:wrap"><span style="font-size:13px;padding:6px 12px;border-radius:99px;background:#e6edfd;color:#2557e8;font-weight:600">cousin</span><span style="font-size:13px;padding:6px 12px;border-radius:99px;background:#eef0f3">friend</span><span style="font-size:13px;padding:6px 12px;border-radius:99px;background:#eef0f3">+ other</span></div>
+<div style="display:flex;justify-content:space-between;align-items:center;font-size:14px"><span style="color:#69707d">Call language</span><span style="font-weight:500;display:flex;align-items:center;gap:4px">Tagalog<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"></path></svg></span></div>
+</div>
+<div style="background:#fff;border-radius:22px;padding:14px;display:flex;flex-direction:column;gap:10px;box-shadow:0 0 0 1.5px #f3c45c">
+<div style="display:flex;align-items:center;gap:10px"><div style="width:36px;height:36px;border-radius:50%;background:#ffe3ef;display:grid;place-items:center;font-size:13px;font-weight:600;color:#b0306a">M</div><div style="flex:1;display:flex;flex-direction:column"><span style="font-size:16px;font-weight:600">Maria Chen</span><span style="font-size:12.5px;color:#69707d;font-family:'Geist Mono',monospace">747-283-6440</span></div></div>
+<div style="font-size:13px;line-height:1.45;color:#855600;background:#fff3d1;border-radius:12px;padding:9px 12px">Already in your phone book as <b>Maria</b> (girlfriend). Your name for her is kept.</div>
+<div style="display:flex;background:#eef0f3;border-radius:12px;padding:3px"><span style="flex:1;height:32px;border-radius:10px;background:#fff;display:grid;place-items:center;font-size:13px;font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.08)">Update existing</span><span style="flex:1;height:32px;display:grid;place-items:center;font-size:13px;font-weight:500;color:#69707d">Skip</span></div>
+</div>
+</div>
+<div style="padding:12px 16px 36px"><div style="height:54px;border-radius:27px;background:#2557e8;color:#fff;display:grid;place-items:center;font-size:16px;font-weight:600">Add 2 · Update 1</div></div>
+<div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:#121418"></div>
+</div></div>
+
+<div class="dv-opt" id="1n"><div class="dv-olabel"><a class="dv-oid" href="#1n">1n</a>Call history. Live calls pinned on top, upcoming appointments as a strip, then newest first with the headline in Mandarin.</div>
+<div style="width:390px;height:844px;border-radius:56px;overflow:hidden;position:relative;background:#f4f5f7;color:#121418;box-shadow:0 0 0 11px #16181c,0 0 0 12px #3a3d43,0 40px 80px rgba(20,30,60,.22);margin:12px;display:flex;flex-direction:column">
+<div style="height:54px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:4px 30px 0 40px;font-size:16px;font-weight:600;position:relative;z-index:5"><span>9:41</span><div style="position:absolute;left:50%;top:12px;transform:translateX(-50%);width:120px;height:35px;border-radius:20px;background:#000"></div><span style="display:flex;gap:5px;align-items:center"><svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"></rect><rect x="5" y="5.5" width="3" height="6.5" rx="1"></rect><rect x="10" y="3" width="3" height="9" rx="1"></rect><rect x="15" y="0" width="3" height="12" rx="1"></rect></svg><svg width="26" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".4"></rect><rect x="2" y="2" width="20" height="9" rx="2" fill="currentColor"></rect></svg></span></div>
+<div style="padding:10px 20px 0"><span style="font-size:30px;font-weight:600;letter-spacing:-.02em">Calls</span></div>
+<div style="margin:12px 14px 0;background:#0b1020;color:#fff;border-radius:22px;padding:12px 14px 12px 10px;display:flex;align-items:center;gap:12px">
+<div style="flex:none">{{ orbCall44 }}</div>
+<div style="flex:1;display:flex;flex-direction:column"><span style="font-size:15px;font-weight:600">Casa Oaxaca</span><span style="font-size:13px;color:#50d184;font-variant-numeric:tabular-nums">Live · in progress · 01:47</span></div>
+<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 5l7 7-7 7"></path></svg>
+</div>
+<div style="padding:18px 20px 8px;font-size:12px;font-weight:600;letter-spacing:.06em;color:#69707d">UPCOMING</div>
+<div style="display:flex;gap:10px;padding:0 14px;overflow:hidden;flex:none">
+<div style="flex:none;width:200px;background:#fff;border-radius:20px;padding:12px 14px;display:flex;flex-direction:column;gap:2px"><span style="font-size:11px;font-weight:600;color:#b42318">THU OCT 8</span><span style="font-size:20px;font-weight:600">2:00 pm</span><span style="font-size:13px;color:#69707d">Smile Dental · 洗牙</span></div>
+<div style="flex:none;width:200px;background:#fff;border-radius:20px;padding:12px 14px;display:flex;flex-direction:column;gap:2px"><span style="font-size:11px;font-weight:600;color:#b42318">SAT OCT 10</span><span style="font-size:20px;font-weight:600">7:30 pm</span><span style="font-size:13px;color:#69707d">Casa Oaxaca · 4 位</span><span style="align-self:flex-start;margin-top:4px;font-size:11px;font-weight:600;color:#855600;background:#fff3d1;border-radius:99px;padding:2px 8px">Needs confirmation</span></div>
+</div>
+<div style="padding:18px 20px 8px;font-size:12px;font-weight:600;letter-spacing:.06em;color:#69707d">TODAY</div>
+<div style="margin:0 14px;background:#fff;border-radius:22px;padding:2px 14px">
+<div style="display:flex;gap:12px;padding:12px 0;border-bottom:1px solid #eef0f3"><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><div style="display:flex;justify-content:space-between"><span style="font-size:15px;font-weight:600">Smile Dental</span><span style="font-size:12px;color:#69707d">10:42</span></div><span style="font-size:14px">已预约：周四 下午 2:00 洗牙</span><span style="align-self:flex-start;font-size:11px;font-weight:600;color:#137a3a;background:#e1f5e8;border-radius:99px;padding:2px 8px;margin-top:2px">Booked</span></div></div>
+<div style="display:flex;gap:12px;padding:12px 0"><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><div style="display:flex;justify-content:space-between"><span style="font-size:15px;font-weight:600">La Esquina Taqueria</span><span style="font-size:12px;color:#69707d">9:15</span></div><span style="font-size:14px;color:#69707d">没人接听</span><span style="align-self:flex-start;font-size:11px;font-weight:600;color:#69707d;background:#eef0f3;border-radius:99px;padding:2px 8px;margin-top:2px">No answer</span></div></div>
+</div>
+<div style="padding:12px 20px 8px;font-size:12px;font-weight:600;letter-spacing:.06em;color:#69707d">THIS WEEK</div>
+<div style="margin:0 14px;background:#fff;border-radius:22px;padding:2px 14px">
+<div style="display:flex;gap:12px;padding:12px 0;border-bottom:1px solid #eef0f3"><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><div style="display:flex;justify-content:space-between"><span style="font-size:15px;font-weight:600">Maria</span><span style="font-size:12px;color:#69707d">Mon</span></div><span style="font-size:14px">已转达：今晚会晚到一小时</span><span style="align-self:flex-start;font-size:11px;font-weight:600;color:#2557e8;background:#e6edfd;border-radius:99px;padding:2px 8px;margin-top:2px">Delivered</span></div></div>
+<div style="display:flex;gap:12px;padding:12px 0"><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><div style="display:flex;justify-content:space-between"><span style="font-size:15px;font-weight:600">Dr. Kim Family Clinic</span><span style="font-size:12px;color:#69707d">Sun</span></div><span style="font-size:14px">未预约：他们只有下午 3 点</span><span style="align-self:flex-start;font-size:11px;font-weight:600;color:#b42318;background:#fdeceb;border-radius:99px;padding:2px 8px;margin-top:2px">Not booked</span></div></div>
+</div>
+<div style="margin-top:auto;display:grid;grid-template-columns:repeat(4,1fr);padding:10px 8px 30px;background:rgba(255,255,255,.92);border-top:1px solid #e1e4e9">
+<div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:500;color:#69707d"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M6.5 3.5h3l1.5 4-2 1.5a11 11 0 0 0 6 6l1.5-2 4 1.5v3a2 2 0 0 1-2 2A16 16 0 0 1 4.5 5.5a2 2 0 0 1 2-2z"></path></svg>Call</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:600;color:#2557e8"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"></circle><path d="M12 7.5V12l3 2"></path></svg>Calls</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:500;color:#69707d"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="5" y="3.5" width="14" height="17" rx="2"></rect><circle cx="12" cy="10" r="2.5"></circle><path d="M8.5 16.5a4 4 0 0 1 7 0"></path></svg>Phone book</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:500;color:#69707d"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8.5" r="3.5"></circle><path d="M5 20a7 7 0 0 1 14 0"></path></svg>Me</div>
+</div>
+<div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:#121418"></div>
+</div></div>
+</div>
+
+<p class="dv-next">Try next: "go with <a class="dv-oid" href="#1a">1a</a> for Home and <a class="dv-oid" href="#1e">1e</a> for Live, then do Review &amp; confirm and Result" · "make <a class="dv-oid" href="#1f">1f</a>'s dark mode the whole app" · "wire <a class="dv-oid" href="#1h">1h</a> into a clickable prototype"</p>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;palette&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;brand&quot;,&quot;aurora&quot;],&quot;default&quot;:&quot;brand&quot;,&quot;tsType&quot;:&quot;'brand' | 'aurora'&quot;,&quot;section&quot;:&quot;Orb&quot;},&quot;animate&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Orb&quot;},&quot;holdSeconds&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:60,&quot;min&quot;:10,&quot;max&quot;:120,&quot;step&quot;:5,&quot;unit&quot;:&quot;s&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Hold questions&quot;}}">
+class Component extends DCLogic {
+  state = { sec: 60, hold: 'pending', answer: '', n: 0 };
+
+  componentDidMount() {
+    this.setState({ sec: this.total() });
+    this.timer = setInterval(() => this.tick(), 1000);
+  }
+  componentWillUnmount() { clearInterval(this.timer); clearTimeout(this.rt); }
+  total() { return this.props.holdSeconds ?? 60; }
+
+  tick() {
+    this.setState(s => {
+      const n = s.n + 1;
+      if (s.hold !== 'pending') return { n };
+      if (s.sec <= 1) {
+        clearTimeout(this.rt);
+        this.rt = setTimeout(() => this.replay(), 5000);
+        return { n, sec: 0, hold: 'done', answer: 'No answer in time — the assistant told them you\u2019ll follow up.' };
+      }
+      return { n, sec: s.sec - 1 };
+    });
+  }
+  replay = () => { clearTimeout(this.rt); this.setState({ hold: 'pending', sec: this.total(), answer: '' }); };
+  answer(text) { clearTimeout(this.rt); this.setState({ hold: 'done', answer: text }); }
+
+  palettes() {
+    return {
+      brand: {
+        assist: ['#c9f3ff', '#5cc8ff', '#2557e8', '#0a1a7a'],
+        think: ['#efe6ff', '#b59cff', '#6a4bd6', '#2b1a78'],
+        call: ['#e3ffe9', '#7fe0a3', '#1a9e4b', '#0a4a2a'],
+        ask: ['#ffe3f6', '#d89bff', '#5b3cc4', '#2a1268'],
+      },
+      aurora: {
+        assist: ['#ffffff', '#ffb3ef', '#8f9dff', '#4b4fd6'],
+        think: ['#ffffff', '#e0c4ff', '#a27bff', '#5b3cc4'],
+        call: ['#ffffff', '#b9f7d6', '#3fb9a6', '#16716e'],
+        ask: ['#ffffff', '#ffc2d9', '#e0609a', '#8a2a78'],
+      },
+    };
+  }
+
+  renderVals() {
+    const h = React.createElement;
+    const anim = this.props.animate ?? true;
+    const P = this.palettes()[this.props.palette ?? 'brand'] || this.palettes().brand;
+
+    const orb = (size, key) => {
+      const c = P[key];
+      return h('div', { style: { position: 'relative', width: size, height: size, flex: 'none' } }, [
+        h('div', { key: 'g', style: { position: 'absolute', inset: -size * 0.22, borderRadius: '50%', background: `radial-gradient(circle, ${c[1]}66 0%, transparent 62%)`, filter: `blur(${Math.max(6, size * 0.1)}px)` } }),
+        h('div', { key: 'b', style: { position: 'absolute', inset: 0, borderRadius: '50%', background: `radial-gradient(circle at 34% 28%, ${c[0]} 0%, ${c[1]} 28%, ${c[2]} 60%, ${c[3]} 100%)`, filter: `blur(${Math.max(0.5, size * 0.025)}px)`, animation: anim ? 'cbBreathe 5s ease-in-out infinite' : 'none' } }),
+        h('div', { key: 's', style: { position: 'absolute', inset: '6%', borderRadius: '50%', background: `conic-gradient(from 0deg, transparent 0deg, ${c[0]}cc 60deg, transparent 140deg, ${c[1]}aa 220deg, transparent 300deg)`, filter: `blur(${Math.max(2, size * 0.07)}px)`, mixBlendMode: 'screen', animation: anim ? 'cbSpin 9s linear infinite' : 'none' } }),
+        h('div', { key: 'h', style: { position: 'absolute', left: '20%', top: '14%', width: '34%', height: '24%', borderRadius: '50%', background: 'radial-gradient(closest-side, rgba(255,255,255,.8), rgba(255,255,255,0))', filter: 'blur(2px)' } }),
+      ]);
+    };
+    const field = (key) => {
+      const c = P[key];
+      return h('div', { style: { position: 'absolute', inset: 0 } }, [
+        h('div', { key: 'f', style: { position: 'absolute', inset: 0, borderRadius: 46, background: `radial-gradient(90% 40% at 50% 0%, ${c[0]}cc, transparent 70%), linear-gradient(180deg, ${c[1]} 0%, ${c[2]} 46%, ${c[3]} 100%)`, filter: 'blur(10px)' } }),
+        h('div', { key: 'i', style: { position: 'absolute', inset: 6, borderRadius: 42, boxShadow: `inset 0 0 40px ${c[0]}55` } }),
+      ]);
+    };
+    const bars = (color) => h('span', { style: { display: 'inline-flex', gap: 2, alignItems: 'center', height: 12 } },
+      [0, 1, 2, 3].map(i => h('i', { key: i, style: { width: 2.5, height: 12, borderRadius: 2, background: color, transformOrigin: 'center', animation: anim ? `cbBar 0.9s ease-in-out ${i * 0.12}s infinite` : 'none', transform: anim ? undefined : 'scaleY(.6)' } })));
+    const dot = (color) => h('span', { style: { position: 'relative', width: 10, height: 10, display: 'block' } }, [
+      h('span', { key: 'p', style: { position: 'absolute', inset: 0, borderRadius: '50%', background: color, animation: anim ? 'cbPulse 1.6s ease-out infinite' : 'none' } }),
+      h('span', { key: 'c', style: { position: 'absolute', inset: 0, borderRadius: '50%', background: color } }),
+    ]);
+    const glowTop = h('div', { style: { position: 'absolute', top: -120, right: -90, width: 420, height: 420, borderRadius: '50%', background: `radial-gradient(circle at 40% 40%, ${P.assist[0]} 0%, ${P.assist[1]}cc 30%, ${P.assist[2]}55 58%, transparent 72%)`, filter: 'blur(30px)', opacity: 0.85, pointerEvents: 'none' } });
+
+    const maskBand = { WebkitMask: 'linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)', WebkitMaskComposite: 'xor', mask: 'linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0)' };
+    const band = ({ key, width, blur = 0, colors, bg, speed = 10, opacity = 1, breathe, transition, radius = 56, pulse = 'cbGlow' }) =>
+      h('div', { key, style: { position: 'absolute', inset: 0, borderRadius: radius, filter: blur ? `blur(${blur}px)` : 'none', opacity, transition, pointerEvents: 'none', zIndex: 0 } },
+        h('div', { style: { position: 'absolute', inset: 0, borderRadius: radius, padding: width, overflow: 'hidden', boxSizing: 'border-box', ...maskBand, animation: anim && breathe ? `${pulse} ${breathe}s ease-in-out infinite` : 'none' } },
+          bg ? h('div', { style: { position: 'absolute', inset: 0, background: bg } })
+             : h('div', { style: { position: 'absolute', left: '50%', top: '50%', width: 1000, height: 1000, marginLeft: -500, marginTop: -500, background: `conic-gradient(from 0deg, ${colors.join(', ')}, ${colors[0]})`, animation: anim ? `cbSpin ${speed}s linear infinite` : 'none' } })));
+    const wrap = (kids) => h('div', { style: { position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0 } }, kids);
+    const trace = ({ key, id, c1, c2, dash, offset = -5.9, width = 7, blur = 0, chase }) =>
+      h('svg', { key, viewBox: '0 0 390 844', style: { position: 'absolute', inset: 0, width: '100%', height: '100%', filter: blur ? `blur(${blur}px)` : 'none', pointerEvents: 'none' } }, [
+        h('defs', { key: 'd' }, h('linearGradient', { id, x1: 0, y1: 0, x2: 1, y2: 1 }, [h('stop', { key: 'a', offset: 0, stopColor: c1 }), h('stop', { key: 'b', offset: 1, stopColor: c2 })])),
+        h('rect', { key: 'r', x: 2, y: 2, width: 386, height: 840, rx: 54, fill: 'none', stroke: `url(#${id})`, strokeWidth: width, strokeLinecap: 'round', pathLength: 100, strokeDasharray: dash, strokeDashoffset: offset, style: { animation: chase && anim ? `cbChase ${chase}s linear infinite` : 'none', transition: chase ? 'none' : 'stroke-dasharray 1s linear' } }),
+      ]);
+    const A = P.assist, Th = P.think, C = P.call, K = P.ask;
+    const auraColors = [A[1], A[2], Th[1], C[1], A[1]];
+    const hairColors = [C[1], C[2], A[1], C[1]];
+    const edgeAura = wrap([
+      band({ key: 'w', width: 34, blur: 26, colors: auraColors, speed: 12, breathe: 3.2 }),
+      band({ key: 'm', width: 10, blur: 8, colors: auraColors, speed: 12, opacity: .9 }),
+      band({ key: 'c', width: 3, colors: auraColors, speed: 12, opacity: .9 }),
+    ]);
+    const edgeComet = wrap([
+      trace({ key: 'g', id: 'cbCometG', c1: Th[1], c2: Th[2], dash: '16 34', width: 26, blur: 14, chase: 2.4 }),
+      trace({ key: 'l', id: 'cbCometL', c1: Th[0], c2: Th[2], dash: '16 34', width: 6, chase: 2.4 }),
+      band({ key: 'b', width: 2, bg: Th[1], opacity: .35 }),
+    ]);
+    const hairKids = (k) => [
+      band({ key: k + 'g', width: 14, blur: 14, colors: hairColors, speed: 16, opacity: .7 }),
+      band({ key: k + 'l', width: 3, colors: hairColors, speed: 16 }),
+    ];
+    const hair = (k) => wrap(hairKids(k));
+    const readyColors = [A[1], A[2], Th[1], A[1]];
+    const doneColors = [C[0], C[1], C[2], A[1], C[1]];
+    const askColors = [K[1], K[2], A[1], K[1]];
+    const F = ['#fff3d1', '#f3c45c', '#d48a00', '#855600'];
+    const edgeSpeak = wrap([
+      band({ key: 'w', width: 44, blur: 30, colors: auraColors, speed: 5, breathe: 1.3 }),
+      band({ key: 'm', width: 12, blur: 8, colors: auraColors, speed: 5 }),
+      band({ key: 'c', width: 3, colors: auraColors, speed: 5 }),
+    ]);
+    const edgeReady = wrap([
+      band({ key: 'g', width: 14, blur: 14, colors: readyColors, speed: 22, opacity: .6 }),
+      band({ key: 'l', width: 3, colors: readyColors, speed: 22 }),
+    ]);
+    const edgeRing = wrap([
+      band({ key: 'g', width: 20, blur: 16, colors: hairColors, speed: 16, breathe: 1.5, pulse: 'cbRing' }),
+      band({ key: 'l', width: 3, colors: hairColors, speed: 16, breathe: 1.5, pulse: 'cbRing' }),
+    ]);
+    const edgeMsg = wrap([
+      ...hairKids('m'),
+      band({ key: 'a', width: 70, blur: 36, bg: `linear-gradient(0deg, ${A[1]} 0%, ${A[2]} 12%, transparent 34%)`, breathe: 2.4 }),
+    ]);
+    const edgeDone = wrap([
+      band({ key: 'w', width: 44, blur: 32, colors: doneColors, speed: 14, breathe: 4 }),
+      band({ key: 'm', width: 10, blur: 8, colors: doneColors, speed: 14 }),
+      band({ key: 'c', width: 3, colors: doneColors, speed: 14 }),
+    ]);
+    const edgeFail = wrap([
+      band({ key: 'g', width: 12, blur: 12, bg: F[1], opacity: .5 }),
+      band({ key: 'l', width: 2.5, bg: `linear-gradient(180deg, ${F[1]}, ${F[2]})`, opacity: .9 }),
+    ]);
+    const cardAsk = wrap([
+      band({ key: 'g', width: 18, blur: 16, colors: askColors, speed: 6, breathe: 1.4, radius: 28 }),
+      band({ key: 'l', width: 2.5, colors: askColors, speed: 6, radius: 28 }),
+    ]);
+    const T = this.total();
+    const { sec, hold, n } = this.state;
+    const fmt = (s) => `0:${String(Math.max(0, s)).padStart(2, '0')}`;
+    const sec2 = T - (n % T);
+    const pending = hold === 'pending';
+    const frac = Math.max(0, sec / T) * 100;
+    const edgeHold = pending ? wrap([
+      band({ key: 'tint', width: 40, blur: 30, bg: K[1], opacity: .35, breathe: 1.6 }),
+      trace({ key: 'g', id: 'cbHoldG', c1: K[1], c2: K[2], dash: `${frac} 100`, width: 26, blur: 14 }),
+      trace({ key: 'l', id: 'cbHoldL', c1: K[1], c2: K[2], dash: `${frac} 100`, width: 6 }),
+    ]) : hair('h');
+    const themTalking = Math.floor(n / 4) % 2 === 0;
+    const edgeSides = wrap([
+      band({ key: 'L', width: 30, blur: 22, bg: `linear-gradient(90deg, ${C[1]} 0%, ${C[2]} 8%, transparent 45%)`, opacity: themTalking ? 1 : 0.12, transition: 'opacity .8s ease' }),
+      band({ key: 'Ll', width: 3, bg: `linear-gradient(90deg, ${C[2]} 0%, transparent 40%)`, opacity: themTalking ? 1 : 0.2, transition: 'opacity .8s ease' }),
+      band({ key: 'R', width: 30, blur: 22, bg: `linear-gradient(270deg, ${A[1]} 0%, ${A[2]} 8%, transparent 45%)`, opacity: themTalking ? 0.12 : 1, transition: 'opacity .8s ease' }),
+      band({ key: 'Rl', width: 3, bg: `linear-gradient(270deg, ${A[2]} 0%, transparent 40%)`, opacity: themTalking ? 0.2 : 1, transition: 'opacity .8s ease' }),
+    ]);
+    const edgeEmber = wrap([
+      band({ key: 'e', width: 46, blur: 34, bg: `linear-gradient(0deg, ${C[1]} 0%, ${C[2]} 10%, transparent 38%)`, opacity: .75, breathe: 6 }),
+      band({ key: 'l', width: 2, bg: `linear-gradient(0deg, ${C[1]} 0%, transparent 30%)`, opacity: .8 }),
+    ]);
+
+    return {
+      orbAssist40: orb(40, 'assist'), orbThink40: orb(40, 'think'), orbCall40: orb(40, 'call'), orbAsk40: orb(40, 'ask'),
+      orbAssist130: orb(130, 'assist'), orbAssist190: orb(190, 'assist'), orbAssist220: orb(220, 'assist'), orbAssist240: orb(240, 'assist'), orbAssist56: orb(56, 'assist'),
+      orbThink20: orb(20, 'think'), orbCall130: orb(130, 'call'), orbCall96: orb(96, 'call'), orbCall44: orb(44, 'call'), orbAsk150: orb(150, 'ask'),
+      orbHeader: orb(44, pending ? 'ask' : 'call'),
+      fieldAssist: field('assist'), fieldCall: field('call'), fieldAsk: field('ask'),
+      glowTop, barsDark: bars('#0a1a7a'), barsBlue: bars('#2557e8'),
+      liveDot: dot('#50d184'), liveDotLight: dot('#1a9e4b'),
+      holdPending: pending, holdDone: !pending, answerLine: this.state.answer,
+      headerStatus: pending ? 'On hold · waiting on you' : 'In progress · 03:12',
+      headerColor: pending ? '#5b3cc4' : '#137a3a',
+      secLabel: fmt(sec), ringOff: 131.9 * (1 - sec / T),
+      sec2Label: fmt(sec2), bigOff: 590.6 * (1 - sec2 / T),
+      approve: () => this.answer('You approved: full X-rays, $80 extra.'),
+      decline: () => this.answer('You declined the X-rays. The assistant said just the cleaning.'),
+      replay: this.replay,
+      edgeAura, edgeComet, edgeHair: hair('c'), edgeHold, edgeSides, edgeEmber,
+      edgeSpeak, edgeReady, edgeRing, edgeMsg, edgeDone, edgeFail, cardAsk,
+      speakerLabel: themTalking ? 'Them speaking' : 'AI speaking',
+      speakerColor: themTalking ? '#137a3a' : '#2557e8',
+      speakerBg: themTalking ? '#e1f5e8' : '#e6edfd',
+    };
+  }
+}
+</script>
+</body>
+</html>

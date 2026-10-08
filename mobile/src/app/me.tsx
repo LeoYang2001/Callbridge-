@@ -1,16 +1,22 @@
 import { router } from 'expo-router';
-import { Alert } from 'react-native';
+import { Alert, View } from 'react-native';
+import { MenuButton } from '@/nav/MenuButton';
 import { LANGUAGES } from '@shared/languages';
 import { displayPhone } from '@shared/phone';
+import { useGlow } from '@/glow/GlowContext';
 import { useProfile } from '@/hooks/useProfile';
 import { Body, Button, Card, Choice, Label, Screen, Title } from '@/ui/placeholder';
 
 /** What the assistant knows about the user: built by talking, added to by every call. */
 export default function Profile() {
+  useGlow('none');
   const { me, profile, update, signOut, deleteAccount } = useProfile();
 
   return (
     <Screen>
+      <View style={{ alignItems: 'flex-end' }}>
+        <MenuButton />
+      </View>
       <Title>{profile.name || 'Your profile'}</Title>
       <Body muted>{displayPhone(me.phone)}</Body>
       <Button title="Update by talking" onPress={() => router.push({ pathname: '/intake', params: { mode: 'profile' } })} />
@@ -48,6 +54,7 @@ export default function Profile() {
         )}
       </Card>
 
+      {__DEV__ && <Button kind="plain" title="Glow gallery (dev)" onPress={() => router.push('/dev/glow')} />}
       <Button kind="plain" title="Sign out" onPress={signOut} />
       <Button
         kind="danger"

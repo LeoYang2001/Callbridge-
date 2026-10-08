@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import { LANGUAGES } from '@shared/languages';
 import { useSignIn } from '@/hooks/useSignIn';
 import { Body, Button, Choice, ErrorText, Field, Screen, Title } from '@/ui/placeholder';
@@ -24,6 +25,7 @@ export default function SignIn() {
         </>
       )}
       <ErrorText>{f.error}</ErrorText>
+      {__DEV__ && <Button kind="plain" title="Glow gallery (dev)" onPress={() => router.push('/dev/glow')} />}
     </Screen>
   );
 }

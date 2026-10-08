@@ -1,3 +1,4 @@
+import { router } from 'expo-router';
 import type { ReactNode } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View, type TextInputProps } from 'react-native';
 
@@ -8,9 +9,15 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, 
  */
 
 export function Screen({ children, scroll = true }: { children: ReactNode; scroll?: boolean }) {
-  if (!scroll) return <View style={s.screen}>{children}</View>;
+  const back = router.canGoBack() ? (
+    <Pressable accessibilityRole="button" onPress={() => router.back()} hitSlop={8}>
+      <Text style={[s.body, { color: '#007AFF' }]}>‹ Back</Text>
+    </Pressable>
+  ) : null;
+  if (!scroll) return <View style={s.screen}>{back}{children}</View>;
   return (
     <ScrollView contentContainerStyle={s.screen} keyboardShouldPersistTaps="handled" contentInsetAdjustmentBehavior="automatic">
+      {back}
       {children}
     </ScrollView>
   );

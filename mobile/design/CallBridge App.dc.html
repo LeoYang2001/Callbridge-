@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@300..700&amp;family=Geist+Mono:wght@400;500&amp;family=Noto+Sans+SC:wght@300;400;500;700&amp;display=swap" rel="stylesheet">
+<script src="callbridge-data.js"></script>
+<style>
+body{margin:0;background:#e9ebef;font-family:Geist,'Noto Sans SC',system-ui,sans-serif;color:#121418;-webkit-font-smoothing:antialiased}
+a{color:#2557e8;text-decoration:none}a:hover{color:#1a3fb0}
+input{font-family:inherit}
+@keyframes cbSpin{to{transform:rotate(360deg)}}
+@keyframes cbGlow{0%,100%{opacity:.6}50%{opacity:1}}
+@keyframes cbRing{0%,100%{opacity:.12}45%{opacity:1}}
+@keyframes cbChase{to{stroke-dashoffset:-100}}
+@keyframes cbBar{0%,100%{transform:scaleY(.35)}50%{transform:scaleY(1)}}
+@keyframes cbFade{from{opacity:0}to{opacity:1}}
+@keyframes cbPing{0%{transform:scale(.45);opacity:.7}100%{transform:scale(1.7);opacity:0}}
+@keyframes cbUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+</style>
+</helmet>
+<div style="min-height:100vh;display:flex;flex-wrap:wrap;gap:36px;justify-content:center;align-items:flex-start;padding:36px 20px;box-sizing:border-box">
+<div style="width:220px;flex:none;display:flex;flex-direction:column;gap:18px">
+<div style="display:flex;flex-direction:column;gap:2px"><span style="font-size:18px;font-weight:600;letter-spacing:-.01em">CallBridge</span><span style="font-size:13px;color:#69707d">Interactive prototype · edge-glow style</span></div>
+<sc-for list="{{ rail }}" as="g" hint-placeholder-count="5">
+<div style="display:flex;flex-direction:column;gap:4px">
+<span style="font-size:11px;font-weight:600;letter-spacing:.08em;color:#69707d;text-transform:uppercase;padding:0 10px 2px">{{ g.label }}</span>
+<sc-for list="{{ g.items }}" as="it" hint-placeholder-count="3">
+<div onClick="{{ it.go }}" style="height:32px;display:flex;align-items:center;padding:0 10px;border-radius:9px;font-size:13.5px;font-weight:{{ it.fw }};background:{{ it.bg }};color:{{ it.fg }};cursor:pointer">{{ it.label }}</div>
+</sc-for>
+</div>
+</sc-for>
+<div onClick="{{ restart }}" style="height:36px;display:flex;align-items:center;justify-content:center;border-radius:18px;background:#fff;font-size:13px;font-weight:600;cursor:pointer;box-shadow:0 0 0 1px rgba(0,0,0,.06)">Restart from Home</div>
+</div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:14px">
+<div style="width:390px;height:844px;flex:none;border-radius:56px;overflow:hidden;position:relative;background:{{ phoneBg }};color:{{ phoneInk }};box-shadow:0 0 0 11px #16181c,0 0 0 12px #3a3d43,0 40px 80px rgba(20,30,60,.22);margin:12px;display:flex;flex-direction:column;transition:background .4s">
+{{ glow }}
+<div style="height:54px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:4px 30px 0 40px;font-size:16px;font-weight:600;position:relative;z-index:5"><span>{{ sbTime }}</span><div style="position:absolute;left:50%;top:12px;transform:translateX(-50%);width:120px;height:35px;border-radius:20px;background:#000"></div><span style="display:flex;gap:5px;align-items:center"><svg width="18" height="12" viewBox="0 0 18 12" fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"></rect><rect x="5" y="5.5" width="3" height="6.5" rx="1"></rect><rect x="10" y="3" width="3" height="9" rx="1"></rect><rect x="15" y="0" width="3" height="12" rx="1"></rect></svg><svg width="26" height="13" viewBox="0 0 27 13"><rect x=".5" y=".5" width="23" height="12" rx="3.5" fill="none" stroke="currentColor" opacity=".4"></rect><rect x="2" y="2" width="20" height="9" rx="2" fill="currentColor"></rect></svg></span></div>
+<sc-if value="{{ liveBanner }}" hint-placeholder-val="{{ false }}">
+<div onClick="{{ toLive }}" style="position:relative;z-index:7;margin:6px 14px 0;height:46px;flex:none;border-radius:23px;background:#000;color:#fff;display:flex;align-items:center;gap:10px;padding:0 14px 0 16px;cursor:pointer;animation:cbUp .3s ease"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" style="flex:none"><path d="M6.5 3.5h3l1.5 4-2 1.5a11 11 0 0 0 6 6l1.5-2 4 1.5v3a2 2 0 0 1-2 2A16 16 0 0 1 4.5 5.5a2 2 0 0 1 2-2z" stroke="#7ba6ff" stroke-width="2.1" stroke-linejoin="round"></path></svg><span style="flex:1;min-width:0;font-size:14.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ rv.who }}</span><span style="font-size:14.5px;font-weight:600;color:#7ba6ff;font-variant-numeric:tabular-nums">{{ callTime }}</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2.4" stroke-linecap="round" style="flex:none"><path d="M9 5l7 7-7 7"></path></svg></div>
+</sc-if>
+<sc-if value="{{ showTabs }}" hint-placeholder-val="{{ true }}">
+<div style="position:relative;flex:none;display:flex;justify-content:flex-end;padding:6px 18px 0;z-index:6"><div onClick="{{ openMenu }}" style="width:40px;height:40px;border-radius:50%;background:rgba(18,20,24,.05);display:grid;place-items:center;cursor:pointer" style-hover="background:rgba(18,20,24,.09)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#121418" stroke-width="1.9" stroke-linecap="round"><path d="M5 9h14M9 15h10"></path></svg></div></div>
+</sc-if>
+<sc-if value="{{ is.home }}" hint-placeholder-val="{{ true }}">
+<div style="position:relative;flex:1;min-height:0;display:flex;flex-direction:column;animation:cbFade .3s ease">
+<div style="padding:4px 26px 0;display:flex;flex-direction:column;gap:2px"><span style="font-size:15px;color:#69707d">下午好，伟</span><span style="font-size:30px;font-weight:600;letter-spacing:-.02em">想打给谁？</span></div>
+<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px">
+<div style="display:flex;flex-direction:column;align-items:center;gap:10px"><div onPointerDown="{{ pressHome }}" style="width:104px;height:104px;border-radius:50%;background:{{ hb.bg }};color:#fff;display:grid;place-items:center;transform:{{ hb.scale }};box-shadow:{{ hb.shadow }};transition:transform .18s ease,box-shadow .25s ease,background .2s;cursor:pointer;user-select:none;touch-action:none"><svg width="37" height="37" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" style="pointer-events:none"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"></path></svg></div><span style="font-size:13px;font-weight:600;color:#2557e8;user-select:none">{{ hb.label }}</span></div>
+<span style="font-size:12.5px;color:#69707d">The mic stays off until you hold. Or tap a suggestion.</span>
+</div>
+<div style="display:flex;gap:8px;padding:0 18px;flex-wrap:wrap;justify-content:center">
+<sc-for list="{{ homeChips }}" as="c" hint-placeholder-count="3"><span onClick="{{ c.go }}" style="height:38px;display:flex;align-items:center;padding:0 15px;border-radius:19px;background:#f4f5f7;font-size:14px;cursor:pointer" style-hover="background:#e9ebef">{{ c.label }}</span></sc-for>
+</div>
+<div style="margin:16px 16px 44px;background:#fff;border-radius:20px;padding:12px 16px;display:flex;align-items:center;gap:14px;box-shadow:0 0 0 1px #eef0f3">
+<div style="display:flex;flex-direction:column;align-items:center;width:40px"><span style="font-size:11px;font-weight:600;color:#b42318">THU</span><span style="font-size:22px;font-weight:600;line-height:1">8</span></div>
+<div style="flex:1;display:flex;flex-direction:column"><span style="font-size:15px;font-weight:600">2:00 pm · Smile Dental</span><span style="font-size:13px;color:#69707d">洗牙 · bring insurance card</span></div>
+<span style="font-size:12px;color:#69707d">Upcoming</span>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{ is.listen }}" hint-placeholder-val="{{ false }}">
+<div style="position:relative;flex:1;min-height:0;display:flex;flex-direction:column;animation:cbFade .3s ease">
+<div style="display:flex;justify-content:space-between;padding:6px 22px 0">
+<div onClick="{{ toHome }}" style="height:36px;display:flex;align-items:center;padding:0 14px;border-radius:18px;background:#f4f5f7;font-size:13px;font-weight:500;cursor:pointer">Cancel</div>
+<div style="display:flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:18px;background:#f4f5f7;font-size:13px;font-weight:500"><span style="color:#69707d">I speak</span>Mandarin</div>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:14px;padding:0 34px">
+<div style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;letter-spacing:.08em;color:{{ listenColor }}"><sc-if value="{{ voiceBars }}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;gap:2px;align-items:center;height:12px"><i style="width:2.5px;height:12px;border-radius:2px;background:{{ barC }};animation:cbBar .7s ease-in-out infinite"></i><i style="width:2.5px;height:12px;border-radius:2px;background:{{ barC }};animation:cbBar .7s ease-in-out .1s infinite"></i><i style="width:2.5px;height:12px;border-radius:2px;background:{{ barC }};animation:cbBar .7s ease-in-out .2s infinite"></i><i style="width:2.5px;height:12px;border-radius:2px;background:{{ barC }};animation:cbBar .7s ease-in-out .3s infinite"></i></span></sc-if>{{ listenLabel2 }}</div>
+<div style="font-size:31px;line-height:1.38;font-weight:500;letter-spacing:-.01em;text-wrap:pretty;min-height:86px">{{ typedZh }}<span style="display:inline-block;width:2px;height:28px;background:#2557e8;margin-left:3px;vertical-align:-4px;animation:cbGlow .8s ease-in-out infinite"></span></div>
+<div style="font-size:14px;line-height:1.5;color:#69707d;min-height:42px">{{ listenEn }}</div>
+</div>
+<div style="display:flex;justify-content:center;align-items:center;gap:28px;padding:0 0 44px">
+<div style="width:58px;height:58px;border-radius:50%;background:#f4f5f7;display:grid;place-items:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3" y="6" width="18" height="12" rx="2.5"></rect><path d="M7 10h.01M10.5 10h.01M14 10h.01M17 10h.01M8 14h8"></path></svg></div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:10px"><div onPointerDown="{{ pressListen }}" style="width:84px;height:84px;border-radius:50%;background:{{ hb.bg }};color:#fff;display:grid;place-items:center;transform:{{ hb.scale }};box-shadow:{{ hb.shadow }};transition:transform .18s ease,box-shadow .25s ease,background .2s;cursor:pointer;user-select:none;touch-action:none"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" style="pointer-events:none"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"></path></svg></div><span style="font-size:13px;font-weight:600;color:#2557e8;user-select:none">{{ hb.label }}</span></div>
+<div style="width:58px;height:58px;display:grid;place-items:center"><span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#69707d"><span style="width:7px;height:7px;border-radius:50%;background:{{ micDot }}"></span>{{ micState }}</span></div>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{ is.speak }}" hint-placeholder-val="{{ false }}">
+<div style="position:relative;flex:1;min-height:0;display:flex;flex-direction:column;animation:cbFade .3s ease">
+<div style="display:flex;justify-content:space-between;padding:6px 22px 0">
+<div onClick="{{ toHome }}" style="height:36px;display:flex;align-items:center;padding:0 14px;border-radius:18px;background:#f4f5f7;font-size:13px;font-weight:500;cursor:pointer">Cancel</div>
+<div style="display:flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:18px;background:#f4f5f7;font-size:13px;font-weight:500"><span style="color:#69707d">Voice</span>Marin</div>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:14px;padding:0 34px">
+<div style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;letter-spacing:.08em;color:{{ voice.color }}"><sc-if value="{{ voiceBars }}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;gap:2px;align-items:center;height:12px"><i style="width:2.5px;height:12px;border-radius:2px;background:{{ barC }};animation:cbBar .7s ease-in-out infinite"></i><i style="width:2.5px;height:12px;border-radius:2px;background:{{ barC }};animation:cbBar .7s ease-in-out .1s infinite"></i><i style="width:2.5px;height:12px;border-radius:2px;background:{{ barC }};animation:cbBar .7s ease-in-out .2s infinite"></i><i style="width:2.5px;height:12px;border-radius:2px;background:{{ barC }};animation:cbBar .7s ease-in-out .3s infinite"></i></span></sc-if>{{ voice.label }}</div>
+<div style="font-size:30px;line-height:1.38;font-weight:500;letter-spacing:-.01em;text-wrap:pretty;animation:cbUp .35s ease">{{ sp.zh }}</div>
+<div style="font-size:14px;line-height:1.5;color:#69707d">{{ sp.en }}</div>
+<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+<sc-if value="{{ hasHeard }}" hint-placeholder-val="{{ false }}"><div style="align-self:flex-start;border:1.5px dashed #2557e8;border-radius:20px;padding:9px 14px;font-size:16px;font-weight:500;color:#121418;background:rgba(255,255,255,.9)">{{ heardText }}<span style="display:inline-block;width:2px;height:16px;background:#2557e8;margin-left:2px;vertical-align:-2px"></span></div></sc-if>
+<sc-for list="{{ spChips }}" as="c" hint-placeholder-count="2"><span onClick="{{ c.pick }}" style="height:44px;display:flex;align-items:center;padding:0 18px;border-radius:22px;background:#fff;box-shadow:0 0 0 1px #e1e4e9;font-size:15px;font-weight:500;cursor:pointer" style-hover="box-shadow:0 0 0 2px #2557e8">{{ c.label }}</span></sc-for>
+</div>
+</div>
+<div style="margin:0 18px;background:#fff;border:1px solid #e1e4e9;border-radius:22px;padding:14px 16px;display:flex;flex-direction:column;gap:8px">
+<div style="display:flex;justify-content:space-between;align-items:center;gap:12px"><span style="font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ rv.who }}</span><span style="font-size:12px;color:#69707d;flex:none;white-space:nowrap">{{ detailN }}</span></div>
+<div style="display:flex;gap:4px"><sc-for list="{{ detailSegs }}" as="d" hint-placeholder-count="5"><span style="flex:1;height:3px;border-radius:2px;background:{{ d.bg }};transition:background .4s"></span></sc-for></div>
+<div style="font-size:13px;color:#69707d">{{ rv.goalZh }} · <span style="color:#5b3cc4">{{ sp.need }}</span></div>
+</div>
+<div style="display:flex;justify-content:center;align-items:center;gap:28px;padding:22px 0 44px">
+<div style="width:58px;height:58px;border-radius:50%;background:#f4f5f7;display:grid;place-items:center"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5v5h3.5L12 18V6L7.5 9.5H4z"></path><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"></path></svg></div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:10px"><div onPointerDown="{{ pressSpeak }}" style="width:84px;height:84px;border-radius:50%;background:{{ hb.bg }};color:#fff;display:grid;place-items:center;transform:{{ hb.scale }};box-shadow:{{ hb.shadow }};transition:transform .18s ease,box-shadow .25s ease,background .2s;cursor:pointer;user-select:none;touch-action:none"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" style="pointer-events:none"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"></path></svg></div><span style="font-size:13px;font-weight:600;color:#2557e8;user-select:none">{{ hb.label }}</span></div>
+<div style="width:58px;height:58px;display:grid;place-items:center"><span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#69707d"><span style="width:7px;height:7px;border-radius:50%;background:{{ micDot }}"></span>{{ micState }}</span></div>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{ is.research }}" hint-placeholder-val="{{ false }}">
+<div style="position:relative;flex:1;min-height:0;display:flex;flex-direction:column;animation:cbFade .3s ease">
+<div style="padding:12px 26px 0;display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:26px;font-weight:600;letter-spacing:-.02em">附近的选择</span><span onClick="{{ toHome }}" style="font-size:14px;font-weight:500;color:#2557e8;cursor:pointer">Cancel</span></div>
+<div style="flex:1;min-height:0;overflow:hidden;padding:16px 20px 0;display:flex;flex-direction:column;gap:12px">
+<div style="align-self:flex-end;max-width:80%;background:#2557e8;color:#fff;padding:10px 14px;border-radius:20px 20px 6px 20px;font-size:15px;line-height:1.4">最近的墨西哥餐厅今晚几点关门？</div>
+<sc-if value="{{ searching }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;flex-direction:column;gap:14px;animation:cbFade .3s ease">
+<div style="position:relative;height:150px;display:grid;place-items:center">
+<span style="position:absolute;width:120px;height:120px;border-radius:50%;border:1.5px solid #8b6cf0;animation:cbPing 2.1s ease-out infinite"></span>
+<span style="position:absolute;width:120px;height:120px;border-radius:50%;border:1.5px solid #8b6cf0;animation:cbPing 2.1s ease-out .7s infinite"></span>
+<span style="position:absolute;width:120px;height:120px;border-radius:50%;border:1.5px solid #8b6cf0;animation:cbPing 2.1s ease-out 1.4s infinite"></span>
+<span style="position:relative;width:58px;height:58px;border-radius:50%;background:#5b3cc4;display:grid;place-items:center;box-shadow:0 10px 30px rgba(91,60,196,.35)"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="6"></circle><path d="M16 16l4 4"></path></svg></span>
+<sc-for list="{{ foundPins }}" as="f" hint-placeholder-count="0"><span style="position:absolute;left:{{ f.x }};top:{{ f.y }};font-size:11.5px;font-weight:600;color:#5b3cc4;background:#fff;border-radius:99px;padding:4px 9px;box-shadow:0 4px 14px rgba(91,60,196,.18);white-space:nowrap;animation:cbUp .35s ease both">{{ f.name }}</span></sc-for>
+</div>
+<div style="display:flex;flex-direction:column;gap:2px;padding:0 4px">
+<sc-for list="{{ searchSteps }}" as="t" hint-placeholder-count="4"><div style="display:flex;align-items:center;gap:12px;min-height:44px;opacity:{{ t.op }};transition:opacity .3s">
+<span style="width:22px;height:22px;flex:none;display:grid;place-items:center">
+<sc-if value="{{ t.done }}" hint-placeholder-val="{{ false }}"><span style="width:20px;height:20px;border-radius:50%;background:#1a9e4b;display:grid;place-items:center;animation:cbUp .25s ease"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.5" stroke-linecap="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span></sc-if>
+<sc-if value="{{ t.now }}" hint-placeholder-val="{{ false }}"><span style="width:18px;height:18px;border-radius:50%;border:2.5px solid #e4dcff;border-top-color:#5b3cc4;box-sizing:border-box;animation:cbSpin .8s linear infinite"></span></sc-if>
+<sc-if value="{{ t.wait }}" hint-placeholder-val="{{ true }}"><span style="width:8px;height:8px;border-radius:50%;background:#d5d9e0"></span></sc-if>
+</span>
+<div style="display:flex;flex-direction:column"><span style="font-size:15px;font-weight:{{ t.fw }}">{{ t.zh }}</span><span style="font-size:12.5px;color:#69707d">{{ t.en }}</span></div>
+</div></sc-for>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{ notSearching }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;gap:10px;animation:cbUp .35s ease">
+<div style="max-width:92%;background:#f4f5f7;border-radius:20px 20px 20px 6px;padding:11px 14px"><div style="font-size:15px;line-height:1.45">附近有 3 家。网上写的时间不一定准，要我打电话问吗？</div><div style="font-size:12.5px;color:#69707d;margin-top:3px">3 nearby. Listed hours aren't always right. Want me to call and ask?</div></div>
+<sc-for list="{{ places }}" as="p" hint-placeholder-count="3">
+<div onClick="{{ p.pick }}" style="background:#fff;box-shadow:0 0 0 1px #e1e4e9;border-radius:18px;padding:11px 14px;display:flex;flex-direction:column;gap:3px;cursor:pointer" style-hover="box-shadow:0 0 0 2px #2557e8">
+<div style="display:flex;justify-content:space-between;align-items:baseline"><span style="font-size:15px;font-weight:600">{{ p.name }}</span><span style="font-size:12px;color:#69707d">{{ p.dist }}</span></div>
+<div style="font-size:12.5px;color:#69707d">{{ p.open }} · {{ p.rating }} · {{ p.lang }}</div>
+<div style="display:flex;gap:8px;align-items:center;font-size:12.5px"><span style="font-family:'Geist Mono',monospace">{{ p.num }}</span><sc-if value="{{ p.unverified }}" hint-placeholder-val="{{ false }}"><span style="font-size:11px;font-weight:600;color:#855600;background:#fff3d1;border-radius:99px;padding:2px 8px">Unverified number</span></sc-if><sc-if value="{{ p.hasNote }}" hint-placeholder-val="{{ false }}"><span style="color:#137a3a">{{ p.note }}</span></sc-if></div>
+</div>
+</sc-for>
+</div>
+</sc-if>
+</div>
+<div style="display:flex;gap:8px;align-items:center;padding:12px 20px 44px">
+<div style="flex:1;height:50px;border-radius:25px;background:#f4f5f7;display:flex;align-items:center;padding:0 18px;font-size:15px;color:#69707d">Tap a place, or type…</div>
+<div style="width:50px;height:50px;border-radius:50%;background:#2557e8;color:#fff;display:grid;place-items:center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"></path></svg></div>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{ is.review }}" hint-placeholder-val="{{ false }}">
+<div style="position:relative;flex:1;min-height:0;display:flex;flex-direction:column;animation:cbFade .3s ease">
+<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 22px 0"><div onClick="{{ backFromReview }}" style="height:36px;display:flex;align-items:center;gap:2px;font-size:14px;font-weight:500;color:#2557e8;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 5l-7 7 7 7"></path></svg>Back</div><span style="font-size:12px;font-weight:600;color:#2557e8;background:#e6edfd;border-radius:99px;padding:5px 11px;white-space:nowrap">Ready to call</span></div>
+<div style="padding:18px 30px 0;display:flex;flex-direction:column;gap:4px"><span style="font-size:30px;font-weight:600;letter-spacing:-.01em">确认这通电话</span><span style="font-size:14px;color:#69707d">Check the details before the assistant dials.</span></div>
+<div style="margin:16px 22px 0;background:#fff;border-radius:22px;padding:4px 16px;box-shadow:0 0 0 1px #eef0f3">
+<div style="display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid #eef0f3;font-size:14.5px"><span style="color:#69707d;flex:none">Calling</span><span style="font-weight:600;text-align:right">{{ rv.who }}</span></div>
+<div style="display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid #eef0f3;font-size:14.5px"><span style="color:#69707d;flex:none">Number</span><span style="font-family:'Geist Mono',monospace;font-size:13.5px">{{ rv.num }}</span></div>
+<div style="display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid #eef0f3;font-size:14.5px"><span style="color:#69707d;flex:none">Speaks</span><span>{{ rv.lang }}</span></div>
+<div style="display:flex;justify-content:space-between;gap:16px;padding:12px 0;border-bottom:1px solid #eef0f3;font-size:14.5px"><span style="color:#69707d;flex:none">Goal</span><span style="text-align:right">{{ rv.goalZh }}<br><span style="font-size:12.5px;color:#69707d">{{ rv.goalEn }}</span></span></div>
+<div style="display:flex;justify-content:space-between;gap:16px;padding:12px 0;font-size:14.5px"><span style="color:#69707d;flex:none;white-space:nowrap">Extra charges</span><span style="white-space:nowrap">{{ rv.charges }}</span></div>
+</div>
+<div style="margin:12px 22px 0;display:flex;background:#eef0f3;border-radius:14px;padding:3px">
+<span onClick="{{ setLoop }}" style="flex:1;height:38px;border-radius:11px;background:{{ modeLoopBg }};color:{{ modeLoopC }};display:grid;place-items:center;font-size:14px;font-weight:600;cursor:pointer;transition:background .2s">Stay in the loop</span>
+<span onClick="{{ setHandoff }}" style="flex:1;height:38px;border-radius:11px;background:{{ modeOffBg }};color:{{ modeOffC }};display:grid;place-items:center;font-size:14px;font-weight:600;cursor:pointer;transition:background .2s">Hand it off</span>
+</div>
+<div style="margin:12px 30px 0;font-size:12.5px;line-height:1.5;color:#69707d;text-wrap:pretty">The assistant will say it's an AI calling for Wei. {{ modeNote }}</div>
+<div style="margin-top:auto;padding:0 22px 44px"><div onClick="{{ placeCall }}" style="height:58px;border-radius:29px;background:#1a9e4b;color:#fff;display:flex;align-items:center;justify-content:center;gap:10px;font-size:17px;font-weight:600;cursor:pointer" style-active="transform:scale(.98)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6.5 3.5h3l1.5 4-2 1.5a11 11 0 0 0 6 6l1.5-2 4 1.5v3a2 2 0 0 1-2 2A16 16 0 0 1 4.5 5.5a2 2 0 0 1 2-2z"></path></svg>Call now</div></div>
+</div>
+</sc-if>
+<sc-if value="{{ is.ring }}" hint-placeholder-val="{{ false }}">
+<div style="position:relative;flex:1;min-height:0;display:flex;flex-direction:column;animation:cbFade .3s ease">
+<div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 34px;gap:8px">
+<span style="font-size:12px;font-weight:600;letter-spacing:.08em;color:#137a3a">RINGING · {{ ringCount }}</span>
+<span style="font-size:38px;line-height:1.15;font-weight:600;letter-spacing:-.02em;text-wrap:pretty">{{ rv.who }}</span>
+<span style="font-family:'Geist Mono',monospace;font-size:16px;color:#69707d">{{ rv.num }}</span>
+<span style="font-size:15px;line-height:1.5;margin-top:18px;text-wrap:pretty">接通后，助手会先说明自己是替您打电话的 AI。</span>
+<span style="font-size:13px;line-height:1.45;color:#69707d">When they answer, the assistant first says it's an AI calling for you.</span>
+</div>
+<div style="padding:0 34px 26px;font-size:13px;color:#69707d">No answer after 6 rings? You'll get the choice to try again.</div>
+<div style="display:flex;justify-content:center;padding:0 0 44px"><div onClick="{{ cancelRing }}" style="display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12px;color:#69707d;cursor:pointer"><div style="width:70px;height:70px;border-radius:50%;background:#e5402f;display:grid;place-items:center;color:#fff"><svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor"><path d="M2.6 13.4c5.2-4.5 13.6-4.5 18.8 0 .5.5.6 1.3.1 1.8l-1.6 1.7c-.4.4-1.1.5-1.6.2l-2.3-1.3c-.4-.2-.6-.7-.6-1.1v-1.6a11 11 0 0 0-6.8 0v1.6c0 .4-.2.9-.6 1.1l-2.3 1.3c-.5.3-1.2.2-1.6-.2l-1.6-1.7c-.5-.5-.4-1.3.1-1.8z"></path></svg></div>Cancel</div></div>
+</div>
+</sc-if>
+<sc-if value="{{ liveMain }}" hint-placeholder-val="{{ false }}">
+<div style="position:relative;flex:1;min-height:0;display:flex;flex-direction:column;animation:cbFade .3s ease">
+<div style="display:grid;grid-template-columns:70px 1fr 70px;align-items:center;padding:6px 18px 0">
+<div onClick="{{ leave }}" style="height:36px;display:flex;align-items:center;gap:2px;font-size:14px;font-weight:500;color:#2557e8;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 5l-7 7 7 7"></path></svg>Leave</div>
+<div style="text-align:center;display:flex;flex-direction:column;min-width:0"><span style="font-size:17px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ rv.who }}</span><span style="font-size:13px;color:#137a3a;font-weight:500;font-variant-numeric:tabular-nums">In progress · {{ callTime }}</span></div>
+<div></div>
+</div>
+<div style="display:flex;gap:4px;padding:12px 34px 0"><sc-for list="{{ liveSegs }}" as="d" hint-placeholder-count="7"><span style="flex:1;height:3px;border-radius:2px;background:{{ d.bg }};transition:background .4s"></span></sc-for></div>
+<sc-if value="{{ msgClosed }}" hint-placeholder-val="{{ true }}">
+<div style="flex:1;min-height:0;display:flex;flex-direction:column">
+<div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 34px;gap:10px">
+<div style="font-size:14px;line-height:1.5;color:#9aa1ad;margin-bottom:22px;min-height:21px">{{ prevZh }}</div>
+<sc-if value="{{ noLast }}" hint-placeholder-val="{{ false }}"><div style="font-size:24px;font-weight:500;color:#69707d">Connecting…</div></sc-if>
+<sc-if value="{{ hasLast }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;flex-direction:column;gap:10px;animation:cbUp .35s ease">
+<div style="font-size:12px;font-weight:600;letter-spacing:.08em;color:{{ lastV.color }}">{{ lastV.label }}</div>
+<div style="font-size:28px;line-height:1.38;font-weight:500;letter-spacing:-.01em;text-wrap:pretty">“{{ lastV.zh }}”</div>
+<div style="font-size:15px;line-height:1.45;color:#69707d">{{ lastV.en }}</div>
+</div>
+</sc-if>
+</div>
+<div style="margin:0 20px;height:46px;border-radius:23px;background:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 18px;font-size:13px;box-shadow:0 0 0 1px #eef0f3"><span style="display:flex;align-items:center;gap:8px;color:#69707d"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1a9e4b" stroke-width="2.2" stroke-linecap="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>{{ modeLabel }}</span><span onClick="{{ openTx }}" style="font-weight:600;cursor:pointer">Transcript</span></div>
+<div style="display:flex;justify-content:center;align-items:flex-start;gap:30px;padding:22px 0 40px">
+<div onClick="{{ toggleListen }}" style="display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12px;color:#69707d;cursor:pointer"><div style="width:58px;height:58px;border-radius:50%;background:{{ listenBg }};color:{{ listenInk }};display:grid;place-items:center;box-shadow:0 0 0 1px #eef0f3;transition:background .2s"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 16v-4a8 8 0 0 1 16 0v4"></path><rect x="3" y="14" width="4" height="6" rx="1.5"></rect><rect x="17" y="14" width="4" height="6" rx="1.5"></rect></svg></div>{{ listenLabel }}</div>
+<div onClick="{{ endCall }}" style="display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12px;color:#69707d;cursor:pointer"><div style="width:70px;height:70px;border-radius:50%;background:#e5402f;display:grid;place-items:center;color:#fff"><svg width="30" height="30" viewBox="0 0 24 24" fill="currentColor"><path d="M2.6 13.4c5.2-4.5 13.6-4.5 18.8 0 .5.5.6 1.3.1 1.8l-1.6 1.7c-.4.4-1.1.5-1.6.2l-2.3-1.3c-.4-.2-.6-.7-.6-1.1v-1.6a11 11 0 0 0-6.8 0v1.6c0 .4-.2.9-.6 1.1l-2.3 1.3c-.5.3-1.2.2-1.6-.2l-1.6-1.7c-.5-.5-.4-1.3.1-1.8z"></path></svg></div>End call</div>
+<div onClick="{{ openMsg }}" style="display:flex;flex-direction:column;align-items:center;gap:6px;font-size:12px;color:#69707d;cursor:pointer"><div style="width:58px;height:58px;border-radius:50%;background:#fff;display:grid;place-items:center;color:#121418;box-shadow:0 0 0 1px #eef0f3"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M5 5h14a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-8l-4 3v-3H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z"></path></svg></div>Message</div>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{ msgOpen }}" hint-placeholder-val="{{ false }}">
+<div style="flex:1;min-height:0;display:flex;flex-direction:column;animation:cbFade .3s ease">
+<div style="padding:34px 34px 0;display:flex;flex-direction:column;gap:8px">
+<div style="font-size:12px;font-weight:600;letter-spacing:.08em;color:{{ lastV.color }}">{{ lastV.label }}</div>
+<div style="font-size:22px;line-height:1.4;font-weight:500;text-wrap:pretty">“{{ lastV.zh }}”</div>
+<div style="font-size:14px;color:#69707d">{{ lastV.en }}</div>
+</div>
+<div style="margin-top:auto;padding:0 22px;display:flex;flex-direction:column;gap:10px">
+<sc-for list="{{ noteList }}" as="nt" hint-placeholder-count="0"><div style="align-self:flex-end;max-width:86%;border:1.5px dashed #2557e8;background:rgba(255,255,255,.9);border-radius:20px 20px 6px 20px;padding:10px 14px;font-size:15px;line-height:1.4;animation:cbUp .3s ease">{{ nt.t }}</div></sc-for>
+<div style="align-self:flex-end;display:flex;align-items:center;gap:6px;font-size:12px;color:#2557e8;font-weight:500;white-space:nowrap"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="5" y="11" width="14" height="9" rx="2"></rect><path d="M8 11V8a4 4 0 0 1 8 0v3"></path></svg>Private · they can't hear this</div>
+<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px"><sc-for list="{{ msgChips }}" as="c" hint-placeholder-count="3"><span onClick="{{ c.send }}" style="height:36px;display:flex;align-items:center;padding:0 14px;border-radius:18px;background:#fff;font-size:13.5px;font-weight:500;cursor:pointer;box-shadow:0 0 0 1px #eef0f3" style-hover="box-shadow:0 0 0 2px #2557e8">{{ c.label }}</span></sc-for></div>
+</div>
+<div style="display:flex;gap:8px;align-items:center;padding:12px 22px 44px">
+<div onClick="{{ closeMsg }}" style="width:50px;height:50px;border-radius:50%;background:#fff;display:grid;place-items:center;cursor:pointer;box-shadow:0 0 0 1px #eef0f3"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></div>
+<div style="flex:1;height:50px;border-radius:25px;background:#fff;box-shadow:0 0 0 2px #2557e8;display:flex;align-items:center;padding:0 18px;font-size:15px;color:#69707d">告诉助手…</div>
+</div>
+</div>
+</sc-if>
+</div>
+</sc-if>
+<sc-if value="{{ holdShow }}" hint-placeholder-val="{{ false }}">
+<div style="position:relative;flex:1;min-height:0;display:flex;flex-direction:column;padding:0 30px;animation:cbFade .3s ease">
+<div style="text-align:center;display:flex;flex-direction:column;padding:6px 0 0"><span style="font-size:17px;font-weight:600">{{ rv.who }}</span><span style="font-size:13px;color:#5b3cc4;font-weight:500">On hold · waiting on you</span></div>
+<div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:12px">
+<div style="font-size:12px;font-weight:700;letter-spacing:.1em;color:#5b3cc4">THEY'RE ON HOLD FOR YOU</div>
+<div style="font-size:64px;line-height:1;font-weight:200;color:#5b3cc4;font-variant-numeric:tabular-nums;letter-spacing:-.02em">{{ secLabel }}</div>
+<div style="font-size:26px;line-height:1.38;font-weight:600;letter-spacing:-.01em;text-wrap:pretty;margin-top:8px">要加做全套 X 光吗？需额外付 $80。</div>
+<div style="font-size:14px;line-height:1.45;color:#4a4f5a">“Would he also like a full set of X-rays? That's $80 extra.”</div>
+<div style="display:flex;gap:6px;margin-top:4px"><span style="background:#eee9fc;color:#5b3cc4;border-radius:99px;padding:5px 11px;font-size:13px;font-weight:600">$80</span><span style="background:#eee9fc;color:#5b3cc4;border-radius:99px;padding:5px 11px;font-size:13px;font-weight:600">Over your limit</span></div>
+</div>
+<div style="display:flex;flex-direction:column;gap:8px;padding-bottom:44px">
+<div onClick="{{ approve }}" style="height:54px;border-radius:27px;background:#5b3cc4;color:#fff;display:grid;place-items:center;font-size:16px;font-weight:600;cursor:pointer" style-active="transform:scale(.98)">Approve</div>
+<div style="display:flex;gap:8px">
+<div onClick="{{ decline }}" style="flex:1;height:54px;border-radius:27px;background:#fff;box-shadow:0 0 0 1px #e1e4e9;display:grid;place-items:center;font-size:16px;font-weight:600;cursor:pointer">Decline</div>
+<div onClick="{{ replyHold }}" style="flex:1;height:54px;border-radius:27px;background:#fff;box-shadow:0 0 0 1px #e1e4e9;display:grid;place-items:center;font-size:16px;font-weight:600;color:#5b3cc4;cursor:pointer">下次再说</div>
+</div>
+<div style="text-align:center;font-size:12px;color:#69707d;margin-top:4px">No answer in time? The assistant says you'll follow up.</div>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{ is.result }}" hint-placeholder-val="{{ false }}">
+<div style="position:relative;flex:1;min-height:0;display:flex;flex-direction:column;animation:cbFade .3s ease">
+<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 22px 0"><span onClick="{{ resDone }}" style="font-size:14px;font-weight:500;color:#2557e8;cursor:pointer">{{ resDoneLabel }}</span><span style="font-size:13px;color:#69707d">{{ res.who }} · {{ res.dur }}</span></div>
+<div style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 34px;gap:10px">
+<span style="font-size:12px;font-weight:600;letter-spacing:.08em;color:{{ res.labelColor }}">{{ res.label }}</span>
+<span style="font-size:40px;line-height:1.15;font-weight:600;letter-spacing:-.02em;text-wrap:pretty">{{ res.title }}</span>
+<span style="font-size:15px;line-height:1.5;color:#69707d;text-wrap:pretty">{{ res.titleEn }}</span>
+<div style="margin-top:16px;display:flex;flex-direction:column;gap:10px;font-size:15px;line-height:1.45">
+<sc-for list="{{ resBullets }}" as="b" hint-placeholder-count="2"><div style="display:flex;gap:10px"><span style="width:6px;height:6px;border-radius:50%;background:{{ b.c }};margin-top:8px;flex:none"></span><span>{{ b.zh }}<sc-if value="{{ b.hasEn }}" hint-placeholder-val="{{ true }}"><br><span style="font-size:12.5px;color:#69707d">{{ b.en }}</span></sc-if></span></div></sc-for>
+</div>
+</div>
+<sc-if value="{{ resGood }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;flex-direction:column;gap:8px;padding:0 22px 44px">
+<div onClick="{{ resPrimary }}" style="height:54px;border-radius:27px;background:#121418;color:#fff;display:grid;place-items:center;font-size:16px;font-weight:600;cursor:pointer">{{ res.primary }}</div>
+<div style="display:flex;gap:8px"><span onClick="{{ talkOver }}" style="flex:1;height:50px;border-radius:25px;background:#f4f5f7;display:grid;place-items:center;font-size:15px;font-weight:600;cursor:pointer">Talk it over</span><span onClick="{{ openTx }}" style="flex:1;height:50px;border-radius:25px;background:#f4f5f7;display:grid;place-items:center;font-size:15px;font-weight:600;cursor:pointer">Transcript</span></div>
+</div>
+</sc-if>
+<sc-if value="{{ resFail }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;gap:8px;padding:0 22px 44px">
+<div onClick="{{ retryLater }}" style="height:58px;border-radius:20px;background:#121418;color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 18px;font-size:16px;font-weight:600;cursor:pointer"><span>Try again at 11:00</span><span style="font-size:13px;font-weight:500;color:rgba(255,255,255,.7)">in 1h 19m</span></div>
+<sc-if value="{{ resFood }}" hint-placeholder-val="{{ false }}"><div onClick="{{ tryElSol }}" style="height:54px;border-radius:20px;background:#fff;box-shadow:0 0 0 1px #eadfc4;display:flex;align-items:center;justify-content:space-between;padding:0 18px;font-size:15px;font-weight:600;cursor:pointer"><span>Call Taquería El Sol instead</span><span style="font-size:13px;font-weight:500;color:#137a3a">Open now</span></div></sc-if>
+<div onClick="{{ talkOver }}" style="height:54px;border-radius:20px;background:#fff;box-shadow:0 0 0 1px #eadfc4;display:flex;align-items:center;padding:0 18px;font-size:15px;font-weight:600;cursor:pointer">Talk it over</div>
+</div>
+</sc-if>
+</div>
+</sc-if>
+<sc-if value="{{ is.talk }}" hint-placeholder-val="{{ false }}">
+<div style="position:relative;flex:1;min-height:0;display:flex;flex-direction:column;animation:cbFade .3s ease">
+<div style="display:grid;grid-template-columns:80px 1fr 80px;align-items:center;padding:6px 18px 0">
+<div onClick="{{ backToResult }}" style="height:36px;display:flex;align-items:center;gap:2px;font-size:14px;font-weight:500;color:#2557e8;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 5l-7 7 7 7"></path></svg>Result</div>
+<span style="text-align:center;font-size:17px;font-weight:600">Talk it over</span><div></div>
+</div>
+<div style="margin:12px 20px 0;display:flex;flex-direction:column;gap:2px;background:#fff;border-radius:20px;padding:12px 16px;box-shadow:0 0 0 1px #eef0f3"><span style="font-size:11px;font-weight:600;letter-spacing:.06em;color:{{ res.labelColor }}">{{ res.label }} · {{ res.who }}</span><span style="font-size:15px;font-weight:600">{{ res.title }}</span></div>
+<div style="flex:1;min-height:0;overflow:hidden;padding:14px 20px 0;display:flex;flex-direction:column;gap:10px;justify-content:flex-end">
+<sc-for list="{{ talkMsgs }}" as="m" hint-placeholder-count="1"><div style="align-self:{{ m.align }};max-width:86%;background:{{ m.bg }};color:{{ m.ink }};border-radius:{{ m.radius }};padding:11px 14px;animation:cbUp .3s ease;box-shadow:0 0 0 1px rgba(0,0,0,.04)"><div style="font-size:15px;line-height:1.5">{{ m.zh }}</div><sc-if value="{{ m.hasEn }}" hint-placeholder-val="{{ false }}"><div style="font-size:12.5px;line-height:1.4;color:#69707d;margin-top:3px">{{ m.en }}</div></sc-if></div></sc-for>
+<sc-if value="{{ hasFu }}" hint-placeholder-val="{{ false }}">
+<div style="background:#fff;border-radius:22px;padding:14px;display:flex;flex-direction:column;gap:10px;box-shadow:0 0 0 1.5px #2557e8;animation:cbUp .35s ease">
+<div style="font-size:11px;font-weight:600;letter-spacing:.06em;color:#2557e8">FOLLOW-UP CALL READY</div>
+<div style="display:flex;justify-content:space-between;gap:12px;font-size:14px"><span style="color:#69707d;flex:none">Asks only</span><span style="font-weight:500;text-align:right">{{ fu.zh }}</span></div>
+<div style="display:flex;justify-content:space-between;gap:12px;font-size:14px"><span style="color:#69707d;flex:none">Extra charges</span><span style="font-weight:500">{{ fu.charges }}</span></div>
+<div onClick="{{ callFollowup }}" style="height:46px;border-radius:23px;background:#2557e8;color:#fff;display:grid;place-items:center;font-size:15px;font-weight:600;cursor:pointer">Review &amp; call</div>
+</div>
+</sc-if>
+</div>
+<div style="padding:10px 20px 0;display:flex"><sc-if value="{{ hasHeard }}" hint-placeholder-val="{{ false }}"><div style="align-self:flex-start;border:1.5px dashed #2557e8;border-radius:20px;padding:9px 14px;font-size:16px;font-weight:500;color:#121418;background:rgba(255,255,255,.9)">{{ heardText }}<span style="display:inline-block;width:2px;height:16px;background:#2557e8;margin-left:2px;vertical-align:-2px"></span></div></sc-if></div>
+<div style="display:flex;gap:6px;flex-wrap:wrap;padding:12px 20px 0"><sc-for list="{{ talkChipList }}" as="c" hint-placeholder-count="2"><span onClick="{{ c.say }}" style="height:36px;display:flex;align-items:center;padding:0 14px;border-radius:18px;background:#f4f5f7;font-size:13.5px;font-weight:500;cursor:pointer" style-hover="background:#e9ebef">{{ c.label }}</span></sc-for></div>
+<div style="display:flex;gap:8px;align-items:center;padding:10px 20px 44px">
+<div style="flex:1;height:52px;border-radius:26px;background:#f4f5f7;display:flex;align-items:center;justify-content:space-between;padding:0 18px;font-size:15px;color:#69707d"><span>Ask about this call…</span><span style="display:flex;align-items:center;gap:6px;font-size:12px;color:#69707d"><span style="width:7px;height:7px;border-radius:50%;background:{{ micDot }}"></span>{{ micState }}</span></div>
+<div onPointerDown="{{ pressTalk }}" style="width:58px;height:58px;border-radius:50%;background:{{ hb.bg }};color:#fff;display:grid;place-items:center;transform:{{ hb.scale }};box-shadow:{{ hb.shadow }};transition:transform .18s ease,box-shadow .25s ease;cursor:pointer;user-select:none;touch-action:none"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" style="pointer-events:none"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"></path></svg></div>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{ txOpen }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:110px 0 0 0;z-index:8;background:#fff;border-radius:30px 30px 0 0;box-shadow:0 -10px 40px rgba(20,30,60,.16);display:flex;flex-direction:column;animation:cbUp .3s ease">
+<div style="width:40px;height:5px;border-radius:3px;background:#d5d9e0;align-self:center;margin-top:8px"></div>
+<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 22px 6px"><span style="font-size:20px;font-weight:600">Transcript</span><span onClick="{{ closeTx }}" style="font-size:14px;font-weight:600;color:#2557e8;cursor:pointer">Close</span></div>
+<div style="flex:1;min-height:0;overflow:auto;padding:8px 20px 44px;display:flex;flex-direction:column;gap:12px">
+<sc-if value="{{ txEmpty }}" hint-placeholder-val="{{ false }}"><div style="padding:40px 0;text-align:center;font-size:14px;color:#69707d">No transcript saved for this call.</div></sc-if>
+<sc-for list="{{ txList }}" as="l" hint-placeholder-count="0"><div style="display:flex;flex-direction:column;gap:3px;max-width:86%;align-self:{{ l.align }}"><span style="font-size:11px;font-weight:600;color:{{ l.color }};padding:0 6px">{{ l.label }}</span><div style="background:{{ l.bg }};color:{{ l.ink }};border:{{ l.border }};border-radius:18px;padding:10px 14px"><div style="font-size:15px;line-height:1.4">{{ l.zh }}</div><sc-if value="{{ l.hasEn }}" hint-placeholder-val="{{ true }}"><div style="font-size:12.5px;margin-top:3px;color:{{ l.sub }}">{{ l.en }}</div></sc-if></div></div></sc-for>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{ is.calls }}" hint-placeholder-val="{{ false }}">
+<div style="position:relative;flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;animation:cbFade .3s ease">
+<div style="padding:0 20px 0"><span style="font-size:30px;font-weight:600;letter-spacing:-.02em">Calls</span></div>
+<div style="padding:16px 20px 8px;font-size:12px;font-weight:600;letter-spacing:.06em;color:#69707d">UPCOMING</div>
+<div style="display:flex;gap:10px;padding:0 14px;flex:none;overflow:hidden">
+<div style="flex:none;width:200px;background:#fff;border-radius:20px;padding:12px 14px;display:flex;flex-direction:column;gap:2px"><span style="font-size:11px;font-weight:600;color:#b42318">THU OCT 8</span><span style="font-size:20px;font-weight:600">2:00 pm</span><span style="font-size:13px;color:#69707d">Smile Dental · 洗牙</span></div>
+<div style="flex:none;width:200px;background:#fff;border-radius:20px;padding:12px 14px;display:flex;flex-direction:column;gap:2px"><span style="font-size:11px;font-weight:600;color:#b42318">SAT OCT 10</span><span style="font-size:20px;font-weight:600">7:30 pm</span><span style="font-size:13px;color:#69707d">Casa Oaxaca · 4 位</span></div>
+</div>
+<div style="padding:18px 20px 8px;font-size:12px;font-weight:600;letter-spacing:.06em;color:#69707d">RECENT</div>
+<div style="margin:0 14px 44px;background:#fff;border-radius:22px;padding:2px 14px">
+<sc-for list="{{ callsList }}" as="c" hint-placeholder-count="4"><div onClick="{{ c.open }}" style="display:flex;flex-direction:column;gap:2px;padding:12px 0;border-bottom:1px solid #eef0f3;cursor:pointer"><div style="display:flex;justify-content:space-between;gap:10px"><span style="font-size:15px;font-weight:600">{{ c.who }}</span><span style="font-size:12px;color:#69707d;flex:none">{{ c.time }}</span></div><span style="font-size:14px">{{ c.zh }}</span><span style="align-self:flex-start;font-size:11px;font-weight:600;color:{{ c.tagFg }};background:{{ c.tagBg }};border-radius:99px;padding:2px 8px;margin-top:2px">{{ c.tag }}</span></div></sc-for>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{ is.book }}" hint-placeholder-val="{{ false }}">
+<div style="position:relative;flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;animation:cbFade .3s ease">
+<div style="display:flex;justify-content:space-between;align-items:center;padding:0 20px 0"><span style="font-size:30px;font-weight:600;letter-spacing:-.02em">Phone book</span><span onClick="{{ toImport }}" style="height:36px;padding:0 14px;border-radius:18px;background:#fff;display:grid;place-items:center;font-size:13px;font-weight:600;cursor:pointer">Import</span></div>
+<div style="margin:14px 16px 0;height:44px;border-radius:14px;background:#fff;display:flex;align-items:center;gap:8px;padding:0 14px;color:#69707d;flex:none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"></circle><path d="M16 16l4.5 4.5"></path></svg><input value="{{ search }}" onChange="{{ onSearch }}" placeholder="Name, relationship, or number" style="flex:1;border:0;outline:0;background:transparent;font-size:15px;color:#121418"></div>
+<div style="margin:14px 16px 44px;background:#fff;border-radius:22px;padding:2px 14px;display:flex;flex-direction:column">
+<sc-if value="{{ noContacts }}" hint-placeholder-val="{{ false }}"><div style="padding:24px 0;text-align:center;font-size:14px;color:#69707d">No one matches. Import from your contacts?</div></sc-if>
+<sc-for list="{{ contactList }}" as="c" hint-placeholder-count="5"><div style="display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid #eef0f3">
+<div onClick="{{ c.open }}" style="flex:1;min-width:0;display:flex;align-items:center;gap:12px;cursor:pointer"><div style="width:42px;height:42px;flex:none;border-radius:50%;background:{{ c.bg }};display:grid;place-items:center;font-size:15px;font-weight:600;color:{{ c.fg }}">{{ c.ini }}</div><div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px"><div style="display:flex;gap:6px;align-items:center"><span style="font-size:15px;font-weight:600">{{ c.name }}</span><span style="font-size:11px;font-weight:600;color:#2557e8;background:#e6edfd;border-radius:99px;padding:1px 7px">{{ c.rel }}</span></div><span style="font-size:12.5px;color:#69707d">{{ c.meta }}</span><sc-if value="{{ c.hasLast }}" hint-placeholder-val="{{ true }}"><span style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ c.last }}</span></sc-if></div></div>
+<span onClick="{{ c.call }}" style="width:38px;height:38px;border-radius:50%;background:#e1f5e8;color:#1a9e4b;display:grid;place-items:center;flex:none;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6.5 3.5h3l1.5 4-2 1.5a11 11 0 0 0 6 6l1.5-2 4 1.5v3a2 2 0 0 1-2 2A16 16 0 0 1 4.5 5.5a2 2 0 0 1 2-2z"></path></svg></span>
+</div></sc-for>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{ is.contact }}" hint-placeholder-val="{{ false }}">
+<div style="position:relative;flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;animation:cbFade .3s ease">
+<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 16px 0"><div onClick="{{ toBook }}" style="height:36px;display:flex;align-items:center;gap:2px;font-size:14px;font-weight:500;color:#2557e8;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 5l-7 7 7 7"></path></svg>Phone book</div><span style="font-size:14px;font-weight:500;color:#2557e8">Edit</span></div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:6px;padding:14px 24px 0;text-align:center">
+<div style="width:84px;height:84px;border-radius:50%;background:{{ ct.bg }};display:grid;place-items:center;font-size:28px;font-weight:600;color:{{ ct.fg }}">{{ ct.ini }}</div>
+<span style="font-size:26px;font-weight:600;letter-spacing:-.01em;margin-top:4px">{{ ct.name }}</span>
+<span style="font-size:12px;font-weight:600;color:#2557e8;background:#e6edfd;border-radius:99px;padding:3px 10px">{{ ct.rel }}</span>
+</div>
+<div style="padding:18px 16px 0"><div onClick="{{ callCt }}" style="height:54px;border-radius:27px;background:#1a9e4b;color:#fff;display:flex;align-items:center;justify-content:center;gap:8px;font-size:16px;font-weight:600;cursor:pointer"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6.5 3.5h3l1.5 4-2 1.5a11 11 0 0 0 6 6l1.5-2 4 1.5v3a2 2 0 0 1-2 2A16 16 0 0 1 4.5 5.5a2 2 0 0 1 2-2z"></path></svg>Call with the assistant</div></div>
+<div style="margin:14px 16px 0;background:#fff;border-radius:20px;padding:4px 16px">
+<div style="display:flex;justify-content:space-between;gap:16px;padding:11px 0;border-bottom:1px solid #eef0f3;font-size:14px"><span style="color:#69707d">Number</span><span style="font-family:'Geist Mono',monospace;font-size:13.5px">{{ ct.num }}</span></div>
+<div style="display:flex;justify-content:space-between;gap:16px;padding:11px 0;border-bottom:1px solid #eef0f3;font-size:14px"><span style="color:#69707d">Address</span><span>{{ ct.addr }}</span></div>
+<div style="display:flex;justify-content:space-between;gap:16px;padding:11px 0;border-bottom:1px solid #eef0f3;font-size:14px"><span style="color:#69707d">Call language</span><span>{{ ct.lang }}</span></div>
+<div style="display:flex;justify-content:space-between;gap:16px;padding:11px 0;font-size:14px"><span style="color:#69707d">Calls</span><span>{{ ct.calls }}</span></div>
+</div>
+<sc-if value="{{ ctHasLast }}" hint-placeholder-val="{{ true }}"><div style="margin:12px 16px 0;background:#e1f5e8;border-radius:20px;padding:14px 16px;display:flex;flex-direction:column;gap:3px"><span style="font-size:11px;font-weight:600;letter-spacing:.06em;color:#137a3a">LAST CALL</span><span style="font-size:15px;font-weight:600">{{ ct.last }}</span></div></sc-if>
+<div style="margin:12px 16px 0;background:#fff;border-radius:20px;padding:14px 16px;display:flex;flex-direction:column;gap:10px">
+<span style="font-size:11px;font-weight:600;letter-spacing:.06em;color:#69707d">LEARNED ON CALLS</span>
+<sc-if value="{{ ctNoLearned }}" hint-placeholder-val="{{ false }}"><span style="font-size:14px;color:#69707d">Nothing yet. Notes appear here after calls.</span></sc-if>
+<sc-for list="{{ ctLearned }}" as="l" hint-placeholder-count="2"><div style="display:flex;flex-direction:column;gap:1px"><span style="font-size:14.5px">{{ l.zh }}</span><span style="font-size:12.5px;color:#69707d">{{ l.en }}</span></div></sc-for>
+</div>
+<div onClick="{{ deleteCt }}" style="padding:22px 0 40px;text-align:center;font-size:15px;font-weight:500;color:#b42318;cursor:pointer">Delete contact</div>
+</div>
+</sc-if>
+<sc-if value="{{ is.import }}" hint-placeholder-val="{{ false }}">
+<div style="position:relative;flex:1;min-height:0;display:flex;flex-direction:column;animation:cbFade .3s ease">
+<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 20px 0"><span onClick="{{ toBook }}" style="font-size:14px;font-weight:500;color:#2557e8;cursor:pointer">Cancel</span><span style="font-size:17px;font-weight:600">Import 3 contacts</span><span style="width:46px"></span></div>
+<div style="padding:10px 24px 0;font-size:13px;line-height:1.45;color:#69707d;text-align:center;text-wrap:pretty">Only these names and numbers are sent to CallBridge. Relationship and language are optional.</div>
+<div style="flex:1;min-height:0;overflow:auto;padding:14px 14px 0;display:flex;flex-direction:column;gap:10px">
+<div style="background:#fff;border-radius:22px;padding:14px;display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;align-items:center;gap:10px"><div style="width:36px;height:36px;border-radius:50%;background:#fff3d1;display:grid;place-items:center;font-size:13px;font-weight:600;color:#855600">KT</div><span style="font-size:16px;font-weight:600">Kenji Tanaka</span></div>
+<div onClick="{{ pickKA }}" style="display:flex;align-items:center;gap:10px;height:40px;padding:0 12px;border-radius:12px;box-shadow:{{ kenjiA }};font-size:14px;cursor:pointer"><span style="width:16px;height:16px;border-radius:50%;border:{{ kenjiDotA }};box-sizing:border-box"></span><span style="flex:1">mobile</span><span style="font-family:'Geist Mono',monospace;font-size:13px">(901) 555-3301</span></div>
+<div onClick="{{ pickKB }}" style="display:flex;align-items:center;gap:10px;height:40px;padding:0 12px;border-radius:12px;box-shadow:{{ kenjiB }};font-size:14px;cursor:pointer"><span style="width:16px;height:16px;border-radius:50%;border:{{ kenjiDotB }};box-sizing:border-box"></span><span style="flex:1">work</span><span style="font-family:'Geist Mono',monospace;font-size:13px">(901) 555-8800</span></div>
+<div style="display:flex;justify-content:space-between;font-size:14px"><span style="color:#69707d">friend · call in</span><span style="font-weight:500">Japanese</span></div>
+</div>
+<div style="background:#fff;border-radius:22px;padding:14px;display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;align-items:center;gap:10px"><div style="width:36px;height:36px;border-radius:50%;background:#eee9fc;display:grid;place-items:center;font-size:13px;font-weight:600;color:#5b3cc4">AR</div><div style="flex:1;display:flex;flex-direction:column"><span style="font-size:16px;font-weight:600">Ate Rosa</span><span style="font-size:12.5px;color:#69707d;font-family:'Geist Mono',monospace">+63 917 555 0172</span></div></div>
+<div style="display:flex;justify-content:space-between;font-size:14px"><span style="color:#69707d">cousin · call in</span><span style="font-weight:500">Tagalog</span></div>
+</div>
+<div style="background:#fff;border-radius:22px;padding:14px;display:flex;flex-direction:column;gap:10px;box-shadow:0 0 0 1.5px #f3c45c">
+<div style="display:flex;align-items:center;gap:10px"><div style="width:36px;height:36px;border-radius:50%;background:#ffe3ef;display:grid;place-items:center;font-size:13px;font-weight:600;color:#b0306a">M</div><div style="flex:1;display:flex;flex-direction:column"><span style="font-size:16px;font-weight:600">Maria Chen</span><span style="font-size:12.5px;color:#69707d;font-family:'Geist Mono',monospace">747-283-6440</span></div></div>
+<div style="font-size:13px;line-height:1.45;color:#855600;background:#fff3d1;border-radius:12px;padding:9px 12px">Already in your phone book as Maria (girlfriend). Your name for her is kept.</div>
+</div>
+</div>
+<div style="padding:12px 16px 44px"><div onClick="{{ doImport }}" style="height:54px;border-radius:27px;background:#2557e8;color:#fff;display:grid;place-items:center;font-size:16px;font-weight:600;cursor:pointer">Add 2 · Update 1</div></div>
+</div>
+</sc-if>
+<sc-if value="{{ is.me }}" hint-placeholder-val="{{ false }}">
+<div style="position:relative;flex:1;min-height:0;overflow:auto;display:flex;flex-direction:column;animation:cbFade .3s ease">
+<div style="display:flex;align-items:center;gap:14px;padding:0 20px 0"><div style="width:60px;height:60px;border-radius:50%;background:#121418;color:#fff;display:grid;place-items:center;font-size:22px;font-weight:600">W</div><div style="display:flex;flex-direction:column"><span style="font-size:22px;font-weight:600">李伟 Wei Li</span><span style="font-size:13px;color:#69707d;font-family:'Geist Mono',monospace">+1 (901) 555-0199</span></div></div>
+<div style="margin:18px 16px 0;background:#fff;border-radius:20px;padding:4px 16px">
+<div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #eef0f3;font-size:14.5px"><span style="color:#69707d">I speak</span><span>普通话 Mandarin</span></div>
+<div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #eef0f3;font-size:14.5px"><span style="color:#69707d">Assistant voice</span><span>Marin</span></div>
+<div style="display:flex;justify-content:space-between;padding:12px 0;border-bottom:1px solid #eef0f3;font-size:14.5px"><span style="color:#69707d">Default call mode</span><span>Stay in the loop</span></div>
+<div style="display:flex;justify-content:space-between;padding:12px 0;font-size:14.5px"><span style="color:#69707d">Extra charges</span><span>Ask me first</span></div>
+</div>
+<div style="padding:18px 22px 8px;font-size:12px;font-weight:600;letter-spacing:.06em;color:#69707d">THE ASSISTANT MAY SHARE</div>
+<div style="margin:0 16px;background:#fff;border-radius:20px;padding:4px 16px">
+<sc-for list="{{ shareList }}" as="t" hint-placeholder-count="4"><div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid #eef0f3"><div style="flex:1;display:flex;flex-direction:column"><span style="font-size:14.5px">{{ t.zh }}</span><span style="font-size:12.5px;color:#69707d">{{ t.en }}</span></div><div onClick="{{ t.flip }}" style="width:51px;height:31px;border-radius:16px;background:{{ t.track }};position:relative;cursor:pointer;transition:background .2s;flex:none"><span style="position:absolute;top:2px;left:{{ t.knob }};width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,.2);transition:left .2s"></span></div></div></sc-for>
+</div>
+<div style="padding:8px 26px 0;font-size:12.5px;line-height:1.5;color:#69707d">Card numbers, SSN, passwords and account numbers are never shared.</div>
+<div style="margin:16px 16px 0;background:#fff;border-radius:20px;padding:4px 16px">
+<div onClick="{{ toNotif }}" style="display:flex;justify-content:space-between;align-items:center;padding:13px 0;border-bottom:1px solid #eef0f3;font-size:14.5px;cursor:pointer"><span>Notifications</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9aa1ad" stroke-width="2" stroke-linecap="round"><path d="M9 5l7 7-7 7"></path></svg></div>
+<div onClick="{{ toBook }}" style="display:flex;justify-content:space-between;align-items:center;padding:13px 0;font-size:14.5px;cursor:pointer"><span>Phone book &amp; imports</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9aa1ad" stroke-width="2" stroke-linecap="round"><path d="M9 5l7 7-7 7"></path></svg></div>
+</div>
+<div onClick="{{ signOut }}" style="padding:20px 0 44px;text-align:center;font-size:15px;font-weight:500;color:#b42318;cursor:pointer">Sign out</div>
+</div>
+</sc-if>
+<sc-if value="{{ is.notif }}" hint-placeholder-val="{{ false }}">
+<div style="position:relative;flex:1;min-height:0;display:flex;flex-direction:column;animation:cbFade .3s ease">
+<div style="display:grid;grid-template-columns:80px 1fr 80px;align-items:center;padding:6px 16px 0"><div onClick="{{ toMe }}" style="height:36px;display:flex;align-items:center;gap:2px;font-size:14px;font-weight:500;color:#2557e8;cursor:pointer"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 5l-7 7 7 7"></path></svg>Me</div><span style="text-align:center;font-size:17px;font-weight:600">Notifications</span><div></div></div>
+<div style="margin:18px 16px 0;background:#fff;border-radius:20px;padding:4px 16px">
+<div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid #eef0f3"><div style="flex:1;display:flex;flex-direction:column"><span style="font-size:14.5px">Hold questions</span><span style="font-size:12.5px;color:#69707d">Needed during calls, so always on</span></div><span style="font-size:12px;font-weight:600;color:#5b3cc4;background:#eee9fc;border-radius:99px;padding:4px 10px">Always on</span></div>
+<sc-for list="{{ notifList }}" as="t" hint-placeholder-count="3"><div style="display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid #eef0f3"><div style="flex:1;display:flex;flex-direction:column"><span style="font-size:14.5px">{{ t.label }}</span><span style="font-size:12.5px;color:#69707d">{{ t.sub }}</span></div><div onClick="{{ t.flip }}" style="width:51px;height:31px;border-radius:16px;background:{{ t.track }};position:relative;cursor:pointer;transition:background .2s;flex:none"><span style="position:absolute;top:2px;left:{{ t.knob }};width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 2px 4px rgba(0,0,0,.2);transition:left .2s"></span></div></div></sc-for>
+</div>
+<div style="margin:16px 16px 0"><div onClick="{{ previewLock }}" style="height:50px;border-radius:25px;background:#fff;display:grid;place-items:center;font-size:15px;font-weight:600;color:#5b3cc4;cursor:pointer">Preview a hold question on the lock screen</div></div>
+</div>
+</sc-if>
+<sc-if value="{{ is.lock }}" hint-placeholder-val="{{ false }}">
+<div style="position:relative;flex:1;min-height:0;display:flex;flex-direction:column;animation:cbFade .3s ease">
+<div style="display:flex;flex-direction:column;align-items:center;padding:18px 0 0"><span style="font-size:17px;font-weight:500;color:rgba(255,255,255,.8)">Thursday, October 8</span><span style="font-size:92px;line-height:1;font-weight:600;letter-spacing:-.03em">9:41</span></div>
+<div style="position:relative;margin:auto 14px 0;border-radius:28px">
+{{ lockGlow }}
+<div style="position:relative;margin:2.5px;border-radius:26px;background:rgba(22,20,40,.92);padding:16px 16px 14px;display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:#d8ccff;white-space:nowrap"><span style="width:20px;height:20px;border-radius:6px;background:#2557e8;display:grid;place-items:center;flex:none"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linejoin="round"><path d="M6.5 3.5h3l1.5 4-2 1.5a11 11 0 0 0 6 6l1.5-2 4 1.5v3a2 2 0 0 1-2 2A16 16 0 0 1 4.5 5.5a2 2 0 0 1 2-2z"></path></svg></span>{{ rv.who }} · {{ callTime }}</span><sc-if value="{{ lockPending }}" hint-placeholder-val="{{ true }}"><span style="font-size:15px;font-weight:600;color:#d8ccff;font-variant-numeric:tabular-nums">{{ lockSec }}</span></sc-if></div>
+<sc-if value="{{ lockPending }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;flex-direction:column;gap:10px">
+<span style="font-size:19px;line-height:1.4;font-weight:600;text-wrap:pretty">要加做全套 X 光吗？需额外付 $80。</span>
+<span style="font-size:13px;line-height:1.4;color:rgba(255,255,255,.7)">Would he also like full X-rays? $80 extra.</span>
+<div style="display:flex;gap:8px;margin-top:2px"><span onClick="{{ approve }}" style="flex:1;height:44px;border-radius:22px;background:#5b3cc4;display:grid;place-items:center;font-size:15px;font-weight:600;cursor:pointer">Approve</span><span onClick="{{ decline }}" style="flex:1;height:44px;border-radius:22px;background:rgba(255,255,255,.12);display:grid;place-items:center;font-size:15px;font-weight:600;cursor:pointer">Decline</span><span onClick="{{ lockOpen }}" style="height:44px;padding:0 16px;border-radius:22px;background:rgba(255,255,255,.12);display:grid;place-items:center;font-size:15px;font-weight:600;cursor:pointer">Open</span></div>
+</div>
+</sc-if>
+<sc-if value="{{ lockDone }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:10px"><span style="font-size:15px;line-height:1.4;color:rgba(255,255,255,.85)">{{ lockAnsText }}</span><span onClick="{{ lockOpen }}" style="height:36px;padding:0 14px;border-radius:18px;background:rgba(255,255,255,.12);display:grid;place-items:center;font-size:14px;font-weight:600;cursor:pointer;flex:none">Open</span></div>
+</sc-if>
+</div>
+</div>
+<div style="display:flex;justify-content:space-between;padding:26px 46px 44px"><span style="width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,.14);display:grid;place-items:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"><path d="M8 3h8l-1 6h-6zM9 9h6v12H9z"></path></svg></span><span style="width:50px;height:50px;border-radius:50%;background:rgba(255,255,255,.14);display:grid;place-items:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"></path><circle cx="12" cy="13" r="3.5"></circle></svg></span></div>
+</div>
+</sc-if>
+<sc-if value="{{ is.signin }}" hint-placeholder-val="{{ false }}">
+<div style="position:relative;flex:1;min-height:0;display:flex;flex-direction:column;padding:0 28px 44px;animation:cbFade .3s ease">
+<div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:14px">
+<div style="display:flex;align-items:center;gap:10px"><span style="width:36px;height:36px;border-radius:11px;background:#2557e8;display:grid;place-items:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"><path d="M6.5 3.5h3l1.5 4-2 1.5a11 11 0 0 0 6 6l1.5-2 4 1.5v3a2 2 0 0 1-2 2A16 16 0 0 1 4.5 5.5a2 2 0 0 1 2-2z"></path></svg></span><span style="font-size:18px;font-weight:600">CallBridge</span></div>
+<span style="font-size:36px;line-height:1.25;font-weight:600;letter-spacing:-.02em">Call anyone,<br>in your language.</span>
+<span style="font-size:15px;line-height:1.5;color:#69707d">An AI assistant makes the call for you and checks with you before deciding anything. You'll pick your language next.</span>
+</div>
+<span style="font-size:13px;font-weight:600;color:#69707d;margin-bottom:8px">Your phone number</span>
+<div style="height:56px;border-radius:18px;background:#f4f5f7;display:flex;align-items:center;padding:0 18px;font-family:'Geist Mono',monospace;font-size:17px">+1 (901) 555-0199</div>
+<span style="font-size:12.5px;color:#69707d;margin:8px 0 18px">We'll text you a 6-digit code.</span>
+<div onClick="{{ toCode }}" style="height:56px;border-radius:28px;background:#121418;color:#fff;display:grid;place-items:center;font-size:16px;font-weight:600;cursor:pointer">Continue</div>
+</div>
+</sc-if>
+<sc-if value="{{ is.code }}" hint-placeholder-val="{{ false }}">
+<div style="position:relative;flex:1;min-height:0;display:flex;flex-direction:column;padding:30px 28px 44px;gap:10px;animation:cbFade .3s ease">
+<span style="font-size:30px;font-weight:600;letter-spacing:-.02em">Enter the code</span>
+<span style="font-size:14px;color:#69707d">Sent to +1 (901) 555-0199</span>
+<div style="display:flex;gap:8px;margin-top:20px"><sc-for list="{{ codeBoxes }}" as="b" hint-placeholder-count="6"><div style="flex:1;height:60px;border-radius:14px;background:#fff;box-shadow:{{ b.border }};display:grid;place-items:center;font-size:26px;font-weight:600;font-family:'Geist Mono',monospace">{{ b.d }}</div></sc-for></div>
+<span style="font-size:13px;color:#69707d;margin-top:8px">Filled in from your messages · Resend in 0:24</span>
+</div>
+</sc-if>
+<sc-if value="{{ is.onboard }}" hint-placeholder-val="{{ false }}">
+<div style="position:relative;flex:1;min-height:0;display:flex;flex-direction:column;animation:cbFade .3s ease">
+<div style="display:flex;justify-content:flex-end;padding:6px 22px 0"><span style="font-size:12px;font-weight:600;color:#69707d;background:#f4f5f7;border-radius:99px;padding:5px 11px;white-space:nowrap;flex:none">Language · {{ obLangPill }}</span></div>
+<div style="display:flex;gap:6px;padding:12px 34px 0"><sc-for list="{{ obDots }}" as="d" hint-placeholder-count="4"><span style="flex:1;height:3px;border-radius:2px;background:{{ d.bg }};transition:background .3s"></span></sc-for></div>
+<sc-if value="{{ obPickLang }}" hint-placeholder-val="{{ false }}">
+<div style="flex:1;min-height:0;display:flex;flex-direction:column;padding:0 22px 40px;animation:cbFade .3s ease">
+<div style="padding:14px 12px 0;display:flex;flex-direction:column;gap:6px">
+<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#2557e8" stroke-width="1.7"><circle cx="12" cy="12" r="9"></circle><path d="M3 12h18M12 3c2.6 2.6 3.8 5.6 3.8 9s-1.2 6.4-3.8 9c-2.6-2.6-3.8-5.6-3.8-9S9.4 5.6 12 3z"></path></svg>
+<span style="font-size:30px;font-weight:600;letter-spacing:-.02em;margin-top:6px">Choose your language</span>
+<span style="font-size:15px;line-height:1.5;color:#69707d">选择语言 · Elige tu idioma</span>
+</div>
+<div style="margin-top:18px;height:50px;flex:none;border-radius:16px;background:#f4f5f7;display:flex;align-items:center;gap:10px;padding:0 16px;color:#69707d"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="6.5"></circle><path d="M16 16l4.5 4.5"></path></svg><input value="{{ langQ }}" onChange="{{ onLangQ }}" placeholder="Search · 搜索 · Buscar" style="flex:1;min-width:0;border:0;outline:0;background:transparent;font-size:16px;color:#121418"></div>
+<div style="flex:1;min-height:0;overflow:auto;margin:12px -4px 0;padding:2px 4px;display:flex;flex-direction:column;gap:8px">
+<sc-if value="{{ langNone }}" hint-placeholder-val="{{ false }}"><div style="padding:30px 0;text-align:center;font-size:14px;color:#69707d">No match. Try the name in English or your own script.</div></sc-if>
+<sc-for list="{{ langOpts }}" as="o" hint-placeholder-count="6"><div onClick="{{ o.pick }}" style="min-height:62px;flex:none;border-radius:18px;background:#fff;box-shadow:0 0 0 1px #e1e4e9;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 18px;cursor:pointer" style-hover="box-shadow:0 0 0 2px #2557e8"><span style="font-size:20px;font-weight:600">{{ o.native }}</span><span style="font-size:13px;color:#69707d;white-space:nowrap">{{ o.en }}</span></div></sc-for>
+</div>
+<span style="margin-top:12px;font-size:12.5px;color:#69707d;text-align:center">You can change this later in Me.</span>
+</div>
+</sc-if>
+<sc-if value="{{ obVoice }}" hint-placeholder-val="{{ true }}">
+<div style="flex:1;min-height:0;display:flex;flex-direction:column">
+<div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:14px;padding:0 34px">
+<div style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;letter-spacing:.08em;color:{{ voice.color }}"><sc-if value="{{ voiceBars }}" hint-placeholder-val="{{ false }}"><span style="display:inline-flex;gap:2px;align-items:center;height:12px"><i style="width:2.5px;height:12px;border-radius:2px;background:{{ barC }};animation:cbBar .7s ease-in-out infinite"></i><i style="width:2.5px;height:12px;border-radius:2px;background:{{ barC }};animation:cbBar .7s ease-in-out .1s infinite"></i><i style="width:2.5px;height:12px;border-radius:2px;background:{{ barC }};animation:cbBar .7s ease-in-out .2s infinite"></i><i style="width:2.5px;height:12px;border-radius:2px;background:{{ barC }};animation:cbBar .7s ease-in-out .3s infinite"></i></span></sc-if>{{ voice.label }}</div>
+<div style="font-size:30px;line-height:1.38;font-weight:500;letter-spacing:-.01em;text-wrap:pretty;animation:cbUp .35s ease">{{ obQ.zh }}</div>
+<div style="font-size:14px;line-height:1.5;color:#69707d">{{ obQ.en }}</div>
+<sc-if value="{{ hasHeard }}" hint-placeholder-val="{{ false }}"><div style="align-self:flex-start;border:1.5px dashed #2557e8;border-radius:20px;padding:9px 14px;font-size:16px;font-weight:500;color:#121418;background:rgba(255,255,255,.9)">{{ heardText }}<span style="display:inline-block;width:2px;height:16px;background:#2557e8;margin-left:2px;vertical-align:-2px"></span></div></sc-if>
+<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><sc-for list="{{ obChips }}" as="c" hint-placeholder-count="2"><span onClick="{{ c.pick }}" style="height:44px;display:flex;align-items:center;padding:0 18px;border-radius:22px;background:#fff;box-shadow:0 0 0 1px #e1e4e9;font-size:15px;font-weight:500;cursor:pointer" style-hover="box-shadow:0 0 0 2px #2557e8">{{ c.label }}</span></sc-for></div>
+</div>
+<div style="display:flex;gap:6px;flex-wrap:wrap;padding:0 34px 16px"><sc-for list="{{ obAnsList }}" as="a" hint-placeholder-count="0"><span style="font-size:12.5px;font-weight:500;color:#2557e8;background:#e6edfd;border-radius:99px;padding:4px 10px">{{ a.a }}</span></sc-for></div>
+</div>
+</sc-if>
+<sc-if value="{{ obDone }}" hint-placeholder-val="{{ false }}"><div style="padding:0 22px 44px"><div onClick="{{ obFinish }}" style="height:56px;border-radius:28px;background:#2557e8;color:#fff;display:grid;place-items:center;font-size:16px;font-weight:600;cursor:pointer;animation:cbUp .3s ease">Start calling</div></div></sc-if>
+<sc-if value="{{ obAskVoice }}" hint-placeholder-val="{{ true }}"><div style="padding:0 0 40px;display:flex;flex-direction:column;align-items:center;gap:8px"><div style="display:flex;flex-direction:column;align-items:center;gap:10px"><div onPointerDown="{{ pressOb }}" style="width:84px;height:84px;border-radius:50%;background:{{ hb.bg }};color:#fff;display:grid;place-items:center;transform:{{ hb.scale }};box-shadow:{{ hb.shadow }};transition:transform .18s ease,box-shadow .25s ease,background .2s;cursor:pointer;user-select:none;touch-action:none"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" style="pointer-events:none"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21"></path></svg></div><span style="font-size:13px;font-weight:600;color:#2557e8;user-select:none">{{ hb.label }}</span></div><span style="font-size:12px;color:#69707d">Hold to answer, or tap one above</span></div></sc-if>
+</div>
+</sc-if>
+<sc-if value="{{ menuOpen }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;inset:0;z-index:30;background:rgba(255,255,255,.97);display:flex;flex-direction:column;animation:cbFade .25s ease">
+{{ menuGlow }}
+<div style="height:54px;flex:none"></div>
+<div style="position:relative;display:flex;justify-content:space-between;align-items:center;padding:8px 18px 0 26px"><span style="font-size:13px;color:#69707d">李伟 · Mandarin</span><div onClick="{{ closeMenu }}" style="width:40px;height:40px;border-radius:50%;background:#f4f5f7;display:grid;place-items:center;cursor:pointer"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#121418" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg></div></div>
+<div style="position:relative;flex:1;display:flex;flex-direction:column;justify-content:center;padding:0 30px;gap:6px">
+<div onClick="{{ tabHome }}" style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:14px 0;border-bottom:1px solid #eef0f3;cursor:pointer;animation:cbUp .35s ease both"><span style="font-size:40px;font-weight:600;letter-spacing:-.02em;color:{{ tabC.home }}">Call</span><span style="font-size:15px;color:#69707d">打电话</span></div>
+<div onClick="{{ tabCalls }}" style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:14px 0;border-bottom:1px solid #eef0f3;cursor:pointer;animation:cbUp .35s ease .05s both"><span style="font-size:40px;font-weight:600;letter-spacing:-.02em;color:{{ tabC.calls }}">Calls</span><span style="font-size:15px;color:#69707d">通话记录</span></div>
+<div onClick="{{ tabBook }}" style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:14px 0;border-bottom:1px solid #eef0f3;cursor:pointer;animation:cbUp .35s ease .1s both"><span style="font-size:40px;font-weight:600;letter-spacing:-.02em;color:{{ tabC.book }}">Phone book</span><span style="font-size:15px;color:#69707d">电话簿</span></div>
+<div onClick="{{ tabMe }}" style="display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:14px 0;cursor:pointer;animation:cbUp .35s ease .15s both"><span style="font-size:40px;font-weight:600;letter-spacing:-.02em;color:{{ tabC.me }}">Me</span><span style="font-size:15px;color:#69707d">我的设置</span></div>
+</div>
+<sc-if value="{{ callActiveMenu }}" hint-placeholder-val="{{ false }}"><div onClick="{{ toLive }}" style="position:relative;margin:0 18px 14px;height:50px;border-radius:25px;background:#e1f5e8;display:flex;align-items:center;gap:10px;padding:0 18px;font-size:14px;cursor:pointer"><span style="width:8px;height:8px;border-radius:50%;background:#1a9e4b"></span><span style="font-weight:600;color:#137a3a">Live</span><span style="flex:1">{{ rv.who }} · {{ callTime }}</span><span style="font-weight:600">Open</span></div></sc-if>
+<div style="position:relative;padding:0 30px 44px;display:flex;gap:18px;font-size:13px;color:#69707d"><span onClick="{{ toNotif }}" style="cursor:pointer">Notifications</span><span onClick="{{ toImport }}" style="cursor:pointer">Import contacts</span></div>
+</div>
+</sc-if>
+<sc-if value="{{ hasToast }}" hint-placeholder-val="{{ false }}">
+<div style="position:absolute;left:50%;top:64px;transform:translateX(-50%);z-index:20;background:#121418;color:#fff;font-size:14px;font-weight:500;padding:11px 18px;border-radius:22px;white-space:nowrap;box-shadow:0 10px 30px rgba(0,0,0,.25);animation:cbUp .25s ease">{{ toast }}</div>
+</sc-if>
+<div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:{{ phoneInk }};z-index:21"></div>
+</div>
+<div style="max-width:400px;text-align:center;font-size:13px;line-height:1.5;color:#4a4f5a;text-wrap:pretty">{{ caption }}</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;palette&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;brand&quot;,&quot;aurora&quot;],&quot;default&quot;:&quot;brand&quot;,&quot;tsType&quot;:&quot;'brand' | 'aurora'&quot;,&quot;section&quot;:&quot;Glow&quot;},&quot;animate&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Glow&quot;},&quot;holdSeconds&quot;:{&quot;editor&quot;:&quot;int&quot;,&quot;default&quot;:30,&quot;min&quot;:10,&quot;max&quot;:120,&quot;step&quot;:5,&quot;unit&quot;:&quot;s&quot;,&quot;tsType&quot;:&quot;number&quot;,&quot;section&quot;:&quot;Calls&quot;}}">
+class Component extends DCLogic {
+  state = {
+    ready: !!window.CB, screen: 'home', flow: 'dentist', ctx: {}, place: null, typed: 0, speakStep: 0, searching: false,
+    mode: 'loop', ringCount: 0, callActive: false, callSec: 0, tx: [], q: [], holdPending: false, holdSec: 30, holdAns: null,
+    msgOpen: false, txOpen: false, listening: false, notes: [],
+    result: null, fromHistory: false, talk: [], talkChips: [], fu: null,
+    calls: null, contacts: null, contactId: 'sd', search: '', imported: false, kenji: 0,
+    ob: 0, obAns: [], codeN: 0, lockAns: null, toast: '', n: 0,
+    holding: false, holdKind: '', heard: 0, speaking: false,
+    share: { name: true, dob: true, addr: false, ins: false }, notif: { res: true, up: true, live: true },
+  };
+  stage = [];
+  T() { return this.props.holdSeconds ?? 30; }
+  componentDidMount() {
+    const boot = () => { if (window.CB) { this.setState({ ready: true, calls: window.CB.CALLS.slice(), contacts: window.CB.CONTACTS.slice() }); } else this.bootT = setTimeout(boot, 50); };
+    boot();
+    this.sec = setInterval(() => this.tick1(), 1000);
+  }
+  componentWillUnmount() { clearInterval(this.sec); clearInterval(this.liveTimer); this.clearStage(); clearTimeout(this.bootT); clearTimeout(this.toastT); }
+  after(ms, fn) { this.stage.push(setTimeout(fn, ms)); }
+  clearStage() { this.stage.forEach(clearTimeout); this.stage = []; clearInterval(this.typeTimer); }
+  toastMsg(t) { clearTimeout(this.toastT); this.setState({ toast: t }); this.toastT = setTimeout(() => this.setState({ toast: '' }), 2200); }
+
+  tick1() {
+    const s = this.state; const o = { n: s.n + 1 };
+    if (s.callActive) o.callSec = s.callSec + 1;
+    let timeout = false;
+    if (s.holdPending) { if (s.holdSec <= 1) timeout = true; else o.holdSec = s.holdSec - 1; }
+    this.setState(o);
+    if (timeout) this.answerHold('timeout');
+  }
+
+  go(screen, extra = {}) {
+    this.clearStage();
+    this.setState({ screen, txOpen: false, menuOpen: false, ...extra }, () => this.enter(screen));
+  }
+  enter(screen) {
+    const CB = window.CB; if (!CB) return;
+    if (screen === 'listen') {
+      if (this.state.holding) this.runTyping();
+      else { this.setState({ typed: CB.info(this.state).listen.zh.length }); this.after(900, () => this.finishListen()); }
+    }
+    if (screen === 'speak' || screen === 'talk' || (screen === 'onboard' && this.state.ob > 0)) this.speakNow();
+    if (screen === 'research') { this.setState({ searching: true, searchStep: 0 }); [800, 1600, 2400].forEach((t, i) => this.after(t, () => this.setState({ searchStep: i + 1 }))); this.after(3200, () => this.setState({ searching: false })); }
+    if (screen === 'ring') {
+      this.setState({ ringCount: 1 });
+      this.after(1500, () => this.setState({ ringCount: 2 }));
+      this.after(3000, () => this.setState({ ringCount: 3 }));
+      this.after(4400, () => this.connected());
+    }
+    if (screen === 'code') {
+      this.setState({ codeN: 0 });
+      for (let i = 1; i <= 6; i++) this.after(300 + i * 160, () => this.setState({ codeN: i }));
+      this.after(300 + 6 * 160 + 700, () => this.go('onboard', { ob: 0, obAns: [], obLang: 'en', obLangName: 'English', langQ: '' }));
+    }
+  }
+
+  startFlow(flow, ctx = {}, opt = {}) { this.stopCall(); this.go('listen', { flow, ctx, typed: 0, speakStep: 0, place: null, mode: 'loop', holding: !!opt.hold, holdKind: opt.hold ? 'home' : '' }); }
+  speakNow(ms = 2400) { clearTimeout(this.spT); this.setState({ speaking: true }); this.spT = setTimeout(() => this.setState({ speaking: false }), ms); }
+  holdTarget(kind) {
+    const s = this.state, CB = window.CB;
+    if (kind === 'speak') { const inf = CB.info(s); return inf.speak[Math.min(s.speakStep, inf.speak.length - 1)].chips[0]; }
+    if (kind === 'ob') return s.ob < CB.OB.length ? CB.obQ(s.ob, s.obLang || 'en').chips[0] : '';
+    if (kind === 'talk') return s.talkChips[0] || '';
+    return '';
+  }
+  press(kind) { return (e) => { if (e && e.preventDefault) e.preventDefault(); this.pressStart(kind); }; }
+  pressStart(kind) {
+    this.pressAt = Date.now(); clearTimeout(this.spT);
+    window.addEventListener('pointerup', this.onUp); window.addEventListener('pointercancel', this.onUp);
+    if (kind === 'home') return this.startFlow('dentist', {}, { hold: true });
+    if (kind === 'listen') return this.setState({ holding: true, holdKind: 'listen' }, () => this.runTyping());
+    const target = this.holdTarget(kind);
+    this.setState({ holding: true, holdKind: kind, heard: 0, speaking: false });
+    clearInterval(this.heardT);
+    this.heardT = setInterval(() => { if (this.state.heard < target.length) this.setState(x => ({ heard: x.heard + 1 })); }, 110);
+  }
+  onUp = () => {
+    window.removeEventListener('pointerup', this.onUp); window.removeEventListener('pointercancel', this.onUp);
+    const s = this.state, kind = s.holdKind, quick = Date.now() - (this.pressAt || 0) < 350;
+    clearInterval(this.heardT);
+    this.setState({ holding: false });
+    if (kind === 'home' || kind === 'listen') {
+      clearInterval(this.typeTimer);
+      if (quick && s.typed < 3) { this.go('home'); this.toastMsg('Hold the button while you speak'); return; }
+      this.setState({ typed: window.CB.info(this.state).listen.zh.length });
+      this.after(800, () => this.finishListen());
+      return;
+    }
+    const target = this.holdTarget(kind);
+    if (quick || !target) { this.setState({ heard: 0 }); this.toastMsg(target ? 'Hold the button while you speak' : 'Nothing to answer right now'); return; }
+    this.setState({ heard: target.length });
+    this.after(600, () => { this.setState({ heard: 0, holdKind: '' }); if (kind === 'speak') this.pickChip(target); else if (kind === 'ob') this.obPick(target); else this.talkSay(target); });
+  };
+  runTyping() {
+    clearInterval(this.typeTimer);
+    const total = window.CB.info(this.state).listen.zh.length;
+    this.typeTimer = setInterval(() => { if (!this.state.holding) return clearInterval(this.typeTimer); if (this.state.typed < total) this.setState(x => ({ typed: x.typed + 1 })); }, 80);
+  }
+  pickLang(code, name) { this.setState(x => ({ obLang: code, obLangName: name, langQ: '', ob: x.ob + 1, obAns: [...x.obAns, name] })); this.speakNow(); }
+  obPick(c) {
+    if (this.state.ob === 0) { const L = /Mandarin/.test(c) ? 'zh' : /Español/.test(c) ? 'es' : 'en'; this.setState({ obLang: L }); }
+    this.setState(x => ({ ob: x.ob + 1, obAns: [...x.obAns, c] })); this.speakNow();
+  }
+  finishListen() { this.clearStage(); this.setState({ holding: false, holdKind: '' }); if (this.state.flow === 'food') this.go('research'); else this.go('speak', { speakStep: 0, typed: 999 }); }
+  pickChip(label) {
+    const inf = window.CB.info(this.state), step = this.state.speakStep, ctx = { ...this.state.ctx };
+    if (label === '换一家') return this.go('research');
+    if (label === '$50 以内可以') ctx.charges = 'Up to $50';
+    if (label === '请对方回复') ctx.reply = true;
+    if (step + 1 < inf.speak.length) { this.setState({ speakStep: step + 1, ctx }); this.speakNow(); }
+    else this.go('review', { ctx });
+  }
+  pickPlace(p) { this.go('speak', { place: p, speakStep: 0 }); }
+  connected() {
+    const s = this.state;
+    if (s.flow === 'food' && (s.place || {}).id === 'la') return this.finishCall(true);
+    this.startCall(false);
+  }
+  startCall(prefill, screen = 'live') {
+    const q = window.CB.lines(this.state); let tx = [], rest = q;
+    if (prefill) { const i = q.findIndex(l => l.hold); tx = q.slice(0, i + 1); rest = q.slice(i + 1); }
+    this.go(screen, { callActive: true, callSec: prefill ? 134 : 0, tx, q: rest, holdPending: !!prefill, holdSec: this.T(), holdAns: null, msgOpen: false, notes: [], listening: false, lockAns: null });
+    clearInterval(this.liveTimer);
+    this.liveTimer = setInterval(() => this.liveStep(), 2700);
+  }
+  liveStep() {
+    const s = this.state; if (!s.callActive || s.holdPending) return;
+    if (!s.q.length) return this.finishCall(false);
+    const [l, ...rest] = s.q;
+    this.setState({ tx: [...s.tx, l], q: rest, holdPending: !!l.hold, holdSec: this.T() });
+    if (l.hold && s.screen !== 'live' && s.screen !== 'lock') this.go('live');
+  }
+  answerHold(kind) {
+    if (!this.state.holdPending) return;
+    this.setState(s => ({ holdPending: false, holdAns: kind, lockAns: kind, q: [window.CB.HOLD_ANS[kind], ...s.q] }));
+  }
+  stopCall() { clearInterval(this.liveTimer); this.setState({ callActive: false, holdPending: false, msgOpen: false }); }
+  finishCall(fail) {
+    clearInterval(this.liveTimer);
+    const s = this.state, r = window.CB.buildResult(s, fail);
+    const item = { id: 'n' + Date.now(), who: r.who, time: 'Just now', zh: r.hzh, tag: r.tag, res: r };
+    this.go('result', { callActive: false, holdPending: false, msgOpen: false, result: r, fromHistory: false, calls: [item, ...(s.calls || [])] });
+  }
+  sendNote(t) {
+    const s = this.state; let q = s.q;
+    if (t === '可以结束了') q = [{ who: 'ai', zh: '好的，谢谢您，再见！', en: 'Thank you, goodbye!' }];
+    else if (t === '让他们说慢一点') q = [{ who: 'ai', zh: '请您说慢一点，谢谢。', en: 'Could you speak a little slower, please?' }, ...q];
+    else if (t === '问问有没有更早的时间') q = [{ who: 'ai', zh: '请问有没有更早的时间？', en: 'Is there anything earlier available?' }, { who: 'them', zh: '最早就是周四下午 2 点。', en: 'Thursday at 2 is the earliest.' }, ...q];
+    this.setState({ tx: [...s.tx, { who: 'note', zh: t, en: '' }], notes: [...s.notes, t], q });
+    this.after(1400, () => this.setState({ msgOpen: false }));
+  }
+  startTalk(r) { const t = window.CB.talkSetup(r); this.go('talk', { result: r, talk: t.msgs, talkChips: t.chips, fu: null }); }
+  talkSay(chip) {
+    const s = this.state;
+    this.setState({ talk: [...s.talk, { me: true, zh: chip, en: '' }], talkChips: s.talkChips.filter(c => c !== chip) });
+    this.after(900, () => { const r = window.CB.talkReply(chip, this.state.result); this.setState(x => ({ talk: [...x.talk, { ai: true, zh: r.zh, en: r.en }], fu: r.fu || x.fu })); this.speakNow(2000); });
+  }
+  callFollowup() {
+    const s = this.state, r = s.result, fu = s.fu;
+    if (fu.same) this.go('review', { flow: r.flow, ctx: r.ctx || {}, place: r.place, mode: 'loop' });
+    else this.go('review', { flow: 'followup', ctx: {}, mode: 'loop' });
+  }
+  callContact(k) { if (k.id === 'sd') this.startFlow('dentist'); else this.startFlow('msg', { contact: k }); }
+  doImport() {
+    const s = this.state, add = window.CB.IMPORTS.filter(c => !s.contacts.find(x => x.id === c.id));
+    this.go('book', { contacts: [...s.contacts, ...add], imported: true });
+    this.toastMsg('2 added · 1 updated');
+  }
+
+  jump(k) {
+    const CB = window.CB; if (!CB) return;
+    this.stopCall();
+    const base = { flow: 'dentist', ctx: {}, place: null, mode: 'loop', speakStep: 0, typed: 999, holdAns: null };
+    const booked = () => CB.buildResult({ ...this.state, ...base, holdAns: 'decline', callSec: 252, tx: CB.lines({ ...this.state, ...base }).map(l => l.hold ? CB.HOLD_ANS.decline : l) }, false);
+    switch (k) {
+      case 'onboard': return this.go('onboard', { ob: 0, obAns: [], obLang: 'en', obLangName: 'English', langQ: '' });
+      case 'listen': this.pressAt = 0; this.startFlow('dentist', {}, { hold: true }); this.after(3600, () => this.onUp()); return;
+      case 'onboard': return this.go('onboard', { ob: 0, obAns: [] });
+      case 'research': return this.go('research', { ...base, flow: 'food' });
+      case 'speak': case 'review': case 'ring': return this.go(k, base);
+      case 'live': return this.setState(base, () => this.startCall(false));
+      case 'hold': return this.setState(base, () => this.startCall(true));
+      case 'lock': return this.setState(base, () => this.startCall(true, 'lock'));
+      case 'msg': return this.setState(base, () => { this.startCall(false); this.setState({ msgOpen: true }); });
+      case 'booked': return this.go('result', { ...base, result: booked(), fromHistory: false });
+      case 'fail': return this.go('result', { result: CB.buildResult({ ...this.state, flow: 'food', place: CB.PLACES[0], tx: [] }, true), fromHistory: false });
+      case 'talk': return this.startTalk(booked());
+      case 'contact': return this.go('contact', { contactId: 'sd' });
+      default: return this.go(k);
+    }
+  }
+
+  palette() {
+    const all = {
+      brand: { assist: ['#c9f3ff', '#5cc8ff', '#2557e8', '#0a1a7a'], think: ['#efe6ff', '#b59cff', '#6a4bd6', '#2b1a78'], call: ['#e3ffe9', '#7fe0a3', '#1a9e4b', '#0a4a2a'], ask: ['#ffe3f6', '#d89bff', '#5b3cc4', '#2a1268'] },
+      aurora: { assist: ['#ffffff', '#ffb3ef', '#8f9dff', '#4b4fd6'], think: ['#ffffff', '#e0c4ff', '#a27bff', '#5b3cc4'], call: ['#ffffff', '#b9f7d6', '#3fb9a6', '#16716e'], ask: ['#ffffff', '#ffc2d9', '#e0609a', '#8a2a78'] },
+    };
+    return all[this.props.palette ?? 'brand'] || all.brand;
+  }
+
+  glowFor(key) {
+    const h = React.createElement, anim = this.props.animate ?? true, P = this.palette();
+    const A = P.assist, Th = P.think, C = P.call, K = P.ask, F = ['#fff3d1', '#f3c45c', '#d48a00', '#855600'];
+    const maskBand = { WebkitMask: 'linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0)', WebkitMaskComposite: 'xor', mask: 'linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0)' };
+    const band = ({ k, width, blur = 0, colors, bg, speed = 10, opacity = 1, breathe, radius = 56, pulse = 'cbGlow' }) =>
+      h('div', { key: k, style: { position: 'absolute', inset: 0, borderRadius: radius, filter: blur ? `blur(${blur}px)` : 'none', opacity, pointerEvents: 'none' } },
+        h('div', { style: { position: 'absolute', inset: 0, borderRadius: radius, padding: width, overflow: 'hidden', boxSizing: 'border-box', ...maskBand, animation: anim && breathe ? `${pulse} ${breathe}s ease-in-out infinite` : 'none' } },
+          bg ? h('div', { style: { position: 'absolute', inset: 0, background: bg } })
+            : h('div', { style: { position: 'absolute', left: '50%', top: '50%', width: 1000, height: 1000, marginLeft: -500, marginTop: -500, background: `conic-gradient(from 0deg, ${colors.join(', ')}, ${colors[0]})`, animation: anim ? `cbSpin ${speed}s linear infinite` : 'none' } })));
+    const trace = ({ k, id, c1, c2, dash, width = 7, blur = 0, chase }) =>
+      h('svg', { key: k, viewBox: '0 0 390 844', style: { position: 'absolute', inset: 0, width: '100%', height: '100%', filter: blur ? `blur(${blur}px)` : 'none', pointerEvents: 'none' } }, [
+        h('defs', { key: 'd' }, h('linearGradient', { id, x1: 0, y1: 0, x2: 1, y2: 1 }, [h('stop', { key: 'a', offset: 0, stopColor: c1 }), h('stop', { key: 'b', offset: 1, stopColor: c2 })])),
+        h('rect', { key: 'r', x: 2, y: 2, width: 386, height: 840, rx: 54, fill: 'none', stroke: `url(#${id})`, strokeWidth: width, strokeLinecap: 'round', pathLength: 100, strokeDasharray: dash, strokeDashoffset: -5.9, style: { animation: chase && anim ? `cbChase ${chase}s linear infinite` : 'none', transition: chase ? 'none' : 'stroke-dasharray 1s linear' } }),
+      ]);
+    const aura = [A[1], A[2], Th[1], C[1], A[1]], hairC = [C[1], C[2], A[1], C[1]], ready = [A[1], A[2], Th[1], A[1]], done = [C[0], C[1], C[2], A[1], C[1]], ask = [K[1], K[2], A[1], K[1]];
+    const hair = (p) => [band({ k: p + 'g', width: 14, blur: 14, colors: hairC, speed: 16, opacity: .7 }), band({ k: p + 'l', width: 3, colors: hairC, speed: 16 })];
+    const frac = Math.max(0, this.state.holdSec / this.T()) * 100;
+    const kids = {
+      idle: [band({ k: 'w', width: 30, blur: 26, colors: aura, speed: 14, breathe: 4, opacity: .5 }), band({ k: 'c', width: 3, colors: aura, speed: 14, opacity: .5 })],
+      listen: [band({ k: 'w', width: 34, blur: 26, colors: aura, speed: 12, breathe: 3.2 }), band({ k: 'm', width: 10, blur: 8, colors: aura, speed: 12, opacity: .9 }), band({ k: 'c', width: 3, colors: aura, speed: 12, opacity: .9 })],
+      speak: [band({ k: 'w', width: 44, blur: 30, colors: aura, speed: 5, breathe: 1.3 }), band({ k: 'm', width: 12, blur: 8, colors: aura, speed: 5 }), band({ k: 'c', width: 3, colors: aura, speed: 5 })],
+      comet: [trace({ k: 'g', id: 'aCg', c1: Th[1], c2: Th[2], dash: '16 34', width: 26, blur: 14, chase: 2.4 }), trace({ k: 'l', id: 'aCl', c1: Th[0], c2: Th[2], dash: '16 34', width: 6, chase: 2.4 }), band({ k: 'b', width: 2, bg: Th[1], opacity: .35 })],
+      think: [band({ k: 'w', width: 30, blur: 26, bg: Th[1], opacity: .55, breathe: 2.2 }), band({ k: 'c', width: 2.5, bg: Th[1], opacity: .7, breathe: 2.2 })],
+      ready: [band({ k: 'g', width: 14, blur: 14, colors: ready, speed: 22, opacity: .6 }), band({ k: 'l', width: 3, colors: ready, speed: 22 })],
+      ring: [band({ k: 'g', width: 20, blur: 16, colors: hairC, speed: 16, breathe: 1.5, pulse: 'cbRing' }), band({ k: 'l', width: 3, colors: hairC, speed: 16, breathe: 1.5, pulse: 'cbRing' })],
+      hair: hair('h'),
+      msg: [...hair('m'), band({ k: 'a', width: 70, blur: 36, bg: `linear-gradient(0deg, ${A[1]} 0%, ${A[2]} 12%, transparent 34%)`, breathe: 2.4 })],
+      hold: [band({ k: 't', width: 40, blur: 30, bg: K[1], opacity: .35, breathe: 1.6 }), trace({ k: 'g', id: 'aHg', c1: K[1], c2: K[2], dash: `${frac} 100`, width: 26, blur: 14 }), trace({ k: 'l', id: 'aHl', c1: K[1], c2: K[2], dash: `${frac} 100`, width: 6 })],
+      done: [band({ k: 'w', width: 44, blur: 32, colors: done, speed: 14, breathe: 4 }), band({ k: 'm', width: 10, blur: 8, colors: done, speed: 14 }), band({ k: 'c', width: 3, colors: done, speed: 14 })],
+      fail: [band({ k: 'g', width: 12, blur: 12, bg: F[1], opacity: .5 }), band({ k: 'l', width: 2.5, bg: `linear-gradient(180deg, ${F[1]}, ${F[2]})`, opacity: .9 })],
+      card: [band({ k: 'g', width: 18, blur: 16, colors: ask, speed: 6, breathe: 1.4, radius: 28 }), band({ k: 'l', width: 2.5, colors: ask, speed: 6, radius: 28 })],
+    }[key];
+    if (!kids) return null;
+    return h('div', { key, style: { position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 0, animation: 'cbFade .6s ease' } }, kids);
+  }
+
+  renderVals() {
+    const CB = window.CB, s = this.state;
+    if (!CB || !s.ready || !s.calls) return { rail: [], caption: '' };
+    const sc = s.screen, inf = CB.info(s), r = s.result || {};
+    const railKey = sc === 'live' ? (s.holdPending ? 'hold' : s.msgOpen ? 'msg' : 'live') : sc === 'result' ? (r.kind === 'fail' ? 'fail' : 'booked') : sc === 'code' ? 'signin' : sc;
+    const voiceGlow = s.speaking ? 'speak' : s.holding ? 'listen' : 'idle';
+    const glowKey = { onboard: s.ob === 0 ? '' : voiceGlow, home: 'idle', listen: s.holding ? 'listen' : 'idle', speak: voiceGlow, research: s.searching ? 'think' : 'idle', review: 'ready', ring: 'ring', live: s.holdPending ? 'hold' : s.msgOpen ? 'msg' : 'hair', result: s.fromHistory ? '' : r.kind === 'fail' ? 'fail' : 'done', talk: voiceGlow }[sc];
+    const tabs = ['home', 'calls', 'book', 'me'];
+    const tabC = {}; tabs.forEach(t => tabC[t] = t === sc ? '#2557e8' : '#69707d');
+    const bgMap = { lock: 'linear-gradient(180deg,#1a2238 0%,#0b1020 60%,#070a14 100%)', live: s.holdPending ? '#fbfaff' : '#f7f8fa', ring: '#f7f8fa', review: '#fbfbfd', result: r.kind === 'fail' ? '#fffdf8' : '#fff', calls: '#f4f5f7', book: '#f4f5f7', contact: '#f4f5f7', import: '#f4f5f7', me: '#f4f5f7', notif: '#f4f5f7' };
+    const is = {}; ['signin', 'code', 'onboard', 'home', 'listen', 'speak', 'research', 'review', 'ring', 'live', 'result', 'talk', 'calls', 'book', 'contact', 'import', 'me', 'notif', 'lock'].forEach(k => is[k] = k === sc);
+    const fmt = (x) => `${String(Math.floor(x / 60)).padStart(2, '0')}:${String(x % 60).padStart(2, '0')}`;
+    const lineView = (l) => {
+      const them = l.who === 'them', note = l.who === 'note';
+      return { ...l, label: them ? 'THEM' : note ? 'YOU → ASSISTANT · NOT HEARD BY THEM' : 'AI FOR WEI', color: them ? '#137a3a' : note ? '#69707d' : '#2557e8', align: them ? 'flex-start' : 'flex-end', bg: them ? '#f4f5f7' : note ? 'transparent' : '#2557e8', ink: them || note ? '#121418' : '#fff', sub: them ? '#69707d' : 'rgba(255,255,255,.8)', border: note ? '1.5px dashed #9aa1ad' : '0', hasEn: !!l.en };
+    };
+    const txSrc = sc === 'result' || sc === 'talk' ? (r.tx || []) : s.tx;
+    const spoken = s.tx.filter(l => l.who !== 'note');
+    const last = spoken[spoken.length - 1], prev = spoken[spoken.length - 2];
+    const sp = inf.speak[Math.min(s.speakStep, inf.speak.length - 1)];
+    const contact = (s.contacts || []).find(c => c.id === s.contactId) || CB.CONTACTS[0];
+    const q = s.search.trim().toLowerCase();
+    const T = this.T();
+    const toggle = (on) => ({ track: on ? '#1a9e4b' : '#e1e4e9', knob: on ? '22px' : '2px' });
+    const ob = CB.obQ(s.ob, s.obLang || 'en');
+    const typedZh = inf.listen.zh.slice(0, s.typed);
+    const LANGS = [['中文（普通话）', 'Mandarin Chinese', 'zh'], ['粵語', 'Cantonese', 'yue'], ['Español', 'Spanish', 'es'], ['Tiếng Việt', 'Vietnamese', 'vi'], ['한국어', 'Korean', 'ko'], ['Tagalog', 'Filipino', 'tl'], ['العربية', 'Arabic', 'ar'], ['Русский', 'Russian', 'ru'], ['Kreyòl ayisyen', 'Haitian Creole', 'ht'], ['Português', 'Portuguese', 'pt'], ['Français', 'French', 'fr'], ['हिन्दी', 'Hindi', 'hi'], ['বাংলা', 'Bengali', 'bn'], ['اردو', 'Urdu', 'ur'], ['فارسی', 'Persian', 'fa'], ['Soomaali', 'Somali', 'so'], ['አማርኛ', 'Amharic', 'am'], ['Kiswahili', 'Swahili', 'sw'], ['Hmoob', 'Hmong', 'hmn'], ['ខ្មែរ', 'Khmer', 'km'], ['ພາສາລາວ', 'Lao', 'lo'], ['नेपाली', 'Nepali', 'ne'], ['ภาษาไทย', 'Thai', 'th'], ['日本語', 'Japanese', 'ja'], ['Bahasa Indonesia', 'Indonesian', 'id'], ['Polski', 'Polish', 'pl'], ['Українська', 'Ukrainian', 'uk'], ['Deutsch', 'German', 'de'], ['Italiano', 'Italian', 'it'], ['English', 'English', 'en']];
+    const lq = (s.langQ || '').trim().toLowerCase();
+    const langList = LANGS.filter(([n, e]) => !lq || n.toLowerCase().includes(lq) || e.toLowerCase().includes(lq)).map(([native, en, code]) => ({ native, en, pick: () => this.pickLang(code, native) }));
+    const heardTarget = ['speak', 'ob', 'talk'].includes(s.holdKind) ? this.holdTarget(s.holdKind) : '';
+    return {
+      hb: { scale: s.holding ? 'scale(1.12)' : 'scale(1)', bg: s.holding ? '#1a3fb0' : '#2557e8', label: s.holding ? 'Release to send' : 'Hold to talk',
+        shadow: s.holding ? '0 0 0 14px rgba(37,87,232,.18), 0 0 0 30px rgba(37,87,232,.07), 0 16px 40px rgba(37,87,232,.4)' : '0 0 0 8px rgba(37,87,232,.10), 0 12px 30px rgba(37,87,232,.28)' },
+      menuOpen: !!s.menuOpen, openMenu: () => this.setState({ menuOpen: true }), closeMenu: () => this.setState({ menuOpen: false }),
+      menuGlow: s.menuOpen ? this.glowFor('idle') : null, callActiveMenu: s.callActive,
+      pressHome: this.press('home'), pressListen: this.press('listen'), pressSpeak: this.press('speak'), pressOb: this.press('ob'), pressTalk: this.press('talk'),
+      voice: { label: s.speaking ? 'SPEAKING' : s.holding ? 'LISTENING' : 'YOUR TURN · HOLD TO ANSWER', color: s.speaking ? '#5b3cc4' : s.holding ? '#2557e8' : '#69707d' },
+      voiceBars: s.speaking || s.holding, barC: s.speaking ? '#5b3cc4' : '#2557e8',
+      listenLabel2: s.holding ? 'LISTENING · RELEASE TO SEND' : 'GOT IT', listenColor: s.holding ? '#2557e8' : '#137a3a', listenBars: s.holding,
+      micState: s.holding ? 'Mic on' : 'Mic off', micDot: s.holding ? '#e5402f' : '#c3c8d0',
+      heardText: heardTarget.slice(0, s.heard), hasHeard: s.heard > 0 && !!heardTarget,
+      rail: CB.RAIL.map(g => ({ label: g.label, items: g.items.map(([k, label]) => ({ label, go: () => this.jump(k), bg: k === railKey ? '#121418' : 'transparent', fg: k === railKey ? '#fff' : '#121418', fw: k === railKey ? 600 : 500 })) })),
+      restart: () => { this.stopCall(); this.go('home', { result: null }); },
+      caption: CB.CAP[railKey] || '',
+      glow: this.glowFor(glowKey),
+      phoneBg: bgMap[sc] || '#fff', phoneInk: sc === 'lock' ? '#fff' : '#121418', sbTime: sc === 'lock' ? '' : '9:41',
+      is, showTabs: tabs.includes(sc), tabC,
+      tabHome: () => this.go('home'), tabCalls: () => this.go('calls'), tabBook: () => this.go('book'), tabMe: () => this.go('me'),
+      liveBanner: s.callActive && !['live', 'lock', 'ring'].includes(sc), toLive: () => this.go('live'),
+      hasToast: !!s.toast, toast: s.toast,
+      rv: { who: inf.who, num: inf.num, lang: inf.lang, goalZh: inf.goalZh, goalEn: inf.goalEn, charges: inf.charges },
+      callTime: fmt(s.callSec),
+      // intake
+      typedZh, listenEn: s.typed >= inf.listen.zh.length ? inf.listen.en : '', finishListen: () => this.finishListen(), toHome: () => this.go('home'),
+      sp: { zh: sp.zh, en: sp.en, need: sp.need }, spChips: sp.chips.map(c => ({ label: c, pick: () => this.pickChip(c) })),
+      detailSegs: [0, 1, 2, 3, 4].map(i => ({ bg: i < sp.done ? '#2557e8' : '#e1e4e9' })), detailN: `${sp.done} of 5 details`,
+      homeChips: [
+        { label: '打给我的牙医', go: () => this.startFlow('dentist') },
+        { label: '最近的墨西哥餐厅', go: () => this.startFlow('food') },
+        { label: '告诉 Maria 今晚晚到', go: () => this.startFlow('msg', { contact: CB.CONTACTS[1] }) },
+      ],
+      startTalking: () => this.startFlow('dentist'),
+      searching: s.searching, notSearching: !s.searching,
+      searchSteps: [['搜索附近的墨西哥餐厅', 'Searching nearby Mexican restaurants'], ['找到 3 家 · Google Maps', 'Found 3 · Google Maps'], ['核对营业时间 · Yelp', 'Checking listed hours · Yelp'], ['按距离排序', 'Sorting by distance']].map(([zh, en], i) => { const st = s.searchStep || 0; return { zh, en, done: i < st, now: i === st, wait: i > st, op: i > st ? 0.4 : 1, fw: i === st ? 600 : 400 }; }),
+      foundPins: (s.searchStep || 0) >= 1 ? [['La Esquina', '8%', '18%'], ['El Sol', '70%', '30%'], ['Casa Oaxaca', '18%', '74%']].slice(0, Math.min(3, s.searchStep)).map(([name, x, y]) => ({ name, x, y })) : [],
+      places: CB.PLACES.map(p => ({ ...p, hasNote: !!p.note, pick: () => this.pickPlace(p) })),
+      // review
+      modeLoopBg: s.mode === 'loop' ? '#fff' : 'transparent', modeOffBg: s.mode === 'handoff' ? '#fff' : 'transparent',
+      modeLoopC: s.mode === 'loop' ? '#121418' : '#69707d', modeOffC: s.mode === 'handoff' ? '#121418' : '#69707d',
+      setLoop: () => this.setState({ mode: 'loop' }), setHandoff: () => this.setState({ mode: 'handoff' }),
+      modeNote: s.mode === 'loop' ? 'The assistant asks you before agreeing to anything you haven\u2019t allowed.' : 'The assistant won\u2019t interrupt you. Anything outside your limits gets politely declined.',
+      placeCall: () => this.go('ring'), backFromReview: () => this.go('home'),
+      ringCount: s.ringCount, cancelRing: () => { this.go('home'); this.toastMsg('Call cancelled'); },
+      // live
+      liveMain: sc === 'live' && !s.holdPending, holdShow: sc === 'live' && s.holdPending, msgOpen: s.msgOpen, msgClosed: !s.msgOpen,
+      modeLabel: s.mode === 'loop' ? 'Stay in the loop' : 'Handed off',
+      hasLast: !!last, noLast: !last,
+      lastV: last ? lineView(last) : {}, prevZh: prev ? `${prev.who === 'them' ? 'Them' : 'AI'} · ${prev.zh}` : '',
+      liveSegs: [0, 1, 2, 3, 4, 5, 6].map(i => ({ bg: i < Math.min(6, 3 + Math.floor(s.tx.length / 3)) ? '#1a9e4b' : '#d5d9e0' })),
+      leave: () => this.go('home'), endCall: () => { this.stopCall(); this.go('home'); this.toastMsg('Call ended'); },
+      listenBg: s.listening ? '#121418' : '#fff', listenInk: s.listening ? '#fff' : '#121418', listenLabel: s.listening ? 'Listening' : 'Listen',
+      toggleListen: () => this.setState(x => ({ listening: !x.listening })),
+      openMsg: () => this.setState({ msgOpen: true }), closeMsg: () => this.setState({ msgOpen: false }),
+      msgChips: ['让他们说慢一点', '问问有没有更早的时间', '可以结束了'].filter(c => !s.notes.includes(c)).map(c => ({ label: c, send: () => this.sendNote(c) })),
+      noteList: s.notes.map(t => ({ t })),
+      secLabel: `0:${String(Math.max(0, s.holdSec)).padStart(2, '0')}`,
+      approve: () => this.answerHold('approve'), decline: () => this.answerHold('decline'), replyHold: () => this.answerHold('reply'),
+      openTx: () => this.setState({ txOpen: true }), closeTx: () => this.setState({ txOpen: false }), txOpen: s.txOpen,
+      txList: txSrc.map(lineView), txEmpty: !txSrc.length,
+      // result
+      res: r, resBullets: (r.bullets || []).map(b => ({ ...b, hasEn: !!b.en })), resFail: r.kind === 'fail', resGood: r.kind && r.kind !== 'fail',
+      resFood: r.kind === 'fail' && !!r.isFood,
+      resPrimary: () => { if (r.primary === 'Done') return this.go(s.fromHistory ? 'calls' : 'home'); this.toastMsg(r.primary === 'Get directions' ? 'Opening Maps…' : 'Added to calendar'); },
+      resDone: () => this.go(s.fromHistory ? 'calls' : 'home'), resDoneLabel: s.fromHistory ? 'Calls' : 'Done',
+      retryLater: () => this.toastMsg('I\u2019ll call again at 11:00'),
+      tryElSol: () => this.go('review', { flow: 'food', place: CB.PLACES[1], ctx: {}, mode: 'loop' }),
+      talkOver: () => this.startTalk(r),
+      // talk
+      talkMsgs: s.talk.map(m => ({ ...m, align: m.me ? 'flex-end' : 'flex-start', bg: m.me ? '#2557e8' : '#fff', ink: m.me ? '#fff' : '#121418', radius: m.me ? '20px 20px 6px 20px' : '20px 20px 20px 6px', hasEn: !!m.en })),
+      talkChipList: s.talkChips.map(c => ({ label: c, say: () => this.talkSay(c) })),
+      hasFu: !!s.fu, fu: s.fu || {}, callFollowup: () => this.callFollowup(), backToResult: () => this.go('result'),
+      // library
+      callsList: (s.calls || []).map(it => { const t = CB.TAGS[it.tag] || CB.TAGS.Delivered; return { ...it, tagBg: t[0], tagFg: t[1], open: () => this.go('result', { result: it.res || CB.historyResult(it), fromHistory: true }) }; }),
+      search: s.search, onSearch: (e) => this.setState({ search: e.target.value }),
+      contactList: (s.contacts || []).filter(c => !q || (c.name + c.rel + c.num).toLowerCase().includes(q)).map(c => ({ ...c, meta: `${c.num} · ${c.lang} · ${c.calls ? c.calls + ' calls' : 'added'}`, hasLast: !!c.last, open: () => this.go('contact', { contactId: c.id }), call: () => this.callContact(c) })),
+      noContacts: !(s.contacts || []).some(c => !q || (c.name + c.rel + c.num).toLowerCase().includes(q)),
+      toImport: () => this.go('import'), toBook: () => this.go('book'),
+      ct: contact, ctLearned: contact.learned, ctHasLearned: contact.learned.length > 0, ctNoLearned: !contact.learned.length, ctHasLast: !!contact.last,
+      callCt: () => this.callContact(contact), deleteCt: () => this.toastMsg('Delete needs confirmation (next round)'),
+      kenjiA: s.kenji === 0 ? '0 0 0 2px #2557e8' : '0 0 0 1px #e1e4e9', kenjiB: s.kenji === 1 ? '0 0 0 2px #2557e8' : '0 0 0 1px #e1e4e9',
+      kenjiDotA: s.kenji === 0 ? '5px solid #2557e8' : '1.5px solid #c3c8d0', kenjiDotB: s.kenji === 1 ? '5px solid #2557e8' : '1.5px solid #c3c8d0',
+      pickKA: () => this.setState({ kenji: 0 }), pickKB: () => this.setState({ kenji: 1 }), doImport: () => this.doImport(), importDone: s.imported, importOpen: !s.imported,
+      // me
+      shareList: [['name', '姓名', 'Name · Wei Li'], ['dob', '出生日期', 'Date of birth · 1988-03-14'], ['addr', '住址', 'Home address'], ['ins', '保险会员号', 'Insurance member ID']].map(([k, zh, en]) => ({ zh, en, ...toggle(s.share[k]), flip: () => this.setState(x => ({ share: { ...x.share, [k]: !x.share[k] } })) })),
+      notifList: [['res', 'Call results', 'When a call finishes'], ['up', 'Upcoming reminders', 'The day before appointments'], ['live', 'Live Activity', 'Hold questions on the lock screen']].map(([k, label, sub]) => ({ label, sub, ...toggle(s.notif[k]), flip: () => this.setState(x => ({ notif: { ...x.notif, [k]: !x.notif[k] } })) })),
+      toNotif: () => this.go('notif'), toMe: () => this.go('me'), signOut: () => { this.stopCall(); this.go('signin'); }, previewLock: () => this.jump('lock'),
+      // onboarding
+      toCode: () => this.go('code'), codeBoxes: [0, 1, 2, 3, 4, 5].map(i => ({ d: i < s.codeN ? '482913'[i] : '', border: i === s.codeN ? '0 0 0 2px #2557e8' : '0 0 0 1px #e1e4e9' })),
+      obPickLang: s.ob === 0, obVoice: s.ob > 0, obAskVoice: s.ob > 0 && s.ob < CB.OB.length,
+      langOpts: langList, langNone: !langList.length, langQ: s.langQ || '', onLangQ: (e) => this.setState({ langQ: e.target.value }),
+      obQ: ob, obLangPill: s.obLangName || 'English',
+      obAsking: s.ob < CB.OB.length, obDone: s.ob >= CB.OB.length,
+      obChips: s.ob < CB.OB.length ? ob.chips.map(c => ({ label: c, pick: () => this.setState(x => ({ ob: x.ob + 1, obAns: [...x.obAns, c] })) })) : [],
+      obDots: CB.OB.map((_, i) => ({ bg: i < s.ob ? '#2557e8' : i === s.ob ? '#121418' : '#e1e4e9' })),
+      obAnsList: s.obAns.map(a => ({ a })), obFinish: () => this.go('home'),
+      // lock
+      lockPending: s.holdPending, lockDone: !s.holdPending,
+      lockAnsText: s.lockAns ? ({ approve: 'Sent: you approved the X-rays', decline: 'Sent: you declined the X-rays', reply: 'Sent your reply', timeout: 'No answer in time — the assistant handled it' })[s.lockAns] : 'Call in progress',
+      lockGlow: s.holdPending ? this.glowFor('card') : null, lockSec: `0:${String(Math.max(0, s.holdSec)).padStart(2, '0')}`,
+      lockOpen: () => this.go('live'),
+    };
+  }
+}
+</script>
+</body>
+</html>

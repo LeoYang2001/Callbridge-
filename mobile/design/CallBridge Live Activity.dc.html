@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#e9ebef;font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text','SF Pro Display',system-ui,'Noto Sans SC',sans-serif;color:#121418;-webkit-font-smoothing:antialiased}
+a{color:#2557e8;text-decoration:none}a:hover{color:#1a3fb0}
+@keyframes cbPulse{0%{transform:scale(1);opacity:.75}100%{transform:scale(2.6);opacity:0}}
+</style>
+</helmet>
+<div style="padding:44px 48px 80px;display:flex;flex-direction:column;gap:36px;width:max-content">
+
+<div style="display:flex;flex-direction:column;gap:6px;max-width:1100px">
+<span style="font-size:13px;font-weight:600;letter-spacing:.06em;color:#69707d">CALLBRIDGE · LIVE ACTIVITY</span>
+<span style="font-size:34px;font-weight:700;letter-spacing:-.02em">Dynamic Island &amp; Lock Screen</span>
+<span style="font-size:15px;line-height:1.55;color:#4a4f5a;text-wrap:pretty">Quiet while a call runs; loud only when someone is on hold for you, or when a call or errand batch finishes. Every state is a distinct snapshot (no live meters). The only motion is the pulse on the amber "needs you" dot. Timers and countdowns are drawn and ticked by iOS.</span>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(3,minmax(0,360px));gap:20px">
+<div style="background:#fff;border-radius:20px;padding:20px 22px;display:flex;flex-direction:column;gap:14px">
+<span style="font-size:12px;font-weight:600;letter-spacing:.06em;color:#69707d">COLOR IS MEANING · ON TRUE BLACK</span>
+<div style="background:#000;border-radius:14px;padding:14px 16px;display:grid;grid-template-columns:1fr 1fr;gap:10px 14px">
+<sc-for list="{{ swatches }}" as="w" hint-placeholder-count="4"><div style="display:flex;align-items:center;gap:10px"><span style="width:14px;height:14px;border-radius:50%;background:{{ w.d }}"></span><div style="display:flex;flex-direction:column"><span style="font-size:13px;font-weight:600;color:{{ w.d }}">{{ w.name }}</span><span style="font-size:11px;color:rgba(255,255,255,.55)">{{ w.use }}</span></div></div></sc-for>
+</div>
+<div style="background:#f4f5f7;border-radius:14px;padding:14px 16px;display:grid;grid-template-columns:1fr 1fr;gap:10px 14px">
+<sc-for list="{{ swatches }}" as="w" hint-placeholder-count="4"><div style="display:flex;align-items:center;gap:10px"><span style="width:14px;height:14px;border-radius:50%;background:{{ w.l }}"></span><div style="display:flex;flex-direction:column"><span style="font-size:13px;font-weight:600;color:{{ w.l }}">{{ w.name }}</span><span style="font-size:11px;color:#69707d">Light Lock Screen</span></div></div></sc-for>
+</div>
+</div>
+<div style="background:#fff;border-radius:20px;padding:20px 22px;display:flex;flex-direction:column;gap:14px">
+<span style="font-size:12px;font-weight:600;letter-spacing:.06em;color:#69707d">GLYPHS · 16 PT AND 24 PT ON BLACK</span>
+<div style="background:#000;border-radius:14px;padding:16px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px 8px">
+<sc-for list="{{ glyphSet }}" as="g" hint-placeholder-count="6"><div style="display:flex;flex-direction:column;align-items:center;gap:8px"><div style="height:28px;display:flex;align-items:center;gap:8px">{{ g.small }}{{ g.big }}</div><span style="font-size:10.5px;color:rgba(255,255,255,.6);text-align:center">{{ g.name }}</span></div></sc-for>
+</div>
+<span style="font-size:12.5px;line-height:1.5;color:#69707d">Filled discs for outcomes (✓ ! ✗) so they still read at 16 pt; outline handset and list for in-progress states.</span>
+</div>
+<div style="background:#fff;border-radius:20px;padding:20px 22px;display:flex;flex-direction:column;gap:10px;font-size:13.5px;line-height:1.5;color:#4a4f5a">
+<span style="font-size:12px;font-weight:600;letter-spacing:.06em;color:#69707d">RULES</span>
+<span><b style="color:#121418">Auto-expand</b> only for: on hold, finished (success or follow-up), errand batch finished.</span>
+<span><b style="color:#121418">Compact</b>: one glyph left, ≤ 8 characters right. Timers are system timers.</span>
+<span><b style="color:#121418">Text</b>: titles truncate to one line; questions and quotes clamp at two lines. CJK at ≥ 14 pt in expanded and lock screen.</span>
+<span><b style="color:#121418">Buttons</b> (Yes / No / Hang up) act without opening the app. Anything that needs typing says "in app".</span>
+<span><b style="color:#121418">Fallback</b>: the Lock Screen layout is also the banner on pre-14 Pro iPhones and the base for the Android notification.</span>
+</div>
+</div>
+
+<div style="display:grid;grid-template-columns:210px 393px 393px 393px 393px;gap:28px;padding:0 0 4px;border-bottom:1px solid rgba(0,0,0,.1)">
+<span style="font-size:12px;font-weight:600;letter-spacing:.06em;color:#69707d;padding-bottom:10px">STATE</span>
+<span style="font-size:12px;font-weight:600;letter-spacing:.06em;color:#69707d">COMPACT · MINIMAL</span>
+<span style="font-size:12px;font-weight:600;letter-spacing:.06em;color:#69707d">EXPANDED</span>
+<span style="font-size:12px;font-weight:600;letter-spacing:.06em;color:#69707d">LOCK SCREEN · LIGHT</span>
+<span style="font-size:12px;font-weight:600;letter-spacing:.06em;color:#69707d">LOCK SCREEN · DARK</span>
+</div>
+
+<sc-for list="{{ rows }}" as="r" hint-placeholder-count="9">
+<div style="display:flex;flex-direction:column;gap:14px">
+<sc-if value="{{ r.section }}" hint-placeholder-val="{{ false }}"><span style="font-size:20px;font-weight:700;letter-spacing:-.01em;padding-top:18px">{{ r.sectionLabel }}</span></sc-if>
+<div style="display:grid;grid-template-columns:210px 393px 393px 393px 393px;gap:28px;align-items:start">
+
+<div style="display:flex;flex-direction:column;gap:8px;padding-top:4px">
+<span style="font-size:11px;font-weight:600;color:#69707d;font-family:ui-monospace,monospace">{{ r.num }}</span>
+<span style="font-size:17px;font-weight:700;letter-spacing:-.01em">{{ r.label }}</span>
+<span style="align-self:flex-start;font-size:11.5px;font-weight:600;border-radius:99px;padding:3px 9px;background:{{ r.tagBg }};color:{{ r.tagFg }}">{{ r.tag }}</span>
+<span style="font-size:12.5px;line-height:1.5;color:#69707d;text-wrap:pretty">{{ r.note }}</span>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:10px">
+<div style="width:393px;height:60px;background:#f2f3f6;border-radius:14px;position:relative;overflow:hidden">
+<span style="position:absolute;left:30px;top:19px;font-size:16px;font-weight:600">9:41</span>
+<span style="position:absolute;right:26px;top:22px;width:24px;height:12px;border-radius:3.5px;border:1px solid rgba(0,0,0,.35);box-sizing:border-box;padding:1.5px"><span style="display:block;width:75%;height:100%;border-radius:2px;background:#121418"></span></span>
+<div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:236px;height:37px;border-radius:19px;background:#000;display:flex;align-items:center;justify-content:space-between;padding:0 13px 0 11px;box-sizing:border-box">
+<span style="display:flex;align-items:center">{{ r.cLead }}</span>
+<span style="font-size:14px;font-weight:600;color:{{ r.cTrailC }};font-variant-numeric:tabular-nums;white-space:nowrap;max-width:62px;overflow:hidden;text-overflow:ellipsis">{{ r.cTrail }}</span>
+</div>
+</div>
+<div style="width:393px;height:78px;background:#f2f3f6;border-radius:14px;position:relative;overflow:hidden">
+<div style="position:absolute;top:11px;left:50%;transform:translateX(-62%);display:flex;align-items:center;gap:7px">
+<div style="width:150px;height:37px;border-radius:19px;background:#000;display:flex;align-items:center;justify-content:space-between;padding:0 12px;box-sizing:border-box"><span style="width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.55);box-sizing:border-box"></span><span style="font-size:13px;font-weight:600;color:rgba(255,255,255,.75);font-variant-numeric:tabular-nums">4:12</span></div>
+<div style="width:37px;height:37px;border-radius:50%;background:#000;display:grid;place-items:center">{{ r.min }}</div>
+</div>
+<span style="position:absolute;left:0;right:0;bottom:7px;text-align:center;font-size:10.5px;color:#9aa1ad">Minimal · another app's timer in the island, ours in the bubble</span>
+</div>
+</div>
+
+<div style="width:393px;background:#f2f3f6;border-radius:14px;padding:11px;box-sizing:border-box">
+<div style="background:#000;border-radius:44px;padding:18px 20px 18px;color:#fff;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:flex-start;gap:12px">
+<div style="flex:none;padding-top:2px">{{ r.eLead }}</div>
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+<span style="font-size:13px;font-weight:600;color:{{ r.eyD }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.eyebrow }}</span>
+<span style="font-size:17px;line-height:1.35;font-weight:600;white-space:{{ r.titleWS }};overflow:hidden;text-overflow:ellipsis;max-height:46px">{{ r.title }}</span>
+</div>
+<span style="flex:none;font-size:16px;font-weight:600;color:{{ r.trD }};font-variant-numeric:tabular-nums;padding-top:2px">{{ r.trail }}</span>
+</div>
+<sc-if value="{{ r.hasLines }}" hint-placeholder-val="{{ true }}"><div style="display:flex;flex-direction:column;gap:3px;padding-left:46px"><sc-for list="{{ r.lines }}" as="l" hint-placeholder-count="1"><span style="font-size:14.5px;line-height:1.4;color:{{ l.cD }};max-height:41px;overflow:hidden">{{ l.t }}</span></sc-for></div></sc-if>
+<sc-if value="{{ r.hasList }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;gap:7px;padding-left:46px"><sc-for list="{{ r.list }}" as="i" hint-placeholder-count="4"><div style="display:flex;align-items:center;gap:9px">{{ i.markD }}<span style="font-size:14.5px;font-weight:500">{{ i.name }}</span><span style="font-size:13px;color:{{ i.subD }}">{{ i.sub }}</span></div></sc-for></div></sc-if>
+<sc-if value="{{ r.hasBtns }}" hint-placeholder-val="{{ true }}"><div style="display:flex;gap:8px"><sc-for list="{{ r.btns }}" as="b" hint-placeholder-count="1"><span style="flex:1;height:44px;border-radius:22px;background:{{ b.bgD }};color:{{ b.fgD }};display:grid;place-items:center;font-size:15.5px;font-weight:600">{{ b.label }}</span></sc-for></div></sc-if>
+<sc-if value="{{ r.hasLink }}" hint-placeholder-val="{{ false }}"><span style="text-align:center;font-size:13px;color:rgba(255,255,255,.6);margin-top:-2px">{{ r.link }}</span></sc-if>
+</div>
+</div>
+
+<div style="width:393px;background:linear-gradient(160deg,#dde5f4 0%,#efe6ea 60%,#f5ece2 100%);border-radius:14px;padding:16px 14px;box-sizing:border-box">
+<div style="background:rgba(255,255,255,.8);border-radius:24px;padding:14px 16px 16px;display:flex;flex-direction:column;gap:10px;box-shadow:0 1px 2px rgba(0,0,0,.04)">
+<div style="display:flex;align-items:flex-start;gap:12px">
+<div style="flex:none;padding-top:2px">{{ r.lLeadL }}</div>
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+<span style="font-size:13px;font-weight:600;color:{{ r.eyL }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.eyebrow }}</span>
+<span style="font-size:16px;line-height:1.35;font-weight:600;color:#121418;white-space:{{ r.titleWS }};overflow:hidden;text-overflow:ellipsis;max-height:44px">{{ r.title }}</span>
+</div>
+<span style="flex:none;font-size:15px;font-weight:600;color:{{ r.trL }};font-variant-numeric:tabular-nums;padding-top:2px">{{ r.trail }}</span>
+</div>
+<sc-if value="{{ r.hasLines }}" hint-placeholder-val="{{ true }}"><div style="display:flex;flex-direction:column;gap:3px;padding-left:42px"><sc-for list="{{ r.lines }}" as="l" hint-placeholder-count="1"><span style="font-size:14px;line-height:1.4;color:{{ l.cL }};max-height:40px;overflow:hidden">{{ l.t }}</span></sc-for></div></sc-if>
+<sc-if value="{{ r.hasProg }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;gap:6px;padding-left:42px"><div style="height:6px;border-radius:3px;background:rgba(18,20,24,.1);overflow:hidden"><div style="width:{{ r.prog }};height:100%;border-radius:3px;background:#2557e8"></div></div><span style="font-size:12px;color:#4a4f5a">{{ r.progLabel }}</span></div></sc-if>
+<sc-if value="{{ r.hasList }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;gap:7px;padding-left:42px"><sc-for list="{{ r.list }}" as="i" hint-placeholder-count="4"><div style="display:flex;align-items:center;gap:9px">{{ i.markL }}<span style="font-size:14px;font-weight:500;color:#121418">{{ i.name }}</span><span style="font-size:12.5px;color:{{ i.subL }}">{{ i.sub }}</span></div></sc-for></div></sc-if>
+<sc-if value="{{ r.hasBtns }}" hint-placeholder-val="{{ true }}"><div style="display:flex;gap:8px"><sc-for list="{{ r.btns }}" as="b" hint-placeholder-count="1"><span style="flex:1;height:42px;border-radius:21px;background:{{ b.bgL }};color:{{ b.fgL }};display:grid;place-items:center;font-size:15px;font-weight:600">{{ b.label }}</span></sc-for></div></sc-if>
+<sc-if value="{{ r.hasLink }}" hint-placeholder-val="{{ false }}"><span style="text-align:center;font-size:12.5px;color:#4a4f5a">{{ r.link }}</span></sc-if>
+</div>
+</div>
+
+<div style="width:393px;background:linear-gradient(160deg,#1c2236 0%,#0d1020 60%,#06070c 100%);border-radius:14px;padding:16px 14px;box-sizing:border-box">
+<div style="background:rgba(36,36,42,.78);border-radius:24px;padding:14px 16px 16px;display:flex;flex-direction:column;gap:10px;color:#fff">
+<div style="display:flex;align-items:flex-start;gap:12px">
+<div style="flex:none;padding-top:2px">{{ r.lLeadD }}</div>
+<div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:2px">
+<span style="font-size:13px;font-weight:600;color:{{ r.eyD }};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">{{ r.eyebrow }}</span>
+<span style="font-size:16px;line-height:1.35;font-weight:600;white-space:{{ r.titleWS }};overflow:hidden;text-overflow:ellipsis;max-height:44px">{{ r.title }}</span>
+</div>
+<span style="flex:none;font-size:15px;font-weight:600;color:{{ r.trD }};font-variant-numeric:tabular-nums;padding-top:2px">{{ r.trail }}</span>
+</div>
+<sc-if value="{{ r.hasLines }}" hint-placeholder-val="{{ true }}"><div style="display:flex;flex-direction:column;gap:3px;padding-left:42px"><sc-for list="{{ r.lines }}" as="l" hint-placeholder-count="1"><span style="font-size:14px;line-height:1.4;color:{{ l.cD }};max-height:40px;overflow:hidden">{{ l.t }}</span></sc-for></div></sc-if>
+<sc-if value="{{ r.hasProg }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;gap:6px;padding-left:42px"><div style="height:6px;border-radius:3px;background:rgba(255,255,255,.14);overflow:hidden"><div style="width:{{ r.prog }};height:100%;border-radius:3px;background:#7ba6ff"></div></div><span style="font-size:12px;color:rgba(255,255,255,.7)">{{ r.progLabel }}</span></div></sc-if>
+<sc-if value="{{ r.hasList }}" hint-placeholder-val="{{ false }}"><div style="display:flex;flex-direction:column;gap:7px;padding-left:42px"><sc-for list="{{ r.list }}" as="i" hint-placeholder-count="4"><div style="display:flex;align-items:center;gap:9px">{{ i.markD }}<span style="font-size:14px;font-weight:500">{{ i.name }}</span><span style="font-size:12.5px;color:{{ i.subD }}">{{ i.sub }}</span></div></sc-for></div></sc-if>
+<sc-if value="{{ r.hasBtns }}" hint-placeholder-val="{{ true }}"><div style="display:flex;gap:8px"><sc-for list="{{ r.btns }}" as="b" hint-placeholder-count="1"><span style="flex:1;height:42px;border-radius:21px;background:{{ b.bgD }};color:{{ b.fgD }};display:grid;place-items:center;font-size:15px;font-weight:600">{{ b.label }}</span></sc-for></div></sc-if>
+<sc-if value="{{ r.hasLink }}" hint-placeholder-val="{{ false }}"><span style="text-align:center;font-size:12.5px;color:rgba(255,255,255,.6)">{{ r.link }}</span></sc-if>
+</div>
+</div>
+
+</div>
+</div>
+</sc-for>
+<div style="display:flex;flex-direction:column;gap:18px;padding-top:30px;border-top:1px solid rgba(0,0,0,.1);margin-top:10px">
+<div style="display:flex;flex-direction:column;gap:6px;max-width:1100px"><span style="font-size:20px;font-weight:700;letter-spacing:-.01em">Inside the app: the island is hidden, so the capsule takes over</span><span style="font-size:14px;line-height:1.55;color:#4a4f5a;text-wrap:pretty">While CallBridge is open, iOS doesn't show our own Live Activity in the Dynamic Island. When a call or errand batch is running and you leave the call screen, a black capsule pins under the status bar. It uses the same glyphs and colors and the same quiet-vs-urgent rules. It sits below the island and never touches it, so it doesn't pretend to be system UI. Tap it to go back to the call. On the call screen itself it's hidden.</span></div>
+<div style="display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start">
+<div style="display:flex;flex-direction:column;gap:12px;width:393px"><div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:11px;font-weight:600;color:#69707d;font-family:ui-monospace,monospace">A1</span><span style="font-size:16px;font-weight:700">Connected · quiet</span><span style="font-size:12.5px;line-height:1.5;color:#69707d;text-wrap:pretty">Name, system-style timer in accent. Tap returns to the live call.</span></div><div style="width:393px;background:#fff;border-radius:14px;position:relative;overflow:hidden;box-shadow:0 0 0 1px rgba(0,0,0,.06)">
+<div style="height:54px;position:relative"><span style="position:absolute;left:30px;top:19px;font-size:16px;font-weight:600">9:41</span><div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:126px;height:37px;border-radius:19px;background:#000"></div><span style="position:absolute;right:26px;top:22px;width:24px;height:12px;border-radius:3.5px;border:1px solid rgba(0,0,0,.35);box-sizing:border-box;padding:1.5px"><span style="display:block;width:75%;height:100%;border-radius:2px;background:#121418"></span></span></div>
+<div style="padding:6px 14px 0"><div style="height:46px;border-radius:23px;background:#000;color:#fff;display:flex;align-items:center;gap:10px;padding:0 14px 0 16px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" style="flex:none"><path d="M6.5 3.5h3l1.5 4-2 1.5a11 11 0 0 0 6 6l1.5-2 4 1.5v3a2 2 0 0 1-2 2A16 16 0 0 1 4.5 5.5a2 2 0 0 1 2-2z" stroke="#7ba6ff" stroke-width="2.1" stroke-linejoin="round"></path></svg><span style="flex:1;min-width:0;font-size:14.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Bright Smile Dental</span><span style="font-size:14.5px;font-weight:600;color:#7ba6ff;font-variant-numeric:tabular-nums">1:42</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2.4" stroke-linecap="round" style="flex:none"><path d="M9 5l7 7-7 7"></path></svg></div></div>
+<div style="padding:16px 20px 22px;display:flex;flex-direction:column;gap:10px"><span style="font-size:22px;font-weight:700;letter-spacing:-.01em;color:#121418">Phone book</span><div style="height:12px;width:70%;border-radius:6px;background:#eef0f3"></div><div style="height:12px;width:52%;border-radius:6px;background:#eef0f3"></div><div style="height:12px;width:62%;border-radius:6px;background:#eef0f3"></div></div>
+</div></div>
+<div style="display:flex;flex-direction:column;gap:12px;width:393px"><div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:11px;font-weight:600;color:#69707d;font-family:ui-monospace,monospace">A2</span><span style="font-size:16px;font-weight:700">On hold · grows in place</span><span style="font-size:12.5px;line-height:1.5;color:#69707d;text-wrap:pretty">The capsule grows into a card and stays there until answered. Same Yes / No; Open goes to the full hold screen.</span></div><div style="width:393px;background:#fff;border-radius:14px;position:relative;overflow:hidden;box-shadow:0 0 0 1px rgba(0,0,0,.06)">
+<div style="height:54px;position:relative"><span style="position:absolute;left:30px;top:19px;font-size:16px;font-weight:600">9:41</span><div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:126px;height:37px;border-radius:19px;background:#000"></div><span style="position:absolute;right:26px;top:22px;width:24px;height:12px;border-radius:3.5px;border:1px solid rgba(0,0,0,.35);box-sizing:border-box;padding:1.5px"><span style="display:block;width:75%;height:100%;border-radius:2px;background:#121418"></span></span></div>
+<div style="padding:6px 14px 0"><div style="border-radius:28px;background:#000;color:#fff;padding:14px 16px 16px;display:flex;flex-direction:column;gap:10px;box-shadow:0 12px 30px rgba(0,0,0,.25)"><div style="display:flex;align-items:center;gap:10px"><span style="position:relative;width:16px;height:16px;display:grid;place-items:center;flex:none"><span style="position:absolute;width:10px;height:10px;border-radius:50%;background:#ffb020;animation:cbPulse 1.6s ease-out infinite"></span><span style="position:relative;width:10px;height:10px;border-radius:50%;background:#ffb020"></span></span><span style="flex:1;font-size:13px;font-weight:600;color:#ffb020">Dentist is on hold</span><span style="font-size:15px;font-weight:600;color:#ffb020;font-variant-numeric:tabular-nums">0:45</span></div><span style="font-size:17px;line-height:1.35;font-weight:600">要加 80 美元的 X 光吗？</span><div style="display:flex;gap:8px"><span style="flex:1;height:42px;border-radius:21px;background:#ffb020;color:#1a1200;display:grid;place-items:center;font-size:15px;font-weight:600">Yes</span><span style="flex:1;height:42px;border-radius:21px;background:rgba(255,255,255,.16);display:grid;place-items:center;font-size:15px;font-weight:600">No</span><span style="height:42px;padding:0 14px;border-radius:21px;background:rgba(255,255,255,.16);display:grid;place-items:center;font-size:15px;font-weight:600">Open</span></div></div></div>
+<div style="padding:16px 20px 22px;display:flex;flex-direction:column;gap:10px"><span style="font-size:22px;font-weight:700;letter-spacing:-.01em;color:#121418">Phone book</span><div style="height:12px;width:70%;border-radius:6px;background:#eef0f3"></div><div style="height:12px;width:52%;border-radius:6px;background:#eef0f3"></div><div style="height:12px;width:62%;border-radius:6px;background:#eef0f3"></div></div>
+</div></div>
+<div style="display:flex;flex-direction:column;gap:12px;width:393px"><div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:11px;font-weight:600;color:#69707d;font-family:ui-monospace,monospace">A3</span><span style="font-size:16px;font-weight:700">Finished · ~6 s</span><span style="font-size:12.5px;line-height:1.5;color:#69707d;text-wrap:pretty">Green check plus the headline, then it collapses away. Summary opens the result.</span></div><div style="width:393px;background:#fff;border-radius:14px;position:relative;overflow:hidden;box-shadow:0 0 0 1px rgba(0,0,0,.06)">
+<div style="height:54px;position:relative"><span style="position:absolute;left:30px;top:19px;font-size:16px;font-weight:600">9:41</span><div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:126px;height:37px;border-radius:19px;background:#000"></div><span style="position:absolute;right:26px;top:22px;width:24px;height:12px;border-radius:3.5px;border:1px solid rgba(0,0,0,.35);box-sizing:border-box;padding:1.5px"><span style="display:block;width:75%;height:100%;border-radius:2px;background:#121418"></span></span></div>
+<div style="padding:6px 14px 0"><div style="height:46px;border-radius:23px;background:#000;color:#fff;display:flex;align-items:center;gap:10px;padding:0 14px 0 14px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" style="flex:none"><circle cx="12" cy="12" r="10.5" fill="#4cd97b"></circle><path d="M7.2 12.4l3.2 3.2 6.4-6.8" stroke="#000" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></path></svg><span style="flex:1;min-width:0;font-size:14.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">约好了：周二下午3:30</span><span style="font-size:13px;font-weight:600;color:rgba(255,255,255,.7)">Summary</span><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.5)" stroke-width="2.4" stroke-linecap="round" style="flex:none"><path d="M9 5l7 7-7 7"></path></svg></div></div>
+<div style="padding:16px 20px 22px;display:flex;flex-direction:column;gap:10px"><span style="font-size:22px;font-weight:700;letter-spacing:-.01em;color:#121418">Phone book</span><div style="height:12px;width:70%;border-radius:6px;background:#eef0f3"></div><div style="height:12px;width:52%;border-radius:6px;background:#eef0f3"></div><div style="height:12px;width:62%;border-radius:6px;background:#eef0f3"></div></div>
+</div></div>
+<div style="display:flex;flex-direction:column;gap:12px;width:393px"><div style="display:flex;flex-direction:column;gap:4px"><span style="font-size:11px;font-weight:600;color:#69707d;font-family:ui-monospace,monospace">A4</span><span style="font-size:16px;font-weight:700">Errand batch</span><span style="font-size:12.5px;line-height:1.5;color:#69707d;text-wrap:pretty">Current call, tally pill only when something needs you, thin progress line.</span></div><div style="width:393px;background:#fff;border-radius:14px;position:relative;overflow:hidden;box-shadow:0 0 0 1px rgba(0,0,0,.06)">
+<div style="height:54px;position:relative"><span style="position:absolute;left:30px;top:19px;font-size:16px;font-weight:600">9:41</span><div style="position:absolute;top:11px;left:50%;transform:translateX(-50%);width:126px;height:37px;border-radius:19px;background:#000"></div><span style="position:absolute;right:26px;top:22px;width:24px;height:12px;border-radius:3.5px;border:1px solid rgba(0,0,0,.35);box-sizing:border-box;padding:1.5px"><span style="display:block;width:75%;height:100%;border-radius:2px;background:#121418"></span></span></div>
+<div style="padding:6px 14px 0"><div style="position:relative;height:46px;border-radius:23px;background:#000;color:#fff;overflow:hidden"><div style="height:46px;display:flex;align-items:center;gap:10px;padding:0 14px 0 16px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" style="flex:none"><circle cx="4.5" cy="5.5" r="1.9" fill="#7ba6ff"></circle><path d="M9 5.5h12" stroke="#7ba6ff" stroke-width="2.2" stroke-linecap="round"></path><circle cx="4.5" cy="12" r="1.9" fill="#7ba6ff"></circle><path d="M9 12h12" stroke="#7ba6ff" stroke-width="2.2" stroke-linecap="round"></path><circle cx="4.5" cy="18.5" r="1.9" fill="#7ba6ff"></circle><path d="M9 18.5h12" stroke="#7ba6ff" stroke-width="2.2" stroke-linecap="round"></path></svg><span style="flex:1;min-width:0;font-size:14.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Calling Pharmacy</span><span style="font-size:12px;font-weight:600;color:#ffb020;background:rgba(255,176,32,.16);border-radius:99px;padding:3px 8px;white-space:nowrap;flex:none">1 needs you</span><span style="font-size:14.5px;font-weight:600;font-variant-numeric:tabular-nums">2/4</span></div><div style="position:absolute;left:23px;right:23px;bottom:5px;height:2px;border-radius:1px;background:rgba(255,255,255,.14)"><div style="width:50%;height:100%;border-radius:1px;background:#7ba6ff"></div></div></div></div>
+<div style="padding:16px 20px 22px;display:flex;flex-direction:column;gap:10px"><span style="font-size:22px;font-weight:700;letter-spacing:-.01em;color:#121418">Phone book</span><div style="height:12px;width:70%;border-radius:6px;background:#eef0f3"></div><div style="height:12px;width:52%;border-radius:6px;background:#eef0f3"></div><div style="height:12px;width:62%;border-radius:6px;background:#eef0f3"></div></div>
+</div></div>
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const h = React.createElement;
+    const D = { accent: '#7ba6ff', amber: '#ffb020', green: '#4cd97b', red: '#ff6a55', dim: 'rgba(255,255,255,.42)', white: '#ffffff' };
+    const L = { accent: '#2557e8', amber: '#a35f00', green: '#137a3a', red: '#c4321f', dim: '#8a909b', white: '#121418' };
+    const CALL = 'M6.5 3.5h3l1.5 4-2 1.5a11 11 0 0 0 6 6l1.5-2 4 1.5v3a2 2 0 0 1-2 2A16 16 0 0 1 4.5 5.5a2 2 0 0 1 2-2z';
+    let k = 0;
+    const svg = (size, kids) => h('svg', { key: 'g' + (k++), width: size, height: size, viewBox: '0 0 24 24', fill: 'none', style: { display: 'block', flex: 'none' } }, kids);
+    const glyph = (kind, color, size = 18, ink = '#000') => {
+      if (kind === 'call') return svg(size, h('path', { d: CALL, stroke: color, strokeWidth: 2.1, strokeLinejoin: 'round' }));
+      if (kind === 'queue') return svg(size, [5.5, 12, 18.5].map((y, i) => [h('circle', { key: 'c' + i, cx: 4.5, cy: y, r: 1.9, fill: color }), h('path', { key: 'l' + i, d: `M9 ${y}h12`, stroke: color, strokeWidth: 2.2, strokeLinecap: 'round' })]).flat());
+      if (kind === 'hold') return svg(size, [h('circle', { key: 'a', cx: 12, cy: 12, r: 10.5, fill: color }), h('path', { key: 'b', d: 'M9.5 8v8M14.5 8v8', stroke: ink, strokeWidth: 2.4, strokeLinecap: 'round' })]);
+      if (kind === 'check') return svg(size, [h('circle', { key: 'a', cx: 12, cy: 12, r: 10.5, fill: color }), h('path', { key: 'b', d: 'M7.2 12.4l3.2 3.2 6.4-6.8', stroke: ink, strokeWidth: 2.6, strokeLinecap: 'round', strokeLinejoin: 'round' })]);
+      if (kind === 'warn') return svg(size, [h('circle', { key: 'a', cx: 12, cy: 12, r: 10.5, fill: color }), h('path', { key: 'b', d: 'M12 6.8v6.4', stroke: ink, strokeWidth: 2.6, strokeLinecap: 'round' }), h('circle', { key: 'c', cx: 12, cy: 17, r: 1.5, fill: ink })]);
+      if (kind === 'x') return svg(size, [h('circle', { key: 'a', cx: 12, cy: 12, r: 10.5, fill: color }), h('path', { key: 'b', d: 'M8.5 8.5l7 7M15.5 8.5l-7 7', stroke: ink, strokeWidth: 2.4, strokeLinecap: 'round' })]);
+      if (kind === 'dot') return svg(size, h('circle', { cx: 12, cy: 12, r: 5, fill: color }));
+      if (kind === 'pulse') return h('span', { key: 'p' + (k++), style: { position: 'relative', width: size, height: size, display: 'grid', placeItems: 'center', flex: 'none' } }, [
+        h('span', { key: 'r', style: { position: 'absolute', width: size * 0.62, height: size * 0.62, borderRadius: '50%', background: color, animation: 'cbPulse 1.6s ease-out infinite' } }),
+        h('span', { key: 'c', style: { position: 'relative', width: size * 0.62, height: size * 0.62, borderRadius: '50%', background: color } }),
+      ]);
+      return null;
+    };
+    const disc = (kind, tone, P, size = 30) => {
+      const c = P[tone];
+      if (['check', 'warn', 'x', 'hold'].includes(kind)) return glyph(kind, c, size, P === L ? '#fff' : '#000');
+      const bg = P === L ? (tone === 'dim' ? 'rgba(18,20,24,.06)' : c + '1a') : (tone === 'dim' ? 'rgba(255,255,255,.08)' : c + '26');
+      return h('span', { key: 'd' + (k++), style: { width: size, height: size, borderRadius: '50%', background: bg, display: 'grid', placeItems: 'center' } }, glyph(kind === 'pulse' ? 'hold' : kind, c, size * 0.55));
+    };
+    const B = {
+      yes: { bgD: D.amber, fgD: '#1a1200', bgL: '#ffb020', fgL: '#1a1200' },
+      no: { bgD: 'rgba(255,255,255,.16)', fgD: '#fff', bgL: 'rgba(18,20,24,.08)', fgL: '#121418' },
+      hang: { bgD: 'rgba(255,106,85,.2)', fgD: '#ff8573', bgL: 'rgba(196,50,31,.1)', fgL: '#c4321f' },
+      go: { bgD: 'rgba(255,255,255,.16)', fgD: '#fff', bgL: 'rgba(18,20,24,.08)', fgL: '#121418' },
+    };
+    const btn = (label, kind) => ({ label, ...B[kind] });
+    const line = (t, tone) => ({ t, cD: tone ? D[tone] : 'rgba(255,255,255,.72)', cL: tone ? L[tone] : '#4a4f5a' });
+    const item = (kind, tone, name, sub, subTone) => ({ name, sub, markD: glyph(kind, D[tone], 16), markL: glyph(kind, L[tone], 16, '#fff'), subD: subTone ? D[subTone] : 'rgba(255,255,255,.55)', subL: subTone ? L[subTone] : '#69707d' });
+    const alertTag = { tag: 'Alert · auto-expands', tagBg: '#fff1d6', tagFg: '#8a5100' };
+    const quietTag = { tag: 'Quiet update', tagBg: '#e6e8ec', tagFg: '#4a4f5a' };
+    const R = [
+      { num: '01', label: 'Dialing', ...quietTag, note: 'Name in the call\u2019s language, task in the user\u2019s.', g: 'call', tone: 'accent', cTrail: 'Dialing', cTone: 'white', eyebrow: 'Dialing\u2026', eyTone: 'accent', title: 'Bright Smile Dental', trail: '', lines: [line('预约洗牙，周三或周四下午')], btns: [btn('Hang up', 'hang')] },
+      { num: '02', label: 'Connected', ...quietTag, note: 'System timer on the right. The last translated line replaces the previous one every few seconds; no meters.', g: 'call', tone: 'accent', cTrail: '1:42', cTone: 'accent', eyebrow: '预约洗牙，周三或周四下午', eyTone: 'dim', title: 'Bright Smile Dental', trail: '1:42', trTone: 'accent', lines: [line('“他们问你周三下午可以吗？”', 'white')], btns: [btn('Hang up', 'hang')] },
+      { num: '03', label: 'On hold, needs you', ...alertTag, note: 'The only urgent state. Amber dot pulses; system countdown. Yes / No answer without opening the app.', g: 'pulse', eg: 'hold', tone: 'amber', cTrail: '0:45', cTone: 'amber', eyebrow: 'Dentist is on hold', eyTone: 'amber', title: '要加 80 美元的 X 光吗？', wrap: true, trail: '0:45', trTone: 'amber', lines: [], btns: [btn('Yes', 'yes'), btn('No', 'no')], link: 'Answer in app' },
+      { num: '04', label: 'Answered', ...quietTag, note: 'Shows for about 3 s, then drops back to Connected.', g: 'check', tone: 'white', cTrail: 'Sent', cTone: 'white', eyebrow: 'Answer sent', eyTone: 'dim', title: 'Told them: yes', trail: '', lines: [line('要加 80 美元的 X 光吗？ → 是')] },
+      { num: '05', label: 'Wrapping up', ...quietTag, note: 'Dimmed handset: the line is closed, the assistant is still working.', g: 'call', tone: 'dim', cTrail: '\u2026', cTone: 'dim', eyebrow: 'Bright Smile Dental', eyTone: 'dim', title: 'Call ended · writing the summary', trail: '', lines: [] },
+      { num: '06', label: 'Finished: success', ...alertTag, note: 'Headline in the user\u2019s language. Compact trailing = a short name (≤ 8 chars).', g: 'check', tone: 'green', cTrail: 'Dental', cTone: 'white', eyebrow: 'Bright Smile Dental · Done', eyTone: 'green', title: '约好了：周二下午3:30', trail: '', lines: [], btns: [btn('See summary', 'go')] },
+      { num: '07', label: 'Finished: needs follow-up', ...alertTag, note: 'Same slot for any reason, e.g. “他们要你先确认保险”. Opens the app because a follow-up may need typing.', g: 'warn', tone: 'red', cTrail: 'Dental', cTone: 'white', eyebrow: 'Bright Smile Dental · No answer', eyTone: 'red', title: '没人接，20分钟后再试', trail: '', lines: [], btns: [btn('Open', 'go')] },
+      { num: '08', label: 'Errand batch running', ...quietTag, note: 'One activity for the whole batch. The tally calls out anything waiting on the user.', g: 'queue', tone: 'accent', cTrail: '2/4', cTone: 'white', eyebrow: 'Errands · 2 of 4', eyTone: 'accent', title: 'Calling Pharmacy now', trail: '', lines: [line('Next up: DMV'), line('1 done · 1 needs you', 'amber')], prog: '50%', progLabel: '2 of 4 · Calling Pharmacy', btns: [btn('View errands', 'go')] },
+      { num: '09', label: 'Errand batch finished', ...alertTag, note: '“Done” counts finished calls, including the DMV call that found them closed.', g: 'check', tone: 'green', cTrail: '3/4', cTone: 'white', eyebrow: 'Errands', eyTone: 'green', title: 'Errands: 3 of 4 done', trail: '', lines: [], list: [item('check', 'green', 'Dentist', ''), item('check', 'green', 'Pharmacy', ''), item('x', 'red', 'DMV', 'closed', 'red'), item('dot', 'amber', 'Plumber', 'needs you', 'amber')], btns: [btn('View', 'go')] },
+      { section: true, sectionLabel: 'Stress tests', num: '10', label: 'Personal call · connected', ...quietTag, note: 'A name with a relationship tag; quote in Chinese only.', g: 'call', tone: 'accent', cTrail: '0:38', cTone: 'accent', eyebrow: '告诉她我爱她，我刚到公司', eyTone: 'dim', title: 'Maria (girlfriend)', trail: '0:38', trTone: 'accent', lines: [line('“她说：我也爱你，路上小心”', 'white')], btns: [btn('Hang up', 'hang')] },
+      { num: '11', label: 'Personal call · finished', ...alertTag, note: 'Result fits on one line.', g: 'check', tone: 'green', cTrail: 'Maria', cTone: 'white', eyebrow: 'Maria (girlfriend) · Delivered', eyTone: 'green', title: '已转达，她说晚上见', trail: '', lines: [], btns: [btn('See summary', 'go')] },
+      { num: '12', label: 'Long name · connected', ...quietTag, note: 'The title truncates at one line; the timer keeps its width. Compact never shows the name.', g: 'call', tone: 'accent', cTrail: '12:07', cTone: 'accent', eyebrow: '预约洗牙，周三或周四下午', eyTone: 'dim', title: 'Memphis Family & Cosmetic Dentistry of Germantown', trail: '12:07', trTone: 'accent', lines: [line('“前台说周三下午两点和四点都还有空位，您想要哪一个？”', 'white')], btns: [btn('Hang up', 'hang')] },
+      { num: '13', label: 'Long name · on hold', ...alertTag, note: 'The eyebrow truncates; the question wraps to two lines, then clips. A question that needs typing swaps Yes / No for Answer in app.', g: 'pulse', eg: 'hold', tone: 'amber', cTrail: '0:45', cTone: 'amber', eyebrow: 'Memphis Family & Cosmetic Dentistry of Germantown is on hold', eyTone: 'amber', title: '他们要你先确认保险，现在可以提供会员号吗？', wrap: true, trail: '0:45', trTone: 'amber', lines: [line('会员号在保险卡背面')], btns: [btn('Answer in app', 'yes'), btn('Skip', 'no')] },
+    ];
+    const rows = R.map(r => {
+      const eg = r.eg || r.g;
+      return {
+        ...r, section: !!r.section,
+        cLead: glyph(r.g, D[r.tone], r.g === 'pulse' ? 16 : 17), cTrailC: D[r.cTone || 'white'],
+        min: glyph(r.g, D[r.tone], r.g === 'pulse' ? 16 : 17),
+        eLead: disc(eg, r.tone, D, 34), lLeadL: disc(eg, r.tone, L, 30), lLeadD: disc(eg, r.tone, D, 30),
+        eyD: D[r.eyTone], eyL: L[r.eyTone], trD: D[r.trTone || 'white'], trL: L[r.trTone || 'white'],
+        titleWS: r.wrap ? 'normal' : 'nowrap',
+        lines: r.lines || [], hasLines: !!(r.lines && r.lines.length), list: r.list || [], hasList: !!r.list,
+        btns: r.btns || [], hasBtns: !!(r.btns && r.btns.length), hasLink: !!r.link, link: r.link || '',
+        hasProg: !!r.prog, prog: r.prog || '0%', progLabel: r.progLabel || '',
+      };
+    });
+    const swatches = [['Accent', 'Call in progress', 'accent'], ['Amber', 'Needs you', 'amber'], ['Green', 'Done', 'green'], ['Red-orange', 'Failed / follow-up', 'red']].map(([name, use, t]) => ({ name, use, d: D[t], l: L[t] }));
+    const glyphSet = [['Call', 'call', 'accent'], ['Wrapping', 'call', 'dim'], ['Errands', 'queue', 'accent'], ['Needs you', 'hold', 'amber'], ['Done', 'check', 'green'], ['Follow-up', 'warn', 'red']].map(([name, g, t]) => ({ name, small: glyph(g, D[t], 16), big: glyph(g, D[t], 24) }));
+    return { rows, swatches, glyphSet };
+  }
+}
+</script>
+</body>
+</html>
