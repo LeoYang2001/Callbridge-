@@ -17,6 +17,8 @@ import { OpenAIRealtimeAgent } from './providers/voice/openaiRealtime';
 import { LogOtp, OtpRateLimit, TwilioVerifyOtp } from './auth/otp';
 import { Database } from './db/database';
 import { learnFromCall } from './profile/profile';
+import { ErrandQueue } from './errands/errandQueue';
+import { registerErrandRoutes } from './routes/errands';
 import { ExpoPush, finishedNotification, questionNotification, type PushMessage } from './push/push';
 import { registerApiRoutes } from './routes/api';
 import { registerAuthRoutes } from './routes/auth';
@@ -135,7 +137,8 @@ const manager = new CallManager(
     onCallFinished: (record) => {
       const user = record.userId ? db.userById(record.userId) : undefined;
       if (user) db.saveProfile(user.id, learnFromCall(user.profile, record));
-      notify(record.userId, finishedNotification(record));
+      // An errand's call reports through the queue (one summary, not one push per call or retry).
+      if (!errands.callFinished(record)) notify(record.userId, finishedNotification(record));
     },
     onUserQuestion: (record, question) => notify(record.userId, questionNotification(record, question)),
   },
@@ -146,6 +149,20 @@ const checkDeps = {
   allowedDestinations: config.allowedDestinations,
 };
 registerApiRoutes(app, { config, manager, store, checkDeps, db });
+
+// Errands: calls the server places later, on its own, while the user does something else.
+const errands = new ErrandQueue({
+  db,
+  startCall: (request, userId) => manager.startCall(request, userId),
+  lineFree: () => manager.activeCount === 0,
+  isLive: (callId) => manager.isLive(callId),
+  callRecord: (callId) => store.getOrLoad(callId),
+  notify: (userId, message) => notify(userId, message),
+  log: (message, detail) => app.log.info(detail ?? {}, message),
+  options: { maxCallsPerDay: config.ERRAND_MAX_CALLS_PER_DAY },
+});
+registerErrandRoutes(app, { config, queue: errands, manager, checkDeps });
+if (config.telephonyConfigured && config.voiceConfigured) errands.start();
 registerIntakeRoutes(app, { config, checkDeps, store });
 registerListenRoutes(app, { manager, store });
 registerResearchRoutes(app, {

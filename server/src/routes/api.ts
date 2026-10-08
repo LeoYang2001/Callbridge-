@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import type { CallRecord, CallRequest, CallSummary, PublicConfig } from '../../../shared/types';
+import type { CallRecord, CallRequest, CallSummary, PublicConfig, TaskReview } from '../../../shared/types';
 import { checkRequest, type CheckDeps } from '../agent/intake';
 import { CallRejectedError, type CallManager } from '../calls/callManager';
 import { CallRequestSchema } from '../calls/requestSchema';
@@ -33,23 +33,10 @@ export function registerApiRoutes(
     if (!config.telephonyConfigured || !config.voiceConfigured) {
       return reply.code(503).send({ error: 'Server is missing Twilio/OpenAI configuration. See README → Setup.' });
     }
-    const parsed = CallRequestSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return reply.code(400).send({
-        error: parsed.error.issues.map((i) => `${i.path.join('.') || 'request'}: ${i.message}`).join('; '),
-      });
-    }
-    // Every call, typed or from the voice intake, passes the same ground rules. The category
-    // is set here from the server's own review; the client can't supply it.
-    const request = parsed.data as CallRequest;
-    const check = await checkRequest(request, checkDeps);
-    if (!check.ok) {
-      const reasons = [...check.missing.map((m) => `Missing: ${m}.`), ...check.problems];
-      const translated = check.review?.tier === 'refused' ? check.review.reasonInUserLanguage : '';
-      return reply.code(422).send({ error: [...reasons, translated].filter(Boolean).join(' '), review: check.review });
-    }
+    const checked = await validateCallRequest(req.body, checkDeps);
+    if ('error' in checked) return reply.code(checked.status).send({ error: checked.error, review: checked.review });
     try {
-      const record = manager.startCall({ ...request, category: check.review!.category }, req.user!.id);
+      const record = manager.startCall(checked.request, req.user!.id);
       return reply.code(201).send(record);
     } catch (err) {
       if (err instanceof CallRejectedError) return reply.code(err.statusCode).send({ error: err.message });
@@ -138,3 +125,26 @@ export function registerApiRoutes(
     });
   });
 }
+
+/**
+ * Every call, typed, from the voice intake, or queued as an errand, passes the same ground rules.
+ * The category is set here from the server's own review; the client can't supply it.
+ */
+export async function validateCallRequest(
+  body: unknown,
+  checkDeps: CheckDeps,
+): Promise<{ request: CallRequest } | { status: number; error: string; review?: TaskReview | null }> {
+  const parsed = CallRequestSchema.safeParse(body);
+  if (!parsed.success) {
+    return { status: 400, error: parsed.error.issues.map((i) => `${i.path.join('.') || 'request'}: ${i.message}`).join('; ') };
+  }
+  const request = parsed.data as CallRequest;
+  const check = await checkRequest(request, checkDeps);
+  if (!check.ok) {
+    const reasons = [...check.missing.map((m) => `Missing: ${m}.`), ...check.problems];
+    const translated = check.review?.tier === 'refused' ? check.review.reasonInUserLanguage : '';
+    return { status: 422, error: [...reasons, translated].filter(Boolean).join(' '), review: check.review };
+  }
+  return { request: { ...request, category: check.review!.category } };
+}
+

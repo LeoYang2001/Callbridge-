@@ -436,3 +436,13 @@ pre { background: var(--surface); border: 1px solid var(--border); border-radius
 .listen { display: flex; align-items: center; gap: 10px; margin: 10px 0; }
 .listen-btn { border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 999px; padding: 8px 16px; font: inherit; font-weight: 600; cursor: pointer; }
 .listen-btn.on { background: var(--call); color: #fff; border-color: transparent; }
+
+/* Errands */
+.errand-section { font-size: 15px; font-weight: 600; color: var(--muted); margin: 18px 0 8px; }
+.errand .errand-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 4px; }
+.errand-status { font-size: 13px; font-weight: 600; color: var(--muted); text-align: right; }
+.errand-status.good { color: var(--ok); }
+.errand-status.warn { color: var(--warn); }
+.errand-status.bad { color: var(--bad); }
+.errand-outcome { margin: 8px 0 0; }
+.errand-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 6px; }

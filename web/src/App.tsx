@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import type { AuthResult, CallRecord, CallRequest, Me, PublicConfig } from '../../shared/types';
-import { answerQuestion, endCall, getConfig, getMe, sendCallMessage, setSignedOutHandler, signOut, startCall, updateProfile, watchCall } from './api';
+import { addErrand, answerQuestion, endCall, getCall, getConfig, getMe, sendCallMessage, setSignedOutHandler, signOut, startCall, updateProfile, watchCall } from './api';
 import { primeAlerts } from './alerts';
 import { draftToRequest, requestToDraft } from '../../shared/intake';
 import type { IntakeDraft, RealtimeVoice } from '../../shared/types';
 import { CallScreen } from './CallScreen';
 import { simulateCall } from './demo';
 import { Intake } from './Intake';
+import { Errands } from './Errands';
 import { LANGUAGES, loadSaved, NewCall, type Involvement } from './NewCall';
 import { PhoneBook } from './PhoneBook';
 import { ProfileScreen } from './ProfileScreen';
@@ -28,7 +29,7 @@ export function App() {
   const [userLanguage, setUserLanguage] = useState(() => loadSaved().user.preferredLanguage);
   /** Signed-in user; undefined while checking the saved session, null when signed out. */
   const [me, setMe] = useState<Me | null | undefined>(undefined);
-  const [screen, setScreen] = useState<'home' | 'profile' | 'profileTalk' | 'contacts'>('home');
+  const [screen, setScreen] = useState<'home' | 'profile' | 'profileTalk' | 'contacts' | 'errands'>('home');
   /** Calling someone from the phone book. */
   const [callSeed, setCallSeed] = useState<{ draft: IntakeDraft; text: string; key: number } | null>(null);
   const [pickedVoice, setPickedVoice] = useState<RealtimeVoice | null>(loadVoice);
@@ -161,6 +162,32 @@ export function App() {
     }
   };
 
+  /** Queue the call as an errand; the server places it later on its own. */
+  const onQueue = async (req: CallRequest, notBefore?: number) => {
+    setError(null);
+    setSubmitting(true);
+    try {
+      await addErrand(settings, req, notBefore);
+      reset();
+      setScreen('errands');
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  /** Opens a call from its id (an errand's call): live calls keep updating. */
+  const openCall = async (id: string) => {
+    reset();
+    try {
+      setCall(await getCall(settings, id));
+      stopRef.current = watchCall(settings, id, setCall, setError);
+    } catch (e) {
+      setError((e as Error).message);
+    }
+  };
+
   const updateSettings = (s: Settings) => {
     setSettings(s);
     saveSettings(s);
@@ -194,6 +221,9 @@ export function App() {
         <div className="topbar-right">
           {me && (
             <>
+              <button type="button" className="icon-btn" aria-label="Errands" onClick={() => setScreen('errands')}>
+                🗂
+              </button>
               <button type="button" className="icon-btn" aria-label="Phone book" onClick={() => setScreen('contacts')}>
                 📒
               </button>
@@ -264,6 +294,8 @@ export function App() {
               setMode('talk');
             }}
           />
+        ) : me && screen === 'errands' && !call ? (
+          <Errands settings={settings} onClose={() => setScreen('home')} onOpenCall={(id) => void openCall(id).then(() => setScreen('home'))} />
         ) : me && screen === 'profile' && !call ? (
           <ProfileScreen
             settings={settings}
@@ -349,6 +381,7 @@ export function App() {
               userDefaults={me ? userFromProfile : undefined}
               involvement={involvement}
               onInvolvementChange={changeInvolvement}
+              onQueue={me && !demo ? onQueue : undefined}
               voice={voice}
               onVoiceChange={changeVoice}
             />

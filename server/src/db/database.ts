@@ -2,7 +2,7 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
-import type { CallRecord, UserProfile } from '../../../shared/types';
+import type { CallRecord, Errand, UserProfile } from '../../../shared/types';
 import { emptyProfile } from '../profile/profile';
 
 /**
@@ -49,6 +49,16 @@ export class Database {
         record TEXT NOT NULL
       );
       CREATE INDEX IF NOT EXISTS calls_by_user ON calls(user_id, created_at DESC);
+      CREATE TABLE IF NOT EXISTS errands (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at INTEGER NOT NULL,
+        status TEXT NOT NULL,
+        call_id TEXT,
+        record TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS errands_by_user ON errands(user_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS errands_by_status ON errands(status);
       CREATE TABLE IF NOT EXISTS push_tokens (
         token TEXT PRIMARY KEY,
         user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -146,5 +156,37 @@ export class Database {
 
   pushTokensFor(userId: string): string[] {
     return (this.db.prepare('SELECT token FROM push_tokens WHERE user_id = ?').all(userId) as { token: string }[]).map((r) => r.token);
+  }
+
+  // ── errands ── (the queue of calls the server places on its own)
+  saveErrand(e: Errand) {
+    this.db
+      .prepare(
+        'INSERT INTO errands (id, user_id, created_at, status, call_id, record) VALUES (?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET status = excluded.status, call_id = excluded.call_id, record = excluded.record',
+      )
+      .run(e.id, e.userId!, e.createdAt, e.status, e.callId ?? null, JSON.stringify(e));
+  }
+
+  errand(id: string): Errand | undefined {
+    const row = this.db.prepare('SELECT record FROM errands WHERE id = ?').get(id) as { record: string } | undefined;
+    return row ? (JSON.parse(row.record) as Errand) : undefined;
+  }
+
+  errandForCall(callId: string): Errand | undefined {
+    const row = this.db.prepare('SELECT record FROM errands WHERE call_id = ?').get(callId) as { record: string } | undefined;
+    return row ? (JSON.parse(row.record) as Errand) : undefined;
+  }
+
+  errandsForUser(userId: string, limit = 50): Errand[] {
+    return (this.db.prepare('SELECT record FROM errands WHERE user_id = ? ORDER BY created_at DESC LIMIT ?').all(userId, limit) as { record: string }[]).map(
+      (r) => JSON.parse(r.record) as Errand,
+    );
+  }
+
+  /** Errands still waiting or on a call, for every user. */
+  activeErrands(): Errand[] {
+    return (this.db.prepare("SELECT record FROM errands WHERE status IN ('queued', 'calling') ORDER BY created_at").all() as { record: string }[]).map(
+      (r) => JSON.parse(r.record) as Errand,
+    );
   }
 }

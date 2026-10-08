@@ -412,10 +412,59 @@ export interface CallSummary {
 
 /**
  * What a push notification carries for the app to act on when it's tapped. "question": the
- * assistant is holding the line for a decision; "finished" / "failed": the call is over.
+ * assistant is holding the line for a decision; "finished" / "failed": the call is over;
+ * "errands": the errand queue finished a batch (open the errand list).
  */
-export interface PushData {
-  kind: 'question' | 'finished' | 'failed';
+export type PushData =
+  | { kind: 'question'; callId: string; questionId: string }
+  | { kind: 'finished' | 'failed'; callId: string }
+  | { kind: 'errands' };
+
+/**
+ * An errand: a call the server places for the user later, on its own, while the user does
+ * something else. The server works through the queue one call at a time, within calling
+ * hours, and retries busy or unanswered lines.
+ */
+export type ErrandStatus =
+  /** Waiting its turn (see waitingFor and nextAttemptAt). */
+  | 'queued'
+  /** Its call is in progress (see callId). */
+  | 'calling'
+  /** Done: the call achieved what it was for. */
+  | 'done'
+  /** The call happened but didn't settle it: the user should look (the result says why). */
+  | 'needs_you'
+  /** Never got through, or the server refused the call. */
+  | 'failed'
+  | 'canceled';
+
+export interface ErrandAttempt {
   callId: string;
-  questionId?: string;
+  startedAt: number;
+  /** How it went, e.g. "busy", "no_answer", "completed". */
+  outcome?: string;
+}
+
+export interface Errand {
+  id: string;
+  userId?: string;
+  createdAt: number;
+  request: CallRequest;
+  status: ErrandStatus;
+  /** Don't call before this (ms since epoch); unset = as soon as calling hours allow. */
+  notBefore?: number;
+  /** Queued: the earliest the queue will try it. */
+  nextAttemptAt?: number;
+  /** Queued: why it isn't being called right now. */
+  waitingFor?: 'turn' | 'scheduled' | 'calling_hours' | 'retry' | 'another_call' | 'daily_limit';
+  attempts: ErrandAttempt[];
+  /** How many attempts it may take in all (raised when the user retries it). */
+  attemptBudget: number;
+  /** The latest call. */
+  callId?: string;
+  /** One line about how it ended: the call's headline (in the user's language), or why it stopped. */
+  outcome?: string;
+  finishedAt?: number;
+  /** Included in a "batch finished" notification already. */
+  summarized?: boolean;
 }

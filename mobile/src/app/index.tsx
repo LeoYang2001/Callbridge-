@@ -21,6 +21,7 @@ export default function Home() {
       )}
       <Button title="New call" onPress={() => router.push('/intake')} />
       <Row>
+        <Link href="/errands">Errands</Link>
         <Link href="/contacts">Phone book</Link>
         <Link href="/profile">Profile</Link>
       </Row>

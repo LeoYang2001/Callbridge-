@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react';
 import { requestToDraft } from '@shared/intake';
 import { displayPhone } from '@shared/phone';
 import { REALTIME_VOICES, type IntakeDraft } from '@shared/types';
+import { nextMorning } from '@shared/client/errands';
+import { useAddErrand } from '@/hooks/useErrands';
 import { useIntake } from '@/hooks/useIntake';
 import { useIntakeContext } from '@/hooks/useIntakeContext';
 import { usePhoneBook } from '@/hooks/usePhoneBook';
@@ -22,6 +24,9 @@ const STATUS_TEXT = {
   ended: 'Ended',
   error: 'Disconnected',
 } as const;
+
+const WHEN = ['now', 'asap', 'morning'] as const;
+const WHEN_TEXT = { now: 'Call now', asap: 'Add to errands', morning: 'Errand for tomorrow morning' };
 
 const TIER_TEXT = { allowed: 'Allowed', limited: 'Allowed with limits', refused: 'Not allowed' } as const;
 
@@ -138,6 +143,8 @@ function Review({ draft, check, canReview, onStarted }: { draft: IntakeDraft; ch
   const prefs = usePreferences();
   const context = useIntakeContext(prefs.voice);
   const { buildRequest, start, submitting, error } = useStartCall();
+  const queue = useAddErrand();
+  const [when, setWhen] = useState<(typeof WHEN)[number]>('now');
   if (!canReview) return null;
   const ruling = check?.review;
   const refused = ruling?.tier === 'refused';
@@ -171,18 +178,29 @@ function Review({ draft, check, canReview, onStarted }: { draft: IntakeDraft; ch
           ? 'If they ask for something outside what you agreed, the assistant puts them on hold and asks you here.'
           : 'The assistant never holds the line for you. Anything outside what you agreed is declined for you to follow up on.'}
       </Body>
+      <Label>When</Label>
+      <Choice options={WHEN} value={when} onChange={setWhen} labels={WHEN_TEXT} />
+      {when !== 'now' && <Body muted>Calling hours: businesses Mon–Sat 9:00–18:00, personal calls 9:00–21:00, your time. It tries again if the line is busy.</Body>}
       <Button
-        title="Start call"
-        busy={submitting}
+        title={when === 'now' ? 'Start call' : 'Add to errands'}
+        busy={submitting || queue.submitting}
         disabled={refused}
         onPress={async () => {
-          const created = await start(buildRequest(draft, context, prefs.involvement));
+          const request = buildRequest(draft, context, prefs.involvement);
+          if (when !== 'now') {
+            const errand = await queue.add(request, when === 'morning' ? nextMorning() : undefined);
+            if (!errand) return;
+            onStarted();
+            router.replace('/errands');
+            return;
+          }
+          const created = await start(request);
           if (!created) return;
           onStarted();
           router.replace({ pathname: '/call/[id]', params: { id: created.id } });
         }}
       />
-      <ErrorText>{error}</ErrorText>
+      <ErrorText>{error ?? queue.error}</ErrorText>
     </Card>
   );
 }

@@ -52,6 +52,7 @@ export async function unregisterForPush(conn: Connection) {
 }
 
 export const pushDataOf = (n: Notifications.Notification): PushData | null => {
-  const data = n.request.content.data as Partial<PushData> | undefined;
+  const data = n.request.content.data as { kind?: string; callId?: string } | undefined;
+  if (data?.kind === 'errands') return { kind: 'errands' };
   return data?.callId && data.kind ? (data as PushData) : null;
 };

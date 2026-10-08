@@ -23,7 +23,8 @@ export function useNotifications() {
   useEffect(() => {
     const data = response ? pushDataOf(response.notification) : null;
     if (!conn || !data) return;
-    router.push({ pathname: '/call/[id]', params: { id: data.callId } });
+    if (data.kind === 'errands') router.push('/errands');
+    else router.push({ pathname: '/call/[id]', params: { id: data.callId } });
     void Notifications.clearLastNotificationResponseAsync?.();
   }, [response, conn]);
 

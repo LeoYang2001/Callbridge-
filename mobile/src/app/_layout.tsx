@@ -21,6 +21,7 @@ function Routes() {
         <Stack.Screen name="intake" options={{ title: 'New call' }} />
         <Stack.Screen name="call/[id]" options={{ title: 'Call' }} />
         <Stack.Screen name="contacts" options={{ title: 'Phone book' }} />
+        <Stack.Screen name="errands" options={{ title: 'Errands' }} />
         <Stack.Screen name="profile" options={{ title: 'Profile' }} />
       </Stack.Protected>
       <Stack.Protected guard={!signedIn}>

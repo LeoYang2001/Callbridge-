@@ -71,6 +71,8 @@ const EnvSchema = z.object({
   ALLOWED_DESTINATIONS: optionalString,
   MAX_CALL_SECONDS: int(600),
   MAX_CALLS_PER_HOUR: int(10),
+  /** Calls the errand queue may place per user per 24 hours. */
+  ERRAND_MAX_CALLS_PER_DAY: int(20),
   /** How long the other party holds while the user answers a question in the app. */
   HOLD_TIMEOUT_SECONDS: int(60),
   /** Wait this long after answer for the other side to speak before introducing ourselves. */

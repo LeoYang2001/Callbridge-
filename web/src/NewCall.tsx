@@ -7,6 +7,7 @@ import { WEEKDAYS } from '../../shared/types';
 
 const DAY_SHORT: Record<Weekday, string> = { mon: 'M', tue: 'T', wed: 'W', thu: 'T', fri: 'F', sat: 'S', sun: 'S' };
 const DAY_LONG: Record<Weekday, string> = { mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun' };
+import { nextMorning } from '../../shared/client/errands';
 import { LANGUAGES } from '../../shared/languages';
 export { LANGUAGES };
 const STORAGE_KEY = 'callbridge.form.v1';
@@ -58,7 +59,17 @@ interface Props {
   userDefaults?: (user: CallRequest['user']) => CallRequest['user'];
   involvement: Involvement;
   onInvolvementChange: (v: Involvement) => void;
+  /** Queue it as an errand instead of calling now; omitted when errands aren't available. */
+  onQueue?: (req: CallRequest, notBefore?: number) => void;
 }
+
+type When = 'now' | 'asap' | 'morning' | 'pick';
+const WHEN: { value: When; title: string; text: string }[] = [
+  { value: 'now', title: '📞 Call now', text: 'Watch it live, answer questions, listen in.' },
+  { value: 'asap', title: '🗂 Add to errands', text: 'The assistant calls on its own as soon as calling hours allow, one errand at a time, and tries again if the line is busy.' },
+  { value: 'morning', title: '🌅 Errand for tomorrow morning', text: 'Queued for 9:00 tomorrow (Monday if tomorrow is Sunday).' },
+  { value: 'pick', title: '🕒 Errand at a time I pick', text: 'Not before the time you choose.' },
+];
 
 export type Involvement = NonNullable<CallRequest['involvement']>;
 
@@ -77,7 +88,9 @@ const INVOLVEMENT: { value: Involvement; title: string; text: string }[] = [
 
 const STEPS = ['Call', 'Limits', 'You'] as const;
 
-export function NewCall({ demo, blockedReason, submitting, error, onSubmit, initial, initialStep = 0, onTalk, voice, onVoiceChange, userDefaults, involvement, onInvolvementChange }: Props) {
+export function NewCall({ demo, blockedReason, submitting, error, onSubmit, initial, initialStep = 0, onTalk, voice, onVoiceChange, userDefaults, involvement, onInvolvementChange, onQueue }: Props) {
+  const [when, setWhen] = useState<When>('now');
+  const [pickedTime, setPickedTime] = useState('');
   const [req, setReq] = useState<CallRequest>(() => {
     const base = initial ?? loadSaved();
     return userDefaults ? { ...base, user: userDefaults(base.user) } : base;
@@ -152,7 +165,7 @@ export function NewCall({ demo, blockedReason, submitting, error, onSubmit, init
     // The voice intake opens straight at the last step, so check the earlier ones before calling.
     const earlier = STEPS.findIndex((_, s) => s < step && validate(s));
     if (earlier !== -1) return goTo(earlier, validate(earlier));
-    onSubmit({
+    const final: CallRequest = {
       ...req,
       voice,
       involvement,
@@ -163,7 +176,14 @@ export function NewCall({ demo, blockedReason, submitting, error, onSubmit, init
         earliestDate: req.constraints.earliestDate || undefined,
         latestDate: req.constraints.latestDate || undefined,
       },
-    });
+    };
+    if (when === 'now' || !onQueue) return onSubmit(final);
+    if (when === 'pick') {
+      const at = pickedTime ? new Date(pickedTime).getTime() : NaN;
+      if (!(at > Date.now())) return setStepError('Pick a time in the future.');
+      return onQueue(final, at);
+    }
+    onQueue(final, when === 'morning' ? nextMorning() : undefined);
   };
 
   const isLast = step === STEPS.length - 1;
@@ -406,6 +426,22 @@ export function NewCall({ demo, blockedReason, submitting, error, onSubmit, init
             ))}
           </div>
 
+          {onQueue && (
+            <div className="field" role="radiogroup" aria-label="When">
+              <span className="field-label">When</span>
+              {WHEN.map((o) => (
+                <button key={o.value} type="button" role="radio" aria-checked={when === o.value} className={`choice ${when === o.value ? 'on' : ''}`} onClick={() => setWhen(o.value)}>
+                  <b>{o.title}</b>
+                  <span>{o.text}</span>
+                </button>
+              ))}
+              {when === 'pick' && <input type="datetime-local" value={pickedTime} onChange={(e) => setPickedTime(e.target.value)} aria-label="Not before" />}
+              {when !== 'now' && (
+                <span className="field-help">Calling hours: businesses Mon–Sat 9:00–18:00, personal calls 9:00–21:00, your time. You'll get a notification if it needs you, and a summary when your errands are done.</span>
+              )}
+            </div>
+          )}
+
           <label className="consent">
             <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />
             <span>I'm asking for this call myself, to a specific business or someone I know. The assistant will say it's an AI.</span>
@@ -428,7 +464,7 @@ export function NewCall({ demo, blockedReason, submitting, error, onSubmit, init
             </button>
           )}
           <button type="button" className={`primary-btn ${isLast ? 'call' : ''}`} disabled={!canSubmit} onClick={next}>
-            {isLast ? (submitting ? 'Starting…' : demo ? '▶ Start demo call' : '📞 Start call') : 'Next'}
+            {isLast ? (submitting ? 'Starting…' : demo ? '▶ Start demo call' : when !== 'now' && onQueue ? '🗂 Add to errands' : '📞 Start call') : 'Next'}
           </button>
         </div>
       </div>

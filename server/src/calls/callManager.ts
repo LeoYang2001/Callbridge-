@@ -130,6 +130,10 @@ export class CallManager {
     return this.sessions.get(callId)?.listen(fn) ?? null;
   }
 
+  isLive(callId: string): boolean {
+    return this.sessions.has(callId);
+  }
+
   /** Hangs up a live call at the user's request. Returns false if it isn't live. */
   endCall(callId: string): boolean {
     const session = this.sessions.get(callId);

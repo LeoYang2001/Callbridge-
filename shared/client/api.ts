@@ -4,6 +4,7 @@ import type {
   CallRecord,
   CallRequest,
   CallSummary,
+  Errand,
   IntakeCheckResult,
   IntakeDraft,
   IntakeSession,
@@ -164,3 +165,10 @@ export function watchCall(
     unsubscribe?.();
   };
 }
+
+// ── errands: calls the server places later, on its own, one at a time ──
+export const listErrands = (s: Connection) => request<Errand[]>(s, '/api/errands');
+/** notBefore: don't call before this (ms since epoch); omit for as soon as calling hours allow. */
+export const addErrand = (s: Connection, req: CallRequest, notBefore?: number) => postJson<Errand>(s, '/api/errands', { request: req, notBefore });
+export const cancelErrand = (s: Connection, id: string) => postJson<Errand>(s, `/api/errands/${id}/cancel`, {});
+export const retryErrand = (s: Connection, id: string) => postJson<Errand>(s, `/api/errands/${id}/retry`, {});

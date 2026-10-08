@@ -210,6 +210,21 @@ The model handles conversation. Code decides what may be agreed. Each authorizat
 - Ground rules (`server/src/policy/taskPolicy.ts`) decide which kinds of calls are placed at all. Personal calls only deliver a short message in the user's name and end if the person doesn't want the call; harassment, pressure, and deception are refused.
 - Twilio webhook signatures are validated, and the media stream requires a per-call token.
 - `MAX_CALL_SECONDS` is enforced by both Twilio (`timeLimit`) and the server.
+- Errands (below) go through the same checks when they're queued and again when they're dialed, and are capped at `ERRAND_MAX_CALLS_PER_DAY` calls per user (default 20).
+
+### Errands: calls the server makes while you're away
+
+Choose **Add to errands** instead of **Call now** on the review step (web or mobile), and the server places the call later on its own (`server/src/errands/`). The phone doesn't need to stay open, but the server does: on the laptop setup, keep the laptop awake and online.
+
+- **One at a time:** it waits until the line is free and leaves a minute between calls.
+- **Calling hours, in the user's time zone:** businesses Mon–Sat 9:00–18:00, personal calls 9:00–21:00 every day. You can also pick a "not before" time, such as tomorrow morning.
+- **Retries:** a busy line, no answer, or voicemail is retried 20 minutes later, up to 3 tries.
+- **Outcomes:** a call that connected ends the errand as **done**, or **needs you** if it didn't settle things.
+- **Notifications:**
+  - Questions mid-call still reach the user's phone. If nobody answers, the assistant declines, as on any call.
+  - The user gets a push as soon as an errand needs them while others are still waiting.
+  - One summary arrives when the queue is empty, e.g. "Errands: 3 of 4 done".
+- **Restarts:** errands are stored in SQLite. After a restart, an errand whose call was cut off is called again.
 
 ---
 
