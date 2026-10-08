@@ -1,7 +1,7 @@
 import { EventEmitter } from 'node:events';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { CallRecord } from '../../shared/types';
-import { CallManager } from '../src/calls/callManager';
+import type { CallRecord, UserQuestion } from '../../shared/types';
+import { CallManager, type CallManagerOptions } from '../src/calls/callManager';
 import { CallStore } from '../src/calls/store';
 import type { CallAnalyzer, TranscriptAnalysis } from '../src/providers/analysis/types';
 import type { MediaTransport, MediaTransportEvents, TelephonyProvider } from '../src/providers/telephony/types';
@@ -124,7 +124,7 @@ const waitFor = async (pred: () => boolean, ms = 3000) => {
 
 const translator = { translate: async (text: string, to: string) => `[${to}] ${text}` };
 
-function setup(opts: { failConnect?: boolean; analyzer?: CallAnalyzer | null; holdTimeoutMs?: number; holdCheckInMs?: number } = {}) {
+function setup(opts: { failConnect?: boolean; analyzer?: CallAnalyzer | null; holdTimeoutMs?: number; holdCheckInMs?: number; onUserQuestion?: CallManagerOptions['onUserQuestion'] } = {}) {
   const store = new CallStore(null);
   const agent = new FakeAgent(opts.failConnect);
   const telephony = new FakeTelephony();
@@ -141,7 +141,7 @@ function setup(opts: { failConnect?: boolean; analyzer?: CallAnalyzer | null; ho
       holdCheckInMs: opts.holdCheckInMs,
       log: (callId, type, detail) => store.update(callId, (r) => r.events.push({ at: Date.now(), type, detail })),
     }),
-    { allowedDestinations: null, maxCallsPerHour: 10, maxConcurrentCalls: 1 },
+    { allowedDestinations: null, maxCallsPerHour: 10, maxConcurrentCalls: 1, onUserQuestion: opts.onUserQuestion },
   );
   return { store, agent, telephony, manager };
 }
@@ -355,8 +355,8 @@ describe('CallSession (simulated dentist call)', () => {
   });
 
   describe('human in the loop', () => {
-    async function live(holdTimeoutMs?: number, holdCheckInMs?: number) {
-      const ctx = setup({ holdTimeoutMs, holdCheckInMs });
+    async function live(holdTimeoutMs?: number, holdCheckInMs?: number, onUserQuestion?: CallManagerOptions['onUserQuestion']) {
+      const ctx = setup({ holdTimeoutMs, holdCheckInMs, onUserQuestion });
       const created = ctx.manager.startCall(dentistRequest());
       await waitFor(() => ctx.telephony.placed.length === 1);
       ctx.manager.handleTelephonyState(created.id, 'answered');
@@ -364,6 +364,16 @@ describe('CallSession (simulated dentist call)', () => {
       const ask = (args: object) => ctx.agent.emit('toolCall', `t${Math.random()}`, 'request_decision', JSON.stringify(args));
       return { ...ctx, id: created.id, get, ask };
     }
+
+    it("notifies the user's phone once per question, in their language", async () => {
+      const notified: UserQuestion[] = [];
+      const c = await live(undefined, undefined, (_record, q) => notified.push(q));
+      c.ask({ category: 'additional_cost', question: 'Add an $80 X-ray?', amount_usd: 80 });
+      await waitFor(() => notified.length === 1);
+      await new Promise((r) => setTimeout(r, 50));
+      expect(notified).toHaveLength(1);
+      expect(notified[0]).toMatchObject({ status: 'pending', questionInUserLanguage: '[Chinese (Mandarin)] Add an $80 X-ray?' });
+    });
 
     it('asks the user, and an approved charge lets the booking through', async () => {
       const c = await live();

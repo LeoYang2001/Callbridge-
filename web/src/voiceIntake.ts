@@ -1,40 +1,25 @@
-import { draftPatchFromArgs, type IntakeContext } from '../../shared/intake';
-import type { IntakeCheckResult, IntakeDraft } from '../../shared/types';
-import { profilePatchFromArgs } from '../../shared/profilePatch';
-import type { Me, ResearchResult } from '../../shared/types';
-import { checkIntake, createIntakeSession, research, updateProfile } from './api';
+import type { IntakeContext } from '../../shared/intake';
+import {
+  createIntakeConversation,
+  exchangeSdp,
+  type IntakeHandlers,
+  type IntakeOptions,
+  type IntakeSessionControls,
+} from '../../shared/client/intake';
+import { createIntakeSession } from './api';
 import type { Settings } from './settings';
+
+export type { IntakeLine, IntakeSessionControls, IntakeStatus } from '../../shared/client/intake';
 
 /**
  * The intake conversation over WebRTC, straight from the browser to OpenAI Realtime. The server
- * mints a short-lived key with the instructions and tools fixed; this side plays audio, relays
- * tool calls, and keeps the draft. The draft is only a suggestion: the server checks it again
- * here (check_request) and once more when the call is placed.
+ * mints a short-lived key with the instructions and tools fixed; the conversation logic (tools,
+ * events, the draft) is shared with the mobile app, and this side owns the browser's peer
+ * connection, mic and speaker.
  *
  * Speaking and typing share one session: typed text goes into the same conversation, and the
  * mic can be turned on and off without reconnecting (the audio sender just swaps tracks).
  */
-
-export type IntakeStatus = 'connecting' | 'listening' | 'thinking' | 'searching' | 'speaking' | 'ended' | 'error';
-
-export interface IntakeLine {
-  id: string;
-  role: 'user' | 'assistant';
-  text: string;
-}
-
-export interface IntakeHandlers {
-  onStatus: (status: IntakeStatus, detail?: string) => void;
-  onLine: (line: IntakeLine) => void;
-  onDraft: (draft: IntakeDraft) => void;
-  onCheck: (result: IntakeCheckResult) => void;
-  /** The assistant finished gathering and the server said the request is ok. */
-  onReady: () => void;
-  /** Profile interview: the saved profile after each update. */
-  onProfile?: (me: Me) => void;
-  /** What the research agent found: an answer, places to show as cards, and sources. */
-  onResearch?: (result: ResearchResult) => void;
-}
 
 /** The phone's location for "nearest …" searches; asked once, then reused for 10 minutes. */
 let lastFix: { lat: number; lng: number; at: number } | null = null;
@@ -53,18 +38,6 @@ function currentLocation(): Promise<{ lat: number; lng: number } | null> {
   );
 }
 
-const REALTIME_CALLS_URL = 'https://api.openai.com/v1/realtime/calls';
-
-export interface IntakeSessionControls {
-  /** Adds a typed message to the conversation; the assistant answers it like speech. */
-  sendText: (text: string) => void;
-  /** Turns the mic on (asking for permission the first time) or off, without reconnecting. */
-  setMic: (on: boolean) => Promise<void>;
-  /** Mutes or unmutes the assistant's voice; its words still appear on screen. */
-  setSpeaker: (on: boolean) => void;
-  stop: () => void;
-}
-
 async function openMic(): Promise<MediaStreamTrack> {
   try {
     const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
@@ -74,16 +47,7 @@ async function openMic(): Promise<MediaStreamTrack> {
   }
 }
 
-export async function startIntake(
-  settings: Settings,
-  ctx: IntakeContext,
-  h: IntakeHandlers,
-  /**
-   * mode "profile": the profile interview instead of setting up a call.
-   * followUpOf: a finished call the assistant reports on first; initialDraft: its request.
-   */
-  opts: { mic: boolean; mode?: 'call' | 'profile'; followUpOf?: string; initialDraft?: IntakeDraft },
-): Promise<IntakeSessionControls> {
+export async function startIntake(settings: Settings, ctx: IntakeContext, h: IntakeHandlers, opts: IntakeOptions): Promise<IntakeSessionControls> {
   h.onStatus('connecting');
   // Ask for the mic before minting the key, so a slow permission prompt can't outlast it.
   let micTrack: MediaStreamTrack | null = opts.mic ? await openMic() : null;
@@ -100,21 +64,17 @@ export async function startIntake(
   if (micTrack) await audio.sender.replaceTrack(micTrack);
   const dc = pc.createDataChannel('oai-events');
 
-  let draft: IntakeDraft = { ...opts.initialDraft };
+  const conversation = createIntakeConversation({
+    conn: settings,
+    ctx,
+    handlers: h,
+    initialDraft: opts.initialDraft,
+    send: (event) => dc.readyState === 'open' && (dc.send(JSON.stringify(event)), true),
+    isOpen: () => dc.readyState === 'open',
+    locate: currentLocation,
+  });
+
   let stopped = false;
-  const partial = new Map<string, string>();
-  /** Typed before the data channel opened; sent as soon as it does. */
-  const pendingTexts: string[] = [];
-  const send = (event: object) => dc.readyState === 'open' && dc.send(JSON.stringify(event));
-
-  const pushText = (text: string) => {
-    send({ type: 'conversation.item.create', item: { type: 'message', role: 'user', content: [{ type: 'input_text', text }] } });
-    // Interrupt the assistant if it's still talking, then answer the typed message.
-    send({ type: 'response.cancel' });
-    send({ type: 'output_audio_buffer.clear' });
-    send({ type: 'response.create' });
-  };
-
   const stop = () => {
     if (stopped) return;
     stopped = true;
@@ -125,130 +85,8 @@ export async function startIntake(
     h.onStatus('ended');
   };
 
-  const runTool = async (name: string, rawArgs: string): Promise<unknown> => {
-    let args: Record<string, unknown> = {};
-    try {
-      args = JSON.parse(rawArgs || '{}');
-    } catch {
-      return { error: 'Arguments were not valid JSON.' };
-    }
-    if (name === 'update_request') {
-      draft = { ...draft, ...draftPatchFromArgs(args) };
-      h.onDraft(draft);
-      return { saved: true };
-    }
-    if (name === 'check_request') {
-      const result = await checkIntake(settings, ctx, draft);
-      h.onCheck(result);
-      // The model gets the ruling, not just ok/not ok, so it can explain it in the user's language.
-      return result;
-    }
-    if (name === 'research') {
-      const question = String(args.question ?? '').trim();
-      const depth = args.depth === 'thorough' ? 'thorough' : 'quick';
-      const near = typeof args.near === 'string' && args.near.trim() ? args.near.trim() : undefined;
-      // Location only helps "near me" questions; asked once, with the user's permission.
-      const here = near ? null : await currentLocation();
-      h.onStatus('searching');
-      try {
-        const result = await research(settings, { question, depth, near, userLanguage: ctx.userLanguage, ...(here ? { lat: here.lat, lng: here.lng } : {}) });
-        h.onResearch?.(result);
-        // Compact for the model: enough to answer and pick, with what's unverified marked.
-        return {
-          answer: result.answer,
-          places: result.places.map((r) => ({
-            name: r.name,
-            phone: r.phone,
-            address: r.address,
-            distance_miles: r.distanceMeters != null ? Math.round(r.distanceMeters / 160.9) / 10 : null,
-            why: r.why ?? null,
-            verified: r.verified,
-            in_phone_book_as: r.inPhoneBookAs ?? null,
-          })),
-          location_used: near ?? (here ? 'the user’s current location' : 'unknown (ask for a city or zip if it matters)'),
-        };
-      } catch (e) {
-        return { error: (e as Error).message };
-      } finally {
-        h.onStatus('thinking');
-      }
-    }
-    if (name === 'update_profile') {
-      // The server validates and screens it (no card numbers, SSNs, or passwords are stored).
-      try {
-        const me = await updateProfile(settings, profilePatchFromArgs(args));
-        h.onProfile?.(me);
-        return { saved: true };
-      } catch (e) {
-        return { saved: false, error: (e as Error).message };
-      }
-    }
-    if (name === 'finish_intake' || name === 'finish_profile') {
-      h.onReady();
-      return { shown: true };
-    }
-    return { error: `Unknown tool ${name}` };
-  };
-
-  dc.addEventListener('open', () => {
-    // Started by typing: answer that. Started by the mic: the assistant greets first.
-    if (pendingTexts.length) pendingTexts.splice(0).forEach(pushText);
-    else send({ type: 'response.create' });
-  });
-  dc.addEventListener('message', (msg) => {
-    let ev: any;
-    try {
-      ev = JSON.parse(msg.data);
-    } catch {
-      return;
-    }
-    switch (ev.type) {
-      case 'input_audio_buffer.speech_started':
-        h.onStatus('listening');
-        break;
-      case 'input_audio_buffer.speech_stopped':
-        h.onStatus('thinking');
-        break;
-      case 'output_audio_buffer.started':
-        h.onStatus('speaking');
-        break;
-      case 'output_audio_buffer.stopped':
-      case 'output_audio_buffer.cleared':
-        h.onStatus('listening');
-        break;
-      case 'conversation.item.input_audio_transcription.completed':
-        if (ev.transcript?.trim()) h.onLine({ id: ev.item_id, role: 'user', text: ev.transcript.trim() });
-        break;
-      case 'response.output_audio_transcript.delta': {
-        const text = (partial.get(ev.item_id) ?? '') + (ev.delta ?? '');
-        partial.set(ev.item_id, text);
-        h.onLine({ id: ev.item_id, role: 'assistant', text });
-        break;
-      }
-      case 'response.output_audio_transcript.done':
-        partial.delete(ev.item_id);
-        if (ev.transcript) h.onLine({ id: ev.item_id, role: 'assistant', text: ev.transcript });
-        break;
-      case 'response.function_call_arguments.done':
-        void runTool(ev.name, ev.arguments).then(
-          (output) => {
-            send({ type: 'conversation.item.create', item: { type: 'function_call_output', call_id: ev.call_id, output: JSON.stringify(output) } });
-            send({ type: 'response.create' });
-          },
-          (err: Error) => {
-            send({ type: 'conversation.item.create', item: { type: 'function_call_output', call_id: ev.call_id, output: JSON.stringify({ error: err.message }) } });
-            send({ type: 'response.create' });
-          },
-        );
-        break;
-      case 'error':
-        // Expected when typing interrupts nothing, or races a response that already started.
-        if (!['conversation_already_has_active_response', 'response_cancel_not_active'].includes(ev.error?.code)) {
-          console.warn('Realtime error', ev.error);
-        }
-        break;
-    }
-  });
+  dc.addEventListener('open', () => conversation.opened());
+  dc.addEventListener('message', (msg) => conversation.handle(msg.data as string));
   pc.addEventListener('connectionstatechange', () => {
     if (!stopped && (pc.connectionState === 'failed' || pc.connectionState === 'disconnected')) {
       h.onStatus('error', 'The voice connection dropped. Tap the mic to start again.');
@@ -259,26 +97,15 @@ export async function startIntake(
   try {
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
-    const res = await fetch(REALTIME_CALLS_URL, {
-      method: 'POST',
-      body: offer.sdp,
-      headers: { Authorization: `Bearer ${session.clientSecret}`, 'Content-Type': 'application/sdp' },
-    });
-    if (!res.ok) throw new Error(`OpenAI refused the voice session (HTTP ${res.status}).`);
-    await pc.setRemoteDescription({ type: 'answer', sdp: await res.text() });
+    await pc.setRemoteDescription({ type: 'answer', sdp: await exchangeSdp(session.clientSecret, offer.sdp!) });
   } catch (err) {
     stop();
     throw err;
   }
   h.onStatus('listening');
 
-  let textCount = 0;
   return {
-    sendText: (text) => {
-      h.onLine({ id: `typed-${++textCount}`, role: 'user', text });
-      if (dc.readyState === 'open') pushText(text);
-      else pendingTexts.push(text);
-    },
+    sendText: conversation.sendText,
     setMic: async (on) => {
       if (on && !micTrack) {
         micTrack = await openMic();

@@ -17,6 +17,7 @@ import { OpenAIRealtimeAgent } from './providers/voice/openaiRealtime';
 import { LogOtp, OtpRateLimit, TwilioVerifyOtp } from './auth/otp';
 import { Database } from './db/database';
 import { learnFromCall } from './profile/profile';
+import { ExpoPush, finishedNotification, questionNotification, type PushMessage } from './push/push';
 import { registerApiRoutes } from './routes/api';
 import { registerAuthRoutes } from './routes/auth';
 import { GooglePlaces } from './places/places';
@@ -94,6 +95,17 @@ const logCallEvent = (callId: string, type: string, detail?: string) => {
   store.update(callId, (r) => r.events.push({ at: Date.now(), type, detail }));
 };
 
+// Push notifications to the user's phones (the mobile app); the web app doesn't register any.
+const push = new ExpoPush((msg) => app.log.warn(msg));
+const notify = (userId: string | undefined, message: Omit<PushMessage, 'to'>) => {
+  const tokens = userId ? db.pushTokensFor(userId) : [];
+  if (!tokens.length) return;
+  push
+    .send(tokens.map((to) => ({ ...message, to })))
+    .then((dead) => dead.forEach((t) => db.removePushToken(t)))
+    .catch((err) => app.log.warn({ err }, 'push failed'));
+};
+
 const manager = new CallManager(
   store,
   () => ({
@@ -123,7 +135,9 @@ const manager = new CallManager(
     onCallFinished: (record) => {
       const user = record.userId ? db.userById(record.userId) : undefined;
       if (user) db.saveProfile(user.id, learnFromCall(user.profile, record));
+      notify(record.userId, finishedNotification(record));
     },
+    onUserQuestion: (record, question) => notify(record.userId, questionNotification(record, question)),
   },
 );
 

@@ -7,7 +7,8 @@ import { WEEKDAYS } from '../../shared/types';
 
 const DAY_SHORT: Record<Weekday, string> = { mon: 'M', tue: 'T', wed: 'W', thu: 'T', fri: 'F', sat: 'S', sun: 'S' };
 const DAY_LONG: Record<Weekday, string> = { mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun' };
-export const LANGUAGES = ['Chinese (Mandarin)', 'Chinese (Cantonese)', 'Spanish', 'Vietnamese', 'Korean', 'Tagalog', 'Russian', 'Arabic', 'Hindi', 'Japanese', 'English'];
+import { LANGUAGES } from '../../shared/languages';
+export { LANGUAGES };
 const STORAGE_KEY = 'callbridge.form.v1';
 
 export const defaultRequest = (): CallRequest => ({

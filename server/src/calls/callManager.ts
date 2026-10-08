@@ -1,5 +1,5 @@
 import { timingSafeEqual } from 'node:crypto';
-import type { CallRecord, CallRequest, UserAnswer } from '../../../shared/types';
+import type { CallRecord, CallRequest, UserAnswer, UserQuestion } from '../../../shared/types';
 import { displayPhone } from '../../../shared/phone';
 import { findSensitiveData, sensitiveTextReason } from '../policy/sensitive';
 import type { MediaTransport, TelephonyCallState } from '../providers/telephony/types';
@@ -23,9 +23,11 @@ export interface CallManagerOptions {
   maxConcurrentCalls: number;
   /** Runs once a call is finished and saved (e.g. to update the user's profile). */
   onCallFinished?: (record: CallRecord) => void;
+  /** The assistant is holding the line for the user's decision (e.g. to notify their phone). */
+  onUserQuestion?: (record: CallRecord, question: UserQuestion) => void;
 }
 
-type SessionDeps = Omit<CallSessionDeps, 'onFinished' | 'store'>;
+type SessionDeps = Omit<CallSessionDeps, 'onFinished' | 'onQuestion' | 'store'>;
 
 export class CallManager {
   private readonly sessions = new Map<string, CallSession>();
@@ -71,6 +73,15 @@ export class CallManager {
     const session = new CallSession(id, {
       ...this.sessionDeps(),
       store: this.store,
+      onQuestion: (callId, question) => {
+        const live = this.store.get(callId);
+        if (!live) return;
+        try {
+          this.opts.onUserQuestion?.(live, question);
+        } catch {
+          /* a notification must never break the call */
+        }
+      },
       onFinished: (callId) => {
         this.sessions.delete(callId);
         const finished = this.store.get(callId);

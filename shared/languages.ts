@@ -22,3 +22,14 @@ const CODES: [RegExp, string][] = [
 export function languageCode(language: string): string | undefined {
   return CODES.find(([re]) => re.test(language))?.[1];
 }
+
+/** The languages the app offers for talking to the assistant. */
+export const LANGUAGES = ['Chinese (Mandarin)', 'Chinese (Cantonese)', 'Spanish', 'Vietnamese', 'Korean', 'Tagalog', 'Russian', 'Arabic', 'Hindi', 'Japanese', 'English'];
+
+/** The app language for a device locale (BCP 47, e.g. "zh-Hans-US"), or English if it isn't offered. */
+export function languageFromLocale(tag: string): string {
+  const [lang = '', ...rest] = tag.toLowerCase().split('-');
+  if (lang === 'zh' || lang === 'yue') return lang === 'yue' || rest.includes('hk') || rest.includes('mo') ? 'Chinese (Cantonese)' : 'Chinese (Mandarin)';
+  if (lang === 'fil') return 'Tagalog';
+  return LANGUAGES.find((l) => languageCode(l) === lang) ?? 'English';
+}

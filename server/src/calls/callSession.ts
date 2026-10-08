@@ -26,6 +26,11 @@ export interface CallSessionDeps {
   /** How often the assistant thanks them for holding (default 20 s). */
   holdCheckInMs?: number;
   log: (callId: string, type: string, detail?: string) => void;
+  /**
+   * The assistant put a question to the user (e.g. to send a push notification). Called once per
+   * question, after its translation into the user's language, or without it if that's slow.
+   */
+  onQuestion?: (callId: string, question: UserQuestion) => void;
   /** Called exactly once, when the session is fully finished. */
   onFinished: (callId: string) => void;
 }
@@ -49,6 +54,8 @@ export type ListenEvent = { t: 'them' | 'ai'; a: string } | { t: 'clear' | 'end'
 
 /** Default hold while the user answers a question in the app. */
 const DEFAULT_HOLD_MS = 60_000;
+/** How long a question's notification waits for its translation. */
+const QUESTION_NOTIFY_WAIT_MS = 2500;
 /** While they hold, check in this often so the silence doesn't make them hang up. */
 const HOLD_CHECKIN_MS = 20_000;
 
@@ -503,16 +510,29 @@ export class CallSession {
     this.holdTimers.set(id, this.timer(holdMs, () => this.expireQuestion(id)));
     this.scheduleHoldCheckIn(id);
 
+    let notified = false;
+    const notify = () => {
+      if (notified) return;
+      notified = true;
+      const q = this.record.questions?.find((x) => x.id === id);
+      if (q?.status === 'pending') this.deps.onQuestion?.(this.id, { ...q });
+    };
+
     const req = this.record.request;
     const to = req.user.preferredLanguage;
     if (this.deps.translator && !sameLanguage('English', to)) {
+      // Someone is holding: don't wait long for the translation before telling the user.
+      this.timer(QUESTION_NOTIFY_WAIT_MS, notify);
       this.deps.translator
         .translate(ask.question, to, [])
         .then((t) => this.update((r) => {
           const q = r.questions?.find((x) => x.id === id);
           if (q && t) q.questionInUserLanguage = t;
         }))
-        .catch((err) => this.log('translate.error', (err as Error).message));
+        .catch((err) => this.log('translate.error', (err as Error).message))
+        .finally(notify);
+    } else {
+      notify();
     }
   }
 

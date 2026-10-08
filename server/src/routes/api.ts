@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import type { CallRecord, CallRequest, PublicConfig } from '../../../shared/types';
+import type { CallRecord, CallRequest, CallSummary, PublicConfig } from '../../../shared/types';
 import { checkRequest, type CheckDeps } from '../agent/intake';
 import { CallRejectedError, type CallManager } from '../calls/callManager';
 import { CallRequestSchema } from '../calls/requestSchema';
@@ -84,7 +84,7 @@ export function registerApiRoutes(
   });
 
   /** The signed-in user's calls, newest first: live ones from memory, finished ones from the database. */
-  app.get('/api/calls', async (req) => {
+  app.get('/api/calls', async (req): Promise<CallSummary[]> => {
     const live = store.list().filter((r) => r.userId === req.user!.id);
     const saved = db.callsForUser(req.user!.id).filter((r) => !live.some((l) => l.id === r.id));
     return [...live, ...saved].map((r) => ({

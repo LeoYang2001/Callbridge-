@@ -151,3 +151,24 @@ describe('phone book', () => {
     expect(profileForPrompt(next)).toContain('Maria (girlfriend): +1 (415)-555-0123; calls in Tagalog');
   });
 });
+
+describe('push tokens', () => {
+  it('registers this phone for notifications, moves it between accounts, and forgets it on request', async () => {
+    const { db, server, signIn } = app();
+    const { body } = await signIn();
+    const auth = { authorization: `Bearer ${body.token}` };
+    const token = 'ExponentPushToken[abc123]';
+    expect((await server.inject({ method: 'POST', url: '/api/me/push-tokens', headers: auth, payload: { token: 'not-a-token' } })).statusCode).toBe(400);
+    expect((await server.inject({ method: 'POST', url: '/api/me/push-tokens', headers: auth, payload: { token, platform: 'ios' } })).statusCode).toBe(200);
+    expect(db.pushTokensFor(body.me.id)).toEqual([token]);
+
+    const other = db.createUser('+19015550199', emptyProfile());
+    db.addPushToken(other.id, token, 'ios');
+    expect(db.pushTokensFor(body.me.id)).toEqual([]);
+    db.addPushToken(body.me.id, token, 'ios');
+
+    expect((await server.inject({ method: 'DELETE', url: '/api/me/push-tokens', headers: auth, payload: { token } })).statusCode).toBe(200);
+    expect(db.pushTokensFor(body.me.id)).toEqual([]);
+  });
+});
+

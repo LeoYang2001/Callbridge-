@@ -398,3 +398,24 @@ export interface ResearchResult {
   places: PlaceResult[];
   sources: { title: string; url: string }[];
 }
+
+/** One row of GET /api/calls (the call history). */
+export interface CallSummary {
+  id: string;
+  createdAt: number;
+  status: CallStatus;
+  to: string;
+  counterpartName?: string;
+  headline?: string;
+  success?: boolean;
+}
+
+/**
+ * What a push notification carries for the app to act on when it's tapped. "question": the
+ * assistant is holding the line for a decision; "finished" / "failed": the call is over.
+ */
+export interface PushData {
+  kind: 'question' | 'finished' | 'failed';
+  callId: string;
+  questionId?: string;
+}

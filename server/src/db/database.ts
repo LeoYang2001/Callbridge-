@@ -49,6 +49,12 @@ export class Database {
         record TEXT NOT NULL
       );
       CREATE INDEX IF NOT EXISTS calls_by_user ON calls(user_id, created_at DESC);
+      CREATE TABLE IF NOT EXISTS push_tokens (
+        token TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        platform TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+      );
     `);
   }
 
@@ -124,5 +130,21 @@ export class Database {
     return (this.db.prepare('SELECT record FROM calls WHERE user_id = ? ORDER BY created_at DESC LIMIT ?').all(userId, limit) as { record: string }[]).map(
       (r) => JSON.parse(r.record) as CallRecord,
     );
+  }
+
+  // ── push tokens ── (one per installed app; a phone that signs in as someone else moves over)
+  addPushToken(userId: string, token: string, platform: string) {
+    this.db
+      .prepare('INSERT INTO push_tokens (token, user_id, platform, created_at) VALUES (?, ?, ?, ?) ON CONFLICT(token) DO UPDATE SET user_id = excluded.user_id, platform = excluded.platform')
+      .run(token, userId, platform, Date.now());
+  }
+
+  removePushToken(token: string, userId?: string) {
+    if (userId) this.db.prepare('DELETE FROM push_tokens WHERE token = ? AND user_id = ?').run(token, userId);
+    else this.db.prepare('DELETE FROM push_tokens WHERE token = ?').run(token);
+  }
+
+  pushTokensFor(userId: string): string[] {
+    return (this.db.prepare('SELECT token FROM push_tokens WHERE user_id = ?').all(userId) as { token: string }[]).map((r) => r.token);
   }
 }
