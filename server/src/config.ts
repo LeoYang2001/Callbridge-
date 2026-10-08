@@ -49,9 +49,12 @@ const EnvSchema = z.object({
   TRANSLATION_MODEL: z.string().default('gpt-5.4-mini'),
 
   /**
-   * Google Places API key for finding businesses ("the nearest Mexican restaurant"). Without it,
-   * OpenAI web search is used and its numbers are marked unverified.
+   * The research agent (GPT + web search) that the assistants ask to look things up. "quick" for
+   * simple lookups (~10 s), "thorough" for questions with several conditions (~30-40 s).
    */
+  RESEARCH_MODEL_QUICK: z.string().default('gpt-5.4-mini'),
+  RESEARCH_MODEL_THOROUGH: z.string().default('gpt-5.5'),
+  /** Optional: gives the research agent verified Google Maps listings as a tool. */
   GOOGLE_PLACES_API_KEY: optionalString,
   /** SQLite file for users, sessions, profiles, and call history. */
   DATABASE_FILE: z.string().default('data/callbridge.db'),

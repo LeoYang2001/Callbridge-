@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { draftToRequest, type IntakeContext } from '../../shared/intake';
 import { displayPhone } from '../../shared/phone';
-import type { IntakeCheckResult, IntakeDraft, Me, PlaceResult, RealtimeVoice } from '../../shared/types';
+import type { IntakeCheckResult, IntakeDraft, Me, RealtimeVoice, ResearchResult } from '../../shared/types';
 import { startIntake, type IntakeLine, type IntakeSessionControls, type IntakeStatus } from './voiceIntake';
 import type { Settings } from './settings';
 import { VoicePicker } from './VoicePicker';
@@ -28,6 +28,7 @@ const STATUS_TEXT: Record<IntakeStatus, string> = {
   connecting: 'Connecting…',
   listening: 'Listening',
   thinking: 'Thinking…',
+  searching: 'Looking it up…',
   speaking: 'Speaking',
   ended: 'Ended',
   error: 'Disconnected',
@@ -42,7 +43,8 @@ export function Intake({ settings, context, languages, onLanguageChange, voice, 
   const [draft, setDraft] = useState<IntakeDraft>(() => followUp?.draft ?? seed?.draft ?? {});
   const [check, setCheck] = useState<IntakeCheckResult | null>(null);
   const [ready, setReady] = useState(false);
-  const [places, setPlaces] = useState<PlaceResult[]>([]);
+  const [found, setFound] = useState<ResearchResult | null>(null);
+  const places = found?.places ?? [];
   const [micOn, setMicOn] = useState(false);
   const [speakerOn, setSpeakerOn] = useState(true);
   const [text, setText] = useState('');
@@ -78,7 +80,7 @@ export function Intake({ settings, context, languages, onLanguageChange, voice, 
           onCheck: setCheck,
           onReady: () => setReady(true),
           onProfile: profile?.onSaved,
-          onPlaces: setPlaces,
+          onResearch: setFound,
         },
         { mic: withMic, mode: profile ? 'profile' : 'call', followUpOf: followUp?.callId, initialDraft: followUp?.draft ?? seed?.draft },
       );
@@ -188,7 +190,7 @@ export function Intake({ settings, context, languages, onLanguageChange, voice, 
                 : 'Tap to talk'
               : micOn
                 ? STATUS_TEXT[status!]
-                : status === 'speaking' || status === 'thinking'
+                : status === 'speaking' || status === 'thinking' || status === 'searching'
                   ? STATUS_TEXT[status]
                   : 'Mic off · type below'}
           </div>
@@ -216,6 +218,21 @@ export function Intake({ settings, context, languages, onLanguageChange, voice, 
 
         {profile && <ProfileCard me={profile.me} />}
 
+        {!profile && found && (
+          <div className="summary-card research">
+            <p className="summary-main">{found.answer}</p>
+            {found.sources.length > 0 && (
+              <p className="research-sources">
+                {found.sources.slice(0, 3).map((s, i) => (
+                  <a key={i} href={s.url} target="_blank" rel="noreferrer">
+                    {s.title}
+                  </a>
+                ))}
+              </p>
+            )}
+          </div>
+        )}
+
         {!profile && places.length > 0 && (
           <div className="places">
             {places.map((p) => (
@@ -233,6 +250,7 @@ export function Intake({ settings, context, languages, onLanguageChange, voice, 
                     p.distanceMeters != null ? `${(p.distanceMeters / 1609).toFixed(1)} mi` : null,
                     p.openNow === true ? 'open now' : p.openNow === false ? 'closed now' : null,
                     p.rating ? `${p.rating}★${p.ratingCount ? ` (${p.ratingCount})` : ''}` : null,
+                    p.why ?? null,
                     p.inPhoneBookAs ? `in your phone book as ${p.inPhoneBookAs}` : null,
                   ]
                     .filter(Boolean)

@@ -3,9 +3,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { PlaceResult } from '../../shared/types';
 import { OtpRateLimit } from '../src/auth/otp';
 import { Database } from '../src/db/database';
-import { cleanResults, distanceMeters, GooglePlaces, type PlaceSearch } from '../src/places/places';
+import { cleanResults, distanceMeters, GooglePlaces } from '../src/places/places';
 import { emptyProfile } from '../src/profile/profile';
-import { registerPlacesRoutes } from '../src/routes/places';
+import type { ResearchAgent } from '../src/research/researcher';
+import { registerResearchRoutes } from '../src/routes/research';
 
 const place = (name: string, phone: string | null): PlaceResult => ({ name, phone, source: 'web', verified: false });
 
@@ -57,20 +58,28 @@ describe('Google Places', () => {
   });
 });
 
-describe('places route', () => {
-  it('marks results already in the phone book and rate-limits per user', async () => {
+describe('research route', () => {
+  it("answers with the user's language, marks results already in the phone book, and rate-limits per user", async () => {
     const db = new Database(':memory:');
-    const user = db.createUser('+19014553148', { ...emptyProfile(), contacts: [{ id: 'c', name: 'Los Comales', phone: '+19015904525', notes: [], callCount: 1 }] });
-    const places: PlaceSearch = { source: 'web', search: async () => cleanResults([place('Los Comales Downtown', '(901) 590-4525'), place('Margaritas', '901-630-6303')]) };
+    const user = db.createUser('+19014553148', { ...emptyProfile(), preferredLanguage: 'Chinese (Mandarin)', contacts: [{ id: 'c', name: 'Los Comales', phone: '+19015904525', notes: [], callCount: 1 }] });
+    const asked: unknown[] = [];
+    const researcher: ResearchAgent = {
+      research: async (q) => {
+        asked.push(q);
+        return { answer: '附近有两家。', places: cleanResults([place('Los Comales Downtown', '(901) 590-4525'), place('Margaritas', '901-630-6303')]), sources: [] };
+      },
+    };
     const server = Fastify();
     server.addHook('onRequest', async (req) => {
       req.user = db.userById(user.id);
     });
-    registerPlacesRoutes(server, { places, perUser: new OtpRateLimit(2) });
-    const search = () => server.inject({ method: 'POST', url: '/api/places/search', payload: { query: 'Mexican restaurant', lat: 35.1, lng: -90 } });
-    const first = (await search()).json() as { results: PlaceResult[] };
-    expect(first.results.map((r) => r.inPhoneBookAs)).toEqual(['Los Comales', undefined]);
-    expect((await search()).statusCode).toBe(200);
-    expect((await search()).statusCode).toBe(429);
+    registerResearchRoutes(server, { researcher, perUser: new OtpRateLimit(2) });
+    const ask = () => server.inject({ method: 'POST', url: '/api/research', payload: { question: 'nearest Mexican restaurant', lat: 35.1, lng: -90 } });
+    const first = (await ask()).json() as { answer: string; places: PlaceResult[] };
+    expect(asked[0]).toMatchObject({ depth: 'quick', userLanguage: 'Chinese (Mandarin)', lat: 35.1 });
+    expect(first.answer).toBe('附近有两家。');
+    expect(first.places.map((r) => r.inPhoneBookAs)).toEqual(['Los Comales', undefined]);
+    expect((await ask()).statusCode).toBe(200);
+    expect((await ask()).statusCode).toBe(429);
   });
 });

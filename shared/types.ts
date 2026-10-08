@@ -386,4 +386,15 @@ export interface PlaceResult {
   verified: boolean;
   /** Already in the user's phone book under this name. */
   inPhoneBookAs?: string;
+  /** Why it fits the question, in the user's language ("open now, takes Geico"). */
+  why?: string;
+}
+
+/** What the research agent found. */
+export interface ResearchResult {
+  /** A short answer in the user's language. */
+  answer: string;
+  /** Who to call, if the question was about that. */
+  places: PlaceResult[];
+  sources: { title: string; url: string }[];
 }

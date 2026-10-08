@@ -1,8 +1,8 @@
 import { draftPatchFromArgs, type IntakeContext } from '../../shared/intake';
 import type { IntakeCheckResult, IntakeDraft } from '../../shared/types';
 import { profilePatchFromArgs } from '../../shared/profilePatch';
-import type { Me, PlaceResult } from '../../shared/types';
-import { checkIntake, createIntakeSession, searchPlaces, updateProfile } from './api';
+import type { Me, ResearchResult } from '../../shared/types';
+import { checkIntake, createIntakeSession, research, updateProfile } from './api';
 import type { Settings } from './settings';
 
 /**
@@ -15,7 +15,7 @@ import type { Settings } from './settings';
  * mic can be turned on and off without reconnecting (the audio sender just swaps tracks).
  */
 
-export type IntakeStatus = 'connecting' | 'listening' | 'thinking' | 'speaking' | 'ended' | 'error';
+export type IntakeStatus = 'connecting' | 'listening' | 'thinking' | 'searching' | 'speaking' | 'ended' | 'error';
 
 export interface IntakeLine {
   id: string;
@@ -32,8 +32,8 @@ export interface IntakeHandlers {
   onReady: () => void;
   /** Profile interview: the saved profile after each update. */
   onProfile?: (me: Me) => void;
-  /** Businesses found online, to show as cards the user can tap. */
-  onPlaces?: (results: PlaceResult[]) => void;
+  /** What the research agent found: an answer, places to show as cards, and sources. */
+  onResearch?: (result: ResearchResult) => void;
 }
 
 /** The phone's location for "nearest …" searches; asked once, then reused for 10 minutes. */
@@ -143,31 +143,34 @@ export async function startIntake(
       // The model gets the ruling, not just ok/not ok, so it can explain it in the user's language.
       return result;
     }
-    if (name === 'search_places') {
-      const query = String(args.query ?? '').trim();
+    if (name === 'research') {
+      const question = String(args.question ?? '').trim();
+      const depth = args.depth === 'thorough' ? 'thorough' : 'quick';
       const near = typeof args.near === 'string' && args.near.trim() ? args.near.trim() : undefined;
+      // Location only helps "near me" questions; asked once, with the user's permission.
       const here = near ? null : await currentLocation();
-      if (!near && !here) {
-        return { error: "Location isn't available (the user didn't allow it). Ask which city or zip code to search near, then search again with near." };
-      }
+      h.onStatus('searching');
       try {
-        const { results } = await searchPlaces(settings, { query, near, ...(here ? { lat: here.lat, lng: here.lng } : {}) });
-        h.onPlaces?.(results);
-        // Compact for the model: enough to describe and pick, nothing it shouldn't say.
+        const result = await research(settings, { question, depth, near, userLanguage: ctx.userLanguage, ...(here ? { lat: here.lat, lng: here.lng } : {}) });
+        h.onResearch?.(result);
+        // Compact for the model: enough to answer and pick, with what's unverified marked.
         return {
-          results: results.map((r) => ({
+          answer: result.answer,
+          places: result.places.map((r) => ({
             name: r.name,
             phone: r.phone,
             address: r.address,
             distance_miles: r.distanceMeters != null ? Math.round(r.distanceMeters / 160.9) / 10 : null,
-            open_now: r.openNow ?? null,
-            rating: r.rating ?? null,
+            why: r.why ?? null,
             verified: r.verified,
             in_phone_book_as: r.inPhoneBookAs ?? null,
           })),
+          location_used: near ?? (here ? 'the user’s current location' : 'unknown (ask for a city or zip if it matters)'),
         };
       } catch (e) {
         return { error: (e as Error).message };
+      } finally {
+        h.onStatus('thinking');
       }
     }
     if (name === 'update_profile') {

@@ -1,5 +1,5 @@
 import type { IntakeContext } from '../../shared/intake';
-import type { AuthResult, PlaceResult, CallRecord, CallRequest, IntakeCheckResult, IntakeDraft, IntakeSession, Me, PublicConfig, UserAnswer } from '../../shared/types';
+import type { AuthResult, ResearchResult, CallRecord, CallRequest, IntakeCheckResult, IntakeDraft, IntakeSession, Me, PublicConfig, UserAnswer } from '../../shared/types';
 import type { Settings } from './settings';
 
 function endpoint(s: Settings, path: string) {
@@ -60,8 +60,8 @@ export const saveContact = (s: Settings, contact: { name: string; phone: string;
     body: JSON.stringify(contact),
   });
 export const deleteContact = (s: Settings, id: string) => request<Me>(s, `/api/me/contacts/${id}`, { method: 'DELETE' });
-export const searchPlaces = (s: Settings, body: { query: string; lat?: number; lng?: number; near?: string }) =>
-  postJson<{ source: 'google' | 'web'; results: PlaceResult[] }>(s, '/api/places/search', body);
+export const research = (s: Settings, body: { question: string; depth: 'quick' | 'thorough'; lat?: number; lng?: number; near?: string; userLanguage?: string }) =>
+  postJson<ResearchResult>(s, '/api/research', body);
 export const deleteAccount = (s: Settings) => request<{ ok: boolean }>(s, '/api/me', { method: 'DELETE' });
 
 export const startCall = (s: Settings, req: CallRequest) =>

@@ -427,3 +427,7 @@ pre { background: var(--surface); border: 1px solid var(--border); border-radius
 .place span { font-size: 13px; color: var(--muted); }
 .place.on { border: 2px solid var(--call); }
 .unverified { color: var(--warn); font-style: normal; }
+.summary-card.research { margin-bottom: 10px; }
+.research-sources { display: flex; flex-wrap: wrap; gap: 4px 12px; margin: 8px 0 0; font-size: 12px; }
+.research-sources a { color: var(--muted); }
+.mic-btn.live.searching { background: var(--ask); animation: mic-pulse 1.2s ease-in-out infinite; }

@@ -49,7 +49,7 @@ ${REFUSED_KINDS}
 Always start with these two, one at a time:
 1. Who to call, and the number. Find the number in this order, and never ask for a number you can find:
    a. The phone book below: by name, or by relationship in any language ("my gf", "女朋友", "my dentist"). Use the contact's number and language and just confirm ("Maria, your girlfriend, at 747-283-6440?").
-   b. A kind of place or a business that isn't in the phone book ("the nearest Mexican restaurant", "a body shop near me"): call search_places. Offer the top two or three briefly (name, how far, open now) and let ${ctx.userName} pick; they can also tap one on screen. Then save its name, number, and address. If the result says verified: false, it came from a web search: read the number back and say it's worth double-checking.
+   b. A kind of place or a business that isn't in the phone book ("the nearest Mexican restaurant", "a body shop that takes Geico"): call research. Before a thorough lookup, say it'll take up to half a minute. Then share its answer in a sentence, offer the top two or three places briefly (name, how far, why it fits), and let ${ctx.userName} pick; they can also tap one on screen. Save its name, number, and address. If a place says verified: false, its number came from a web page: read it back and say it's worth double-checking.
    c. Otherwise ask for the number and repeat it back digit by digit.
    Same names: if more than one phone book contact or search result fits (two Marias, two locations of a chain), never guess. Ask which one, telling them apart by relationship, street, distance, or the last four digits of the number.
    For a person, save their name as counterpart_name and who they are to ${ctx.userName} as counterpart_relationship (ask their name if you only know the relationship).
@@ -62,6 +62,8 @@ Then ask a short questionnaire tailored to that kind of call: only what the call
 - Question to a business: exactly what to ask, and confirm nothing should be booked or bought.
 - Personal message: the exact message, the language, and whether to wait for a reply.
 Also: the call language, which is the saved contact's language if they have one, otherwise their usual call language (default English); confirm it when the person called may speak something else (family and friends often do). And extra charges (default none) when money could come up.
+
+Use research whenever a fact would help the call and you don't know it (opening hours, whether they take walk-ins, a fair price); never make facts up.
 
 # The user can always skip
 - Every question is optional. Mention once, early and briefly, that they can say "skip" for any question or "that's all" to stop the questions.
@@ -181,16 +183,21 @@ export const INTAKE_TOOLS: ToolDefinition[] = [
     },
   },
   {
-    name: 'search_places',
+    name: 'research',
     description:
-      "Search online (Google Maps data) for businesses to call, when the user names a kind of place (\"the nearest Mexican restaurant\", \"a body shop\") or a business that isn't in the phone book. Results are nearest first, from the user's current location unless they named a place.",
+      "Ask CallBridge's research agent (GPT with web search) anything you need to set up the call: businesses and their numbers (\"the nearest Mexican restaurant\", \"body shops that take Geico\"), opening hours, prices, policies, insurance networks. Returns a short answer, places to call (shown to the user as cards), and sources.",
     parameters: {
       type: 'object',
       properties: {
-        query: { type: 'string', description: 'What to look for, in English, e.g. "Mexican restaurant", "auto body shop", "Smile Dental".' },
-        near: { type: 'string', description: 'Only if the user named a place, e.g. "Germantown, TN" or "38103".' },
+        question: { type: 'string', description: 'The full question in English, with every condition the user gave.' },
+        depth: {
+          type: 'string',
+          enum: ['quick', 'thorough'],
+          description: 'quick (~10 s) for a simple lookup like "nearest X"; thorough (~30-40 s) when there are several conditions or a comparison.',
+        },
+        near: { type: 'string', description: 'Only if the user named a place, e.g. "Germantown, TN" or "38103". Otherwise their current location is used.' },
       },
-      required: ['query'],
+      required: ['question', 'depth'],
     },
   },
   {
