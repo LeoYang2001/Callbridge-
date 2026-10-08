@@ -32,6 +32,20 @@ On the first run it asks for your OpenAI key, Twilio SID, auth token and number,
 
 Scan the QR code and sign in with your phone number: with `AUTH_CODES=log` the 6-digit code is printed in the terminal; with Twilio Verify it's texted. The assistant then interviews you for your profile (every question can be skipped). Tell it who to call and start the call. Answer it and play the receptionist. Ctrl+C stops everything. Without `cloudflared` the app still runs on your laptop and Wi-Fi in demo mode.
 
+### Keep it running (macOS background service)
+
+`npm run laptop` stops when its terminal closes. To keep the server and tunnel up without a terminal (starts at login, restarts within seconds if it stops):
+
+```bash
+npm run service:install    # install and start
+npm run service:status     # running? does the public URL answer?
+npm run service:restart    # after pulling new server code
+npm run service:logs       # follow ~/Library/Logs/CallBridge/server.log
+npm run service:uninstall  # stop and remove
+```
+
+The Mac still has to be on, awake and online; for testers outside your own devices, move the server to real hosting.
+
 ## Hosting on Cloudflare (byte2bite.tech)
 
 **Current laptop setup (permanent address):** `npm run laptop` serves the app and API at `https://callbridge.byte2bite.tech` through a named tunnel (`CLOUDFLARE_TUNNEL=callbridge`). It was set up once with `cloudflared tunnel login`, `cloudflared tunnel create callbridge`, and `cloudflared tunnel route dns callbridge callbridge.byte2bite.tech`. Because restaurant-sites holds the Worker routes `*.byte2bite.tech/*` and `*/*`, the zone also has a Worker route `callbridge.byte2bite.tech/*` with **no Worker**, so that one hostname reaches the tunnel (the most specific route wins). Don't delete that route.

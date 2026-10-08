@@ -15,7 +15,12 @@
     "start": "npm run start -w server",
     "typecheck": "npm run typecheck -w server && npm run typecheck -w web",
     "test": "npm run test -w server",
-    "usage": "node scripts/usage-report.mjs"
+    "usage": "node scripts/usage-report.mjs",
+    "service:install": "sh scripts/mac-service.sh install",
+    "service:uninstall": "sh scripts/mac-service.sh uninstall",
+    "service:restart": "sh scripts/mac-service.sh restart",
+    "service:status": "sh scripts/mac-service.sh status",
+    "service:logs": "sh scripts/mac-service.sh logs"
   },
   "devDependencies": {
     "concurrently": "^9.2.4",
