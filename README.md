@@ -248,6 +248,18 @@ Alternatives considered:
 - **Storage and scale:** the store is in memory and runs on a single process. A restart loses active calls. This is fine for a prototype; use Redis or Postgres when scaling.
 - **Dates and time zones:** times are wall-clock times in the user's time zone. Appointment length isn't modeled; only the start time is checked.
 
+## Caller ID: one number for every user, or the user's own
+
+**Today every user's calls come from one CallBridge number** (+1 651-650-4528). That works for many users at once: one Twilio number can carry many calls in parallel (Twilio's default limit is about one new outbound call per second per account, which can be raised). What has to be handled as usage grows:
+
+- **Callbacks.** Nobody answers that number today; a business calling back reaches nothing. Fix: an inbound handler that looks up who last called the caller's number and forwards the call to that user (or takes a message and notifies them).
+- **Spam labels.** One number calling many businesses for many users will likely get labeled "Spam Likely" by carriers. Mitigations: a Twilio Business Profile for SHAKEN/STIR "A" attestation and a registered caller name (CNAM "CallBridge"), a pool of local numbers with a cap per number, and watching answer rates.
+- **Recognition.** Friends and family don't know the CallBridge number, so iPhones screen the call (as happened on the first personal calls).
+
+**The alternative is the user's own number as caller ID.** Each user verifies their number once (Twilio calls it with a code, about a cent). Their calls then show their own number, callbacks reach them directly, and friends recognize it. The AI still says it's an AI calling for them, so the caller ID is truthful. Limits: each number must be verified, and a user can't call their own number this way (it returns busy).
+
+**Recommended:** the shared number for businesses, with callback forwarding, plus an opt-in "Call from my number" (best for personal calls). The account owner is the caller of record for every call either way (see the checklist below).
+
 ## Before production: compliance checklist
 
 This product is for **user-requested calls on that user's behalf, to specific businesses or to people the user knows**. Do not build bulk dialing, cold calling, lead generation, or telemarketing on top of it. Before launch, get legal review of:
