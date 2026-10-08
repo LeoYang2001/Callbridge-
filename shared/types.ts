@@ -68,6 +68,8 @@ export interface CallRequest {
    * the app. "handoff": it never does; anything outside the limits is declined for follow-up.
    */
   involvement?: 'supervised' | 'handoff';
+  /** How long the other party holds while the user answers a question (seconds, 10-120). */
+  holdSeconds?: number;
   /** Who is being called, e.g. "Smile Dental" or "Maria". */
   counterpartName?: string;
   /** Who they are to the user, e.g. "girlfriend" (saved in the phone book). */
@@ -209,7 +211,8 @@ export interface UserQuestion {
 }
 
 export interface UserAnswer {
-  decision: 'approve' | 'decline' | 'reply';
+  /** "later": the user will decide another time; the assistant says they'll follow up. */
+  decision: 'approve' | 'decline' | 'reply' | 'later';
   /** For "reply": the information to give them (screened for sensitive data first). */
   text?: string;
 }
@@ -344,6 +347,8 @@ export interface UserProfile {
   timezone: string;
   defaultCallLanguage?: string;
   voice?: RealtimeVoice;
+  /** How long the other party holds for the user's answer, in seconds (default 30). */
+  holdSeconds?: number;
   usualAvailability: AvailabilityWindow[];
   /** Facts they're happy to share when relevant; each call still confirms which ones. */
   shareable: AuthorizedFact[];

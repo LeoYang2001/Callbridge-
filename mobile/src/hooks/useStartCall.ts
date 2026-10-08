@@ -18,7 +18,12 @@ export function useStartCall() {
     (draft: IntakeDraft, context: IntakeContext, involvement: Involvement): CallRequest => {
       const req = draftToRequest(draft, context);
       const p = me.profile;
-      return { ...req, involvement, user: { ...req.user, name: p.name || req.user.name, pronouns: p.pronouns, preferredLanguage: p.preferredLanguage } };
+      return {
+        ...req,
+        involvement,
+        holdSeconds: p.holdSeconds,
+        user: { ...req.user, name: p.name || req.user.name, pronouns: p.pronouns, preferredLanguage: p.preferredLanguage },
+      };
     },
     [me.profile],
   );

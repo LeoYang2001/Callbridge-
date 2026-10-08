@@ -47,9 +47,9 @@ export function registerApiRoutes(
   app.post<{ Params: { id: string; qid: string } }>('/api/calls/:id/questions/:qid', async (req, reply) => {
     if (!ownCall(req, req.params.id)) return reply.code(404).send({ error: 'Not found' });
     const parsed = z
-      .object({ decision: z.enum(['approve', 'decline', 'reply']), text: z.string().trim().max(300).optional() })
+      .object({ decision: z.enum(['approve', 'decline', 'reply', 'later']), text: z.string().trim().max(300).optional() })
       .safeParse(req.body);
-    if (!parsed.success) return reply.code(400).send({ error: 'Send decision approve, decline, or reply (with text).' });
+    if (!parsed.success) return reply.code(400).send({ error: 'Send decision approve, decline, later, or reply (with text).' });
     const failed = manager.answerQuestion(req.params.id, req.params.qid, parsed.data);
     if (failed) return reply.code(failed.status).send({ error: failed.error });
     return { ok: true };

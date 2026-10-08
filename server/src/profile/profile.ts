@@ -36,6 +36,7 @@ export const ProfilePatchSchema = z
     timezone: z.string().refine(isValidTimeZone, 'Unknown time zone'),
     defaultCallLanguage: text(60),
     voice: z.enum(REALTIME_VOICES),
+    holdSeconds: z.number().int().min(10).max(120),
     usualAvailability: z.array(Window).max(10),
     shareable: z.array(z.object({ label: text(60).min(1), value: text(300).min(1) })).max(20),
     preferences: z.array(text(200)).max(30),

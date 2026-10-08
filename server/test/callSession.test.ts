@@ -375,6 +375,27 @@ describe('CallSession (simulated dentist call)', () => {
       expect(notified[0]).toMatchObject({ status: 'pending', questionInUserLanguage: '[Chinese (Mandarin)] Add an $80 X-ray?' });
     });
 
+    it('"decide later" declines for now, tells them the user will follow up, and keeps it open', async () => {
+      const c = await live();
+      c.ask({ category: 'additional_cost', question: 'Add an $80 X-ray?', amount_usd: 80 });
+      const q = c.get().questions![0]!;
+      expect(c.manager.answerQuestion(c.id, q.id, { decision: 'later' })).toBeNull();
+      expect(c.agent.prompts.at(-1)).toContain('another time');
+      expect(c.get().unresolvedQuestions).toContain('Add an $80 X-ray?');
+      expect(c.get().decisions.at(-1)!.outcome).not.toBe('authorized');
+    });
+
+    it("uses the call's own hold time", async () => {
+      const ctx = setup();
+      const created = ctx.manager.startCall({ ...dentistRequest(), holdSeconds: 45 });
+      await waitFor(() => ctx.telephony.placed.length === 1);
+      ctx.manager.handleTelephonyState(created.id, 'answered');
+      ctx.agent.emit('toolCall', 't1', 'request_decision', JSON.stringify({ category: 'additional_cost', question: 'Add an $80 X-ray?', amount_usd: 80 }));
+      const q = ctx.store.get(created.id)!.questions![0]!;
+      expect(q.expiresAt - q.askedAt).toBe(45_000);
+      ctx.manager.endCall(created.id);
+    });
+
     it('asks the user, and an approved charge lets the booking through', async () => {
       const c = await live();
       const booking = { type: 'appointment', description: 'Cleaning + X-ray', date: '2026-10-08', start_time: '15:30', additional_cost_usd: 80 };

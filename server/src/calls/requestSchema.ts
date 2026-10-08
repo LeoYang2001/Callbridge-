@@ -14,6 +14,7 @@ export const CallRequestSchema = z
     to: text(32).min(1),
     voice: z.enum(REALTIME_VOICES).optional(),
     involvement: z.enum(['supervised', 'handoff']).optional(),
+    holdSeconds: z.number().int().min(10).max(120).optional(),
     counterpartName: text(120).optional(),
     counterpartRelationship: text(60).optional(),
     counterpartAddress: text(200).optional(),

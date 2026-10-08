@@ -37,6 +37,7 @@ function Routes() {
             <Stack.Screen name="index" />
             <Stack.Screen name="intake" />
             <Stack.Screen name="call/[id]" />
+            <Stack.Screen name="talk/[id]" />
             <Stack.Screen name="calls" />
             <Stack.Screen name="contacts/index" />
             <Stack.Screen name="contacts/import" />

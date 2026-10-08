@@ -5,7 +5,8 @@ import type { CallSummary } from '@shared/types';
 import { useGlow } from '@/glow/GlowContext';
 import { useCalls } from '@/hooks/useCalls';
 import { MenuButton } from '@/nav/MenuButton';
-import { color, type, type TagName } from '@/theme/tokens';
+import { summaryTag } from '@/call/outcome';
+import { color, type } from '@/theme/tokens';
 import { StatusPill } from '@/ui/Text';
 import { Screen, TopBar } from '@/ui/Screen';
 
@@ -28,11 +29,6 @@ export default function Calls() {
   );
 }
 
-function tagFor(c: CallSummary): TagName {
-  if (c.status === 'failed') return 'No answer';
-  if (c.success === false) return 'Not booked';
-  return 'Delivered';
-}
 
 function Row({ c }: { c: CallSummary }) {
   const d = new Date(c.createdAt);
@@ -51,7 +47,7 @@ function Row({ c }: { c: CallSummary }) {
             {c.headline}
           </Text>
         ) : null}
-        <StatusPill name={tagFor(c)} />
+        <StatusPill name={summaryTag(c)} />
       </View>
     </Pressable>
   );

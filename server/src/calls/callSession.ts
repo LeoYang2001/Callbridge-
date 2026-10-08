@@ -53,7 +53,7 @@ const ULAW_BYTES_PER_MS = 8;
 export type ListenEvent = { t: 'them' | 'ai'; a: string } | { t: 'clear' | 'end' };
 
 /** Default hold while the user answers a question in the app. */
-const DEFAULT_HOLD_MS = 60_000;
+const DEFAULT_HOLD_MS = 30_000;
 /** How long a question's notification waits for its translation. */
 const QUESTION_NOTIFY_WAIT_MS = 2500;
 /** While they hold, check in this often so the silence doesn't make them hang up. */
@@ -502,7 +502,7 @@ export class CallSession {
   private askUser(ask: AskUser) {
     const id = randomUUID();
     const now = Date.now();
-    const holdMs = this.deps.holdTimeoutMs ?? DEFAULT_HOLD_MS;
+    const holdMs = (this.record.request.holdSeconds ?? 0) * 1000 || this.deps.holdTimeoutMs || DEFAULT_HOLD_MS;
     const question: UserQuestion = { id, askedAt: now, expiresAt: now + holdMs, status: 'pending', ...ask };
     this.asks.set(id, ask);
     this.update((r) => (r.questions ??= []).push(question));
@@ -580,7 +580,7 @@ export class CallSession {
     if (answer.decision === 'reply' && !answer.text?.trim()) return 'Type a reply first.';
 
     this.clearTimer(this.holdTimers.get(questionId));
-    const approved = answer.decision !== 'decline';
+    const approved = answer.decision === 'approve' || answer.decision === 'reply';
     const text = answer.decision === 'reply' ? answer.text!.trim() : undefined;
     const decision = this.policy.applyUserAnswer(ask, approved, text);
     this.update((r) => {
@@ -588,6 +588,8 @@ export class CallSession {
       const entry = r.questions!.find((x) => x.id === questionId)!;
       entry.status = 'answered';
       entry.answer = { ...answer, text, at: Date.now() };
+      // Deciding later: it stays open, as a follow-up for after the call.
+      if (answer.decision === 'later' && !r.unresolvedQuestions.includes(ask.question)) r.unresolvedQuestions.push(ask.question);
     });
     this.log('user.answered', `${answer.decision}${text ? `: ${text}` : ''}`);
     if (this.finalizing) return null;
@@ -595,7 +597,9 @@ export class CallSession {
     const name = this.record.request.user.name;
     const about = `"${ask.question}"`;
     let note: string;
-    if (decision.outcome !== 'authorized') {
+    if (answer.decision === 'later') {
+      note = `${name} wants to decide ${about} another time. Thank them for holding, say ${name} will get back to them about it, don't agree to it, and continue with the rest of the task.`;
+    } else if (decision.outcome !== 'authorized') {
       note = `${name} declined ${about}. Thank them for holding, politely say no to it, and continue with the rest of the task.`;
     } else if (ask.category === 'additional_cost' && ask.amountUsd !== undefined) {
       note = `${name} approved ${about}: you may now accept up to $${ask.amountUsd} in additional charges. Thank them for holding, and call confirm_agreement (with additional_cost_usd) before confirming.`;

@@ -1,7 +1,9 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
-import type { IntakeDraft, Me, ResearchResult } from '@shared/types';
+import type { CallRecord, IntakeDraft, Me, ResearchResult } from '@shared/types';
+import { HoldQuestion, Live, Ringing } from '@/call/LiveViews';
+import { Result } from '@/call/Result';
 import { useGlow } from '@/glow/GlowContext';
 import type { GlowMode } from '@/glow/modes';
 import { PreviewSessionProvider } from '@/lib/session';
@@ -57,12 +59,62 @@ const FOUND: ResearchResult = {
   ],
 };
 
-const VIEWS = ['home', 'asks', 'searching', 'found', 'review'] as const;
+const CALL: CallRecord = {
+  id: 'preview-call',
+  createdAt: Date.now() - 90_000,
+  status: 'connected',
+  request: {
+    to: '+19015550142',
+    counterpartName: 'Smile Dental',
+    user: { name: '伟', preferredLanguage: 'Chinese (Mandarin)' },
+    callLanguage: 'English',
+    timezone: 'America/Chicago',
+    authorizedInfo: [],
+    instructions: 'Book a cleaning',
+    involvement: 'supervised',
+    constraints: { availability: [], maxAdditionalCostUsd: 0 },
+  },
+  transcript: [
+    { id: '1', speaker: 'assistant', text: "Hi, I'm an AI assistant calling for Wei to book a cleaning.", translation: '您好，我是替伟打电话的 AI 助理，想预约洗牙。', at: 0 },
+    { id: '2', speaker: 'counterpart', text: 'Thank you for calling Smile Dental, this is Maria.', translation: '您好，Smile Dental，我是 Maria。', at: 0 },
+  ],
+  questions: [{ id: 'q', askedAt: Date.now() - 2000, expiresAt: Date.now() + 28_000, category: 'additional_cost', question: "Would he also like a full set of X-rays? That's $80 extra.", questionInUserLanguage: '要加做全套 X 光吗？需额外付 $80。', amountUsd: 80, status: 'pending' }],
+  unresolvedQuestions: [],
+  commitments: [],
+  decisions: [],
+  metrics: { answeredAt: Date.now() - 83_000, turnLatenciesMs: [], interruptions: 0 },
+  events: [],
+} as unknown as CallRecord;
+
+const DONE: CallRecord = {
+  ...CALL,
+  status: 'completed',
+  questions: [],
+  result: {
+    status: 'completed',
+    success: true,
+    objective: 'x',
+    appointment: { date: '2026-10-15', time: '14:00', notes: 'Cleaning' },
+    commitments: [],
+    additionalChargesAuthorized: false,
+    unresolvedQuestions: [],
+    refusedDecisions: [],
+    followUpsForUser: [],
+    summary: 'Booked a cleaning for Thursday, Oct 15 at 2:00 pm. Bring the insurance card.',
+    summaryInUserLanguage: '约好了：10月15日周四下午2点洗牙。',
+    headlineInUserLanguage: '约好了：周四下午2点',
+    nextStepsInUserLanguage: ['带上保险卡', '提前10分钟到'],
+    policyWarnings: [],
+  },
+} as CallRecord;
+
+const VIEWS = ['home', 'asks', 'searching', 'found', 'review', 'ringing', 'live', 'hold', 'result', 'no answer'] as const;
 type V = (typeof VIEWS)[number];
-const GLOW: Record<V, GlowMode> = { home: 'idle', asks: 'idle', searching: 'think', found: 'idle', review: 'ready' };
+const GLOW: Record<V, GlowMode> = { home: 'idle', asks: 'idle', searching: 'think', found: 'idle', review: 'ready', ringing: 'ring', live: 'hair', hold: 'hold', result: 'done', 'no answer': 'fail' };
 
 export default function Preview() {
-  const [v, setV] = useState<V>('home');
+  const params = useLocalSearchParams<{ v?: string }>();
+  const [v, setV] = useState<V>((VIEWS as readonly string[]).includes(params.v ?? '') ? (params.v as V) : 'home');
   return (
     <PreviewSessionProvider me={ME}>
       <View style={{ flex: 1 }}>
@@ -81,7 +133,19 @@ export default function Preview() {
 }
 
 function Static({ v }: { v: Exclude<V, 'home'> }) {
-  useGlow(GLOW[v]);
+  useGlow(GLOW[v], v === 'hold' ? 28 / 30 : 1);
+  if (v === 'ringing' || v === 'live' || v === 'hold' || v === 'result' || v === 'no answer') {
+    const noAnswer = { ...CALL, status: 'failed', questions: [], failureReason: '没人接听，20分钟后再试。', result: undefined } as unknown as CallRecord;
+    return (
+      <Screen padding={0} bottom={<View style={{ height: 70 }} />}>
+        {v === 'ringing' && <Ringing call={{ ...CALL, status: 'dialing' }} onCancel={() => {}} />}
+        {v === 'live' && <Live call={CALL} seconds={83} userName="伟" listening={false} listenBusy={false} onListen={() => {}} onEnd={() => {}} onMessage={() => {}} onTranscript={() => {}} />}
+        {v === 'hold' && <HoldQuestion q={CALL.questions![0]!} limitUsd={0} remaining={28} english={false} onAnswer={() => {}} busy={false} error={null} />}
+        {v === 'result' && <Result call={DONE} english={false} onDone={() => {}} onTryAgain={() => {}} onTalk={() => {}} onTranscript={() => {}} retrying={false} />}
+        {v === 'no answer' && <Result call={noAnswer} english={false} onDone={() => {}} onTryAgain={() => {}} onTalk={() => {}} onTranscript={() => {}} retrying={false} />}
+      </Screen>
+    );
+  }
   if (v === 'review') {
     return (
       <Screen padding={0}>
