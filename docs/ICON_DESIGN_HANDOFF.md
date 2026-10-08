@@ -1,8 +1,14 @@
-# CallBridge iOS app icon: design brief
+# CallBridge app icon: design brief
 
 **For:** the designer of the CallBridge app icon.
-**What we need:** an iOS app icon (all appearances), plus the matching web-app icons, that people recognize at a glance on a crowded home screen.
+**What we need:** an iOS app icon (all appearances), plus the matching Android and web-app icons, that people recognize at a glance on a crowded home screen.
+
 **Companion doc:** `docs/MOBILE_APP_HANDOFF.md` describes every screen of the app.
+
+**Decided:**
+- **Standalone brand.** It shares nothing with the founder's other business.
+- **No color constraints.**
+- **The name isn't final.** "CallBridge" is the working name and may change, so the icon must not depend on it (see §6).
 
 ---
 
@@ -28,7 +34,7 @@ These users hand CallBridge real things: a doctor's appointment, a message to a 
 In priority order:
 
 1. **Phone calls.** Someone scanning their home screen for "the app that calls for me" should find it.
-2. **Two sides connected across a language gap:** the bridge.
+2. **Two sides connected across a language gap.**
 3. **Someone capable helping on your behalf.** Calm and dependable.
 
 **Feel:** warm, calm, competent. Not techy or robotic, not corporate telecom, not playful or childish.
@@ -55,7 +61,7 @@ These are only prompts; the direction is yours.
 - **Call-center imagery:** headsets and operators suggest a company calling you, which is the opposite of what CallBridge is.
 - **Emergency or medical signs:** red crosses, sirens, 911.
 - **Fine detail:** thin strokes, small dots and gradients that disappear at 40 px.
-- **The name or a wordmark inside the icon.** iOS shows "CallBridge" under it, and the name fits without being cut off.
+- **The name or a wordmark inside the icon.** iOS shows the app name under it.
 
 ## 6. What exists today
 
@@ -64,8 +70,9 @@ These are only prompts; the direction is yours.
   - The new iOS/Android app (`mobile/`, built with Expo) still shows Expo's default template icon.
   
   Replace both freely.
-- **The app's colors can change.** The UI uses an accent blue (`#2557e8` light, `#6f8fff` dark) and a "call" green (`#1a9e4b` / `#34c46b`) for the Start-call button and live-call indicators. The app will adopt whatever palette the icon sets; tell us the values.
-- **Byte2Bite is a separate business.** The founder's other company builds restaurant websites, with its own design system (Inter, a "spruce" accent). CallBridge doesn't need to resemble it unless the founder decides otherwise (see §12).
+- **The palette is yours to choose.** Nothing carries over from today's UI (accent blue `#2557e8`, call green `#1a9e4b`). The app will adopt the icon's palette; tell us the values.
+- **Standalone brand.** It needs no resemblance to the founder's other business (Byte2Bite, restaurant websites).
+- **The name may change.** "CallBridge" is a working name. Make sure the concepts don't depend on the word "bridge": the icon should still fit if the app gets another name. If a concept suggests a name, you're welcome to propose it.
 
 ## 7. iOS requirements
 
@@ -144,10 +151,5 @@ These replace the files in `web/public/`.
 - **Says "phone calls" first,** and "between languages" second.
 - **Works in Default, Dark and Tinted.**
 - **No letters, flags or robot clichés.**
+- **Still fits if the app is renamed.**
 - **Calm and trustworthy,** so you'd hand it a doctor's appointment.
-
-## 12. Open questions for the founder
-
-1. Is **CallBridge** the final name for the App Store?
-2. Should CallBridge show any family resemblance to Byte2Bite, or stand alone?
-3. Any color the icon must or must not use (keep the blue, avoid green, etc.)?
