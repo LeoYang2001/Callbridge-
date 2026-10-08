@@ -15,7 +15,10 @@ import { Chip } from '@/ui/Button';
 import { Bars } from '@/ui/Bars';
 import { HoldToTalk, MicState } from '@/ui/HoldToTalk';
 import { Screen } from '@/ui/Screen';
+import PhoneBook from '../contacts';
 import CallScreen from '../index';
+import MeScreen from '../me';
+import NotificationsScreen from '../notifications';
 
 /** Development only: the new screens with sample data and no server, for checking the design. */
 
@@ -28,11 +31,15 @@ const ME: Me = {
     otherLanguages: [],
     timezone: 'America/Chicago',
     usualAvailability: [],
-    shareable: [],
     preferences: [],
     contacts: [
-      { id: 'sd', name: 'Smile Dental', phone: '+19015550142', relationship: 'dentist', notes: [], callCount: 4 },
+      { id: 'sd', name: 'Smile Dental', phone: '+19015550142', relationship: 'dentist', language: 'English', notes: ['Asks for the insurance card at check-in'], callCount: 4, lastOutcome: '已预约：10月8日周四 下午2:00' },
+      { id: 'ts', name: 'Tabito Sato', phone: '+19015552290', relationship: 'friend', language: 'Japanese', notes: [], callCount: 3, lastOutcome: '已转达：今晚的读经去不了' },
       { id: 'm', name: 'Maria', phone: '+17472836440', relationship: 'girlfriend', notes: [], callCount: 12 },
+    ],
+    shareable: [
+      { label: 'Date of birth', value: '1988-03-14' },
+      { label: 'Insurance member ID', value: 'AET-4471', off: true },
     ],
     appointments: [{ id: 'a', date: '2026-10-15', time: '14:00', with: 'Smile Dental', description: '洗牙 · bring insurance card', callId: 'c' }],
     history: [],
@@ -108,9 +115,9 @@ const DONE: CallRecord = {
   },
 } as CallRecord;
 
-const VIEWS = ['home', 'asks', 'searching', 'found', 'review', 'ringing', 'live', 'hold', 'result', 'no answer'] as const;
+const VIEWS = ['home', 'asks', 'searching', 'found', 'review', 'ringing', 'live', 'hold', 'result', 'no answer', 'book', 'me', 'notif'] as const;
 type V = (typeof VIEWS)[number];
-const GLOW: Record<V, GlowMode> = { home: 'idle', asks: 'idle', searching: 'think', found: 'idle', review: 'ready', ringing: 'ring', live: 'hair', hold: 'hold', result: 'done', 'no answer': 'fail' };
+const GLOW: Record<V, GlowMode> = { home: 'idle', asks: 'idle', searching: 'think', found: 'idle', review: 'ready', ringing: 'ring', live: 'hair', hold: 'hold', result: 'done', 'no answer': 'fail', book: 'none', me: 'none', notif: 'none' };
 
 export default function Preview() {
   const params = useLocalSearchParams<{ v?: string }>();
@@ -118,7 +125,7 @@ export default function Preview() {
   return (
     <PreviewSessionProvider me={ME}>
       <View style={{ flex: 1 }}>
-        {v === 'home' ? <CallScreen /> : <Static v={v} />}
+        {v === 'home' ? <CallScreen /> : v === 'book' ? <PhoneBook /> : v === 'me' ? <MeScreen /> : v === 'notif' ? <NotificationsScreen /> : <Static v={v} />}
         <View style={{ position: 'absolute', bottom: 34, left: 0, right: 0 }}>
           <ScrollView horizontal contentContainerStyle={{ gap: 6, paddingHorizontal: 12 }} showsHorizontalScrollIndicator={false}>
             {VIEWS.map((x) => (
@@ -132,7 +139,7 @@ export default function Preview() {
   );
 }
 
-function Static({ v }: { v: Exclude<V, 'home'> }) {
+function Static({ v }: { v: Exclude<V, 'home' | 'book' | 'me' | 'notif'> }) {
   useGlow(GLOW[v], v === 'hold' ? 28 / 30 : 1);
   if (v === 'ringing' || v === 'live' || v === 'hold' || v === 'result' || v === 'no answer') {
     const noAnswer = { ...CALL, status: 'failed', questions: [], failureReason: '没人接听，20分钟后再试。', result: undefined } as unknown as CallRecord;

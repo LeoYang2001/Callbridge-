@@ -17,6 +17,8 @@ export interface AvailabilityWindow {
 export interface AuthorizedFact {
   label: string;
   value: string;
+  /** In the profile: switched off in Me, so the assistant doesn't offer it. */
+  off?: boolean;
 }
 
 /**
@@ -332,6 +334,18 @@ export interface UpcomingAppointment {
   callId: string;
   /** The AI booked it, but the other party may not have agreed. */
   needsConfirmation?: boolean;
+  /** When the day-before reminder went out. */
+  remindedAt?: number;
+}
+
+/** Which notifications the user wants. Hold questions always notify (someone is waiting). */
+export interface NotifyPrefs {
+  /** When a call finishes. */
+  results?: boolean;
+  /** The evening before an appointment. */
+  reminders?: boolean;
+  /** Calls on the lock screen and Dynamic Island. */
+  liveActivity?: boolean;
 }
 
 /**
@@ -349,6 +363,10 @@ export interface UserProfile {
   voice?: RealtimeVoice;
   /** How long the other party holds for the user's answer, in seconds (default 30). */
   holdSeconds?: number;
+  /** Extra charges the assistant may accept without asking, in USD (default 0: ask first). */
+  maxChargeUsd?: number;
+  /** Unset fields mean on. */
+  notify?: NotifyPrefs;
   usualAvailability: AvailabilityWindow[];
   /** Facts they're happy to share when relevant; each call still confirms which ones. */
   shareable: AuthorizedFact[];

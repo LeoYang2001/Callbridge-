@@ -93,6 +93,11 @@ export class Database {
     return user;
   }
 
+  /** Every user (for background jobs such as reminders; a few hundred rows at most for now). */
+  allUsers(): UserRow[] {
+    return (this.db.prepare('SELECT * FROM users').all() as Record<string, unknown>[]).map((r) => this.toUser(r)!);
+  }
+
   saveProfile(userId: string, profile: UserProfile) {
     this.db.prepare('UPDATE users SET profile = ? WHERE id = ?').run(JSON.stringify(profile), userId);
   }

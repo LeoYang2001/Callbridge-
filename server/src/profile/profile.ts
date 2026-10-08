@@ -38,7 +38,9 @@ export const ProfilePatchSchema = z
     voice: z.enum(REALTIME_VOICES),
     holdSeconds: z.number().int().min(10).max(120),
     usualAvailability: z.array(Window).max(10),
-    shareable: z.array(z.object({ label: text(60).min(1), value: text(300).min(1) })).max(20),
+    shareable: z.array(z.object({ label: text(60).min(1), value: text(300).min(1), off: z.boolean().optional() })).max(20),
+    maxChargeUsd: z.number().int().min(0).max(1000),
+    notify: z.object({ results: z.boolean(), reminders: z.boolean(), liveActivity: z.boolean() }).partial(),
     preferences: z.array(text(200)).max(30),
     onboarded: z.boolean(),
     // Lists the user can prune (the app sends the list without the deleted items).
@@ -181,7 +183,8 @@ export function profileForPrompt(profile: UserProfile): string {
   if (profile.otherLanguages.length) lines.push(`- Also speaks: ${profile.otherLanguages.join(', ')}`);
   if (profile.defaultCallLanguage) lines.push(`- Usual call language: ${profile.defaultCallLanguage}`);
   if (profile.usualAvailability.length) lines.push(`- Usually available: ${describeAvailability(profile.usualAvailability)}`);
-  if (profile.shareable.length) lines.push(`- Has said these may be shared when relevant: ${profile.shareable.map((f) => `${f.label}: ${f.value}`).join('; ')}`);
+  const shareable = profile.shareable.filter((f) => !f.off);
+  if (shareable.length) lines.push(`- Has said these may be shared when relevant: ${shareable.map((f) => `${f.label}: ${f.value}`).join('; ')}`);
   if (profile.preferences.length) lines.push(`- Preferences: ${profile.preferences.join('; ')}`);
   const contacts = [...profile.contacts].sort((a, b) => (b.lastCalledAt ?? 0) - (a.lastCalledAt ?? 0)).slice(0, 50);
   if (contacts.length) {

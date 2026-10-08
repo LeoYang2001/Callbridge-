@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Animated, { FadeIn, FadeInUp, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
@@ -11,6 +11,7 @@ import type { GlowMode } from '@/glow/modes';
 import { useAddErrand } from '@/hooks/useErrands';
 import { useIntake } from '@/hooks/useIntake';
 import { useIntakeContext } from '@/hooks/useIntakeContext';
+import { usePhoneBook } from '@/hooks/usePhoneBook';
 import { usePreferences } from '@/hooks/usePreferences';
 import { useStartCall } from '@/hooks/useStartCall';
 import { useSignedIn } from '@/lib/session';
@@ -31,18 +32,30 @@ import { Screen, TopBar } from '@/ui/Screen';
  * asks (with answer chips) → looking it up → review & confirm → Call now.
  */
 export default function CallScreen() {
-  // Cancel starts over with a fresh conversation.
+  // Cancel starts over with a fresh conversation. ?contact=<id>: calling someone from the phone book.
+  const { contact } = useLocalSearchParams<{ contact?: string }>();
   const [round, setRound] = useState(0);
-  return <Conversation key={round} onReset={() => setRound((r) => r + 1)} />;
+  return <Conversation key={`${round}-${contact ?? ''}`} contactId={round === 0 ? contact : undefined} onReset={() => setRound((r) => r + 1)} />;
 }
 
 type View_ = 'home' | 'listening' | 'asks' | 'research' | 'review';
 
-function Conversation({ onReset }: { onReset: () => void }) {
+function Conversation({ contactId, onReset }: { contactId?: string; onReset: () => void }) {
   const { me } = useSignedIn();
   const prefs = usePreferences();
   const context = useIntakeContext(prefs.voice);
-  const intake = useIntake({ context, pushToTalk: true, keepLines: 30 });
+  const { callSeed } = usePhoneBook();
+  // From the phone book: who to call is filled in and said first, so the assistant only asks what for.
+  const [seed] = useState(() => {
+    const c = contactId ? me.profile.contacts.find((x) => x.id === contactId) : undefined;
+    return c ? callSeed(c) : undefined;
+  });
+  const intake = useIntake({ context, pushToTalk: true, keepLines: 30, seed });
+  useEffect(() => {
+    if (seed) void intake.start();
+    // Once, when opened for a contact.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const { buildRequest, start, submitting, error: callError } = useStartCall();
   const queue = useAddErrand();
   const { follow } = useActiveCall();

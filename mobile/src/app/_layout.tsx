@@ -41,6 +41,7 @@ function Routes() {
             <Stack.Screen name="calls" />
             <Stack.Screen name="contacts/index" />
             <Stack.Screen name="contacts/import" />
+            <Stack.Screen name="contacts/[id]" />
             <Stack.Screen name="me" />
             <Stack.Screen name="notifications" />
             <Stack.Screen name="errands" />

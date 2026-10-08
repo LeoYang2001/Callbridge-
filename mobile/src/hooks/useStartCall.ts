@@ -18,8 +18,11 @@ export function useStartCall() {
     (draft: IntakeDraft, context: IntakeContext, involvement: Involvement): CallRequest => {
       const req = draftToRequest(draft, context);
       const p = me.profile;
+      // No limit set for this call: the user's own default (0 means always ask first).
+      const charges = draft.maxAdditionalCostUsd === undefined ? (p.maxChargeUsd ?? 0) : req.constraints.maxAdditionalCostUsd;
       return {
         ...req,
+        constraints: { ...req.constraints, maxAdditionalCostUsd: charges },
         involvement,
         holdSeconds: p.holdSeconds,
         user: { ...req.user, name: p.name || req.user.name, pronouns: p.pronouns, preferredLanguage: p.preferredLanguage },

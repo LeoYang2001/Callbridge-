@@ -18,6 +18,7 @@ import { LogOtp, OtpRateLimit, TwilioVerifyOtp } from './auth/otp';
 import { Database } from './db/database';
 import { learnFromCall } from './profile/profile';
 import { ErrandQueue } from './errands/errandQueue';
+import { sendDueReminders } from './reminders/reminders';
 import { registerErrandRoutes } from './routes/errands';
 import { ExpoPush, finishedNotification, questionNotification, type PushMessage } from './push/push';
 import { registerApiRoutes } from './routes/api';
@@ -100,6 +101,8 @@ const logCallEvent = (callId: string, type: string, detail?: string) => {
 // Push notifications to the user's phones (the mobile app); the web app doesn't register any.
 const push = new ExpoPush((msg) => app.log.warn(msg));
 const notify = (userId: string | undefined, message: Omit<PushMessage, 'to'>) => {
+  // Hold questions always notify (someone is waiting); results only if the user wants them.
+  if (userId && message.data.kind !== 'question' && db.userById(userId)?.profile.notify?.results === false) return;
   const tokens = userId ? db.pushTokensFor(userId) : [];
   if (!tokens.length) return;
   push
@@ -163,6 +166,13 @@ const errands = new ErrandQueue({
 });
 registerErrandRoutes(app, { config, queue: errands, manager, checkDeps });
 if (config.telephonyConfigured && config.voiceConfigured) errands.start();
+
+// Day-before appointment reminders (they have their own switch, so they skip the results check).
+const sendReminder = (userId: string, message: Omit<PushMessage, 'to'>) => {
+  const tokens = db.pushTokensFor(userId);
+  if (tokens.length) void push.send(tokens.map((to) => ({ ...message, to }))).catch((err) => app.log.warn({ err }, 'reminder push failed'));
+};
+setInterval(() => sendDueReminders(db, sendReminder), 15 * 60_000).unref();
 registerIntakeRoutes(app, { config, checkDeps, store });
 registerListenRoutes(app, { manager, store });
 registerResearchRoutes(app, {
