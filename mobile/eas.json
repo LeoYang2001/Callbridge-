@@ -29,7 +29,10 @@
   },
   "submit": {
     "testflight": {
-      "ios": {}
+      "ios": {
+        "bundleIdentifier": "tech.byte2bite.callbridge",
+        "ascAppId": "6820610012"
+      }
     }
   }
 }
