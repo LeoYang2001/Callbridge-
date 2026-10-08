@@ -46,7 +46,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "expo lint",
     "postinstall": "patch-package",
-    "pods": "cd ios && LANG=en_US.UTF-8 pod install && cd .. && ./scripts/verify-pod-configs.sh"
+    "pods": "cd ios && LANG=en_US.UTF-8 pod install && cd .. && ./scripts/verify-pod-configs.sh",
+    "eas-build-post-install": "F=\"ios/Pods/Target Support Files/Pods-CallBridge/Pods-CallBridge-frameworks.sh\"; if [ -f \"$F\" ]; then grep -q ExpoModulesJSI.framework \"$F\" || { echo \"FATAL: ExpoModulesJSI missing from the embed script - the app would crash at launch\"; exit 1; }; echo \"OK: ExpoModulesJSI is in the embed script\"; fi"
   },
   "private": true,
   "overrides": {
