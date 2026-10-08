@@ -3,6 +3,7 @@ import type { IntakeContext } from '@shared/intake';
 import type { IntakeCheckResult, IntakeDraft, Me, ResearchResult } from '@shared/types';
 import { useSignedIn } from '@/lib/session';
 import type { IntakeChoices } from '@shared/client/intake';
+import { dictationLocale, startDictation, type Dictation } from '@/lib/speech';
 import { startIntake, type IntakeLine, type IntakeSessionControls, type IntakeStatus } from '@/lib/voiceIntake';
 
 export interface UseIntakeOptions {
@@ -25,7 +26,7 @@ export interface UseIntakeOptions {
  * state. Stops when the screen unmounts.
  */
 export function useIntake({ context, mode = 'call', followUp, seed, keepLines = 12, pushToTalk = false }: UseIntakeOptions) {
-  const { conn, setMe } = useSignedIn();
+  const { conn, setMe, me } = useSignedIn();
   const [status, setStatus] = useState<IntakeStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lines, setLines] = useState<IntakeLine[]>([]);
@@ -123,26 +124,77 @@ export function useIntake({ context, mode = 'call', followUp, seed, keepLines = 
     if (!live && !sessionRef.current) await connect(false);
   }, [live, connect]);
 
-  /** Push-to-talk: the button went down (connects first if needed). */
+  /**
+   * Push-to-talk. Where the phone can transcribe the user's language, it does, live, and on
+   * release that exact text is what the assistant gets: what you see is what it understood.
+   * Otherwise the voice itself is sent (the transcript then appears after release).
+   */
+  const dictationRef = useRef<Dictation | null>(null);
+  const dictationStart = useRef<Promise<Dictation | null> | null>(null);
+  const heardCount = useRef(0);
+
+  const showHeard = useCallback((id: string, text: string | null) => {
+    setLines((prev) => {
+      const rest = prev.filter((l) => l.id !== id);
+      return text ? [...rest, { id, role: 'user' as const, text, partial: true }].slice(-keepLines) : rest;
+    });
+  }, [keepLines]);
+
   const pressTalk = useCallback(async () => {
     setHolding(true);
     setChoices(null);
+    setError(null);
+    const locale = await dictationLocale(context.userLanguage);
+    if (locale) {
+      const id = `heard-${++heardCount.current}`;
+      const names = me.profile.contacts.map((c) => c.name);
+      dictationStart.current = startDictation(locale, names, (t) => showHeard(id, t)).then(
+        (d) => (dictationRef.current = Object.assign(d, { lineId: id })),
+        (e: Error) => {
+          setError(e.message);
+          return null;
+        },
+      );
+      // Stop the assistant if it's talking; connect in the meantime if this is the first turn.
+      const session = live ? sessionRef.current : await connect(false);
+      session?.interrupt?.();
+      return;
+    }
     try {
       const session = live ? sessionRef.current : await connect(true);
       await session?.startTurn?.();
-      setError(null);
     } catch (e) {
       setHolding(false);
       setError((e as Error).message);
     }
-  }, [live, connect]);
+  }, [live, connect, context.userLanguage, me.profile.contacts, showHeard]);
 
   /** Push-to-talk: released; sends what was said, or drops a tap too short to be speech. */
-  const releaseTalk = useCallback((tooShort = false) => {
-    setHolding(false);
-    if (tooShort) sessionRef.current?.cancelTurn?.();
-    else sessionRef.current?.endTurn?.();
-  }, []);
+  const releaseTalk = useCallback(
+    async (tooShort = false) => {
+      setHolding(false);
+      if (dictationStart.current) {
+        const d = await dictationStart.current;
+        dictationStart.current = null;
+        dictationRef.current = null;
+        if (!d) return;
+        const id = (d as Dictation & { lineId: string }).lineId;
+        if (tooShort) {
+          d.cancel();
+          showHeard(id, null);
+          return;
+        }
+        const text = await d.finish();
+        showHeard(id, null);
+        if (!text) return setError("I didn't catch that. Hold the button and try again.");
+        sessionRef.current?.sendText(text);
+        return;
+      }
+      if (tooShort) sessionRef.current?.cancelTurn?.();
+      else sessionRef.current?.endTurn?.();
+    },
+    [showHeard],
+  );
 
   /** Taps an answer chip: sent as the user's answer. */
   const choose = useCallback(

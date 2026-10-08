@@ -146,6 +146,7 @@ export async function startIntake(conn: Connection, ctx: IntakeContext, h: Intak
       if (micTrack) micTrack.enabled = false;
       conversation.cancelTurn();
     },
+    interrupt: () => conversation.interrupt(),
     stop,
   };
 }

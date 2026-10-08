@@ -67,6 +67,20 @@
           "defaultChannel": "calls"
         }
       ],
+      [
+        "expo-calendar",
+        {
+          "writeOnlyAccess": true,
+          "writeOnlyCalendarPermission": "CallBridge adds appointments it booked for you to your calendar. It never reads your calendar."
+        }
+      ],
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "CallBridge uses the microphone while you hold the talk button.",
+          "speechRecognitionPermission": "CallBridge shows your words as you speak, so you can see exactly what the assistant will get."
+        }
+      ],
       "expo-secure-store",
       "expo-localization"
     ],

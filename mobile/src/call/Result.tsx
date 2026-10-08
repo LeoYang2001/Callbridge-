@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
+import { addToCalendar, destinationOf, openDirections } from '@/lib/afterCall';
 import type { CallRecord } from '@shared/types';
 import { color, type } from '@/theme/tokens';
 import { PillButton } from '@/ui/Button';
@@ -22,6 +24,9 @@ export function Result({
   onTranscript: () => void;
   retrying: boolean;
 }) {
+  const [note, setNote] = useState<string | null>(null);
+  const [added, setAdded] = useState(false);
+  const destination = destinationOf(call);
   const r = call.result;
   const o = outcomeOf(call);
   const headline = r?.headlineInUserLanguage || r?.summaryInUserLanguage || call.failureReason || 'The call ended.';
@@ -56,7 +61,23 @@ export function Result({
         </View>
       </View>
       <View style={{ paddingHorizontal: 22, gap: 10 }}>
-        {o.good ? <PillButton title="Done" onPress={onDone} /> : <PillButton title="Try again" onPress={onTryAgain} busy={retrying} />}
+        {note ? <Text style={[type.small, { color: color.redText, textAlign: 'center' }]}>{note}</Text> : null}
+        {o.good && r?.appointment ? (
+          <PillButton
+            title={added ? 'Added to calendar' : 'Add to calendar'}
+            disabled={added}
+            onPress={async () => {
+              const err = await addToCalendar(call);
+              setNote(err);
+              if (!err) setAdded(true);
+            }}
+          />
+        ) : o.good ? (
+          <PillButton title="Done" onPress={onDone} />
+        ) : (
+          <PillButton title="Try again" onPress={onTryAgain} busy={retrying} />
+        )}
+        {o.good && destination ? <PillButton title="Get directions" kind="white" height={50} onPress={() => void openDirections(destination)} /> : null}
         <View style={{ flexDirection: 'row', gap: 10 }}>
           <PillButton title="Talk it over" kind="white" height={50} onPress={onTalk} style={{ flex: 1 }} />
           <PillButton title="Transcript" kind="white" height={50} onPress={onTranscript} style={{ flex: 1 }} />

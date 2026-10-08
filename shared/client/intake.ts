@@ -76,6 +76,8 @@ export interface IntakeSessionControls {
   endTurn?: () => void;
   /** Push-to-talk: a tap too short to be speech; drops it. */
   cancelTurn?: () => void;
+  /** Stops the assistant mid-sentence (the user started talking; their words will follow as text). */
+  interrupt?: () => void;
   stop: () => void;
 }
 
@@ -242,6 +244,13 @@ export function createIntakeConversation(deps: {
       send({ type: 'input_audio_buffer.commit' });
       send({ type: 'response.create' });
       h.onStatus('thinking');
+    },
+
+    /** Stops the assistant mid-sentence; the user's turn follows as text (dictation). */
+    interrupt() {
+      send({ type: 'response.cancel' });
+      send({ type: 'output_audio_buffer.clear' });
+      h.onStatus('listening');
     },
 
     /** Push-to-talk: a tap too short to be speech. Drops it and waits again. */
