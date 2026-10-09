@@ -13,7 +13,10 @@ export function detailsKnown(d: IntakeDraft): number {
   ].filter(Boolean).length;
 }
 
-/** The request taking shape while the assistant asks: name, "n of 5 details", what it needs to know. */
+/**
+ * The request taking shape while the assistant asks: name, "n of 5 details", what it needs to
+ * know. Sits at the top of the conversation, slim, so the middle is free for it.
+ */
 export function RequestCard({ draft, need }: { draft: IntakeDraft; need?: string }) {
   const n = detailsKnown(draft);
   return (
@@ -30,7 +33,7 @@ export function RequestCard({ draft, need }: { draft: IntakeDraft; need?: string
         ))}
       </View>
       {draft.taskInUserLanguage || need ? (
-        <Text style={type.caption} numberOfLines={2}>
+        <Text style={type.caption} numberOfLines={1}>
           {draft.taskInUserLanguage}
           {draft.taskInUserLanguage && need ? ' · ' : ''}
           {need ? <Text style={{ color: color.violet }}>{need}</Text> : null}
@@ -41,7 +44,7 @@ export function RequestCard({ draft, need }: { draft: IntakeDraft; need?: string
 }
 
 const s = StyleSheet.create({
-  card: { marginHorizontal: 18, backgroundColor: color.white, borderWidth: 1, borderColor: color.line, borderRadius: 22, paddingHorizontal: 16, paddingVertical: 14, gap: 8 },
+  card: { marginHorizontal: 18, marginTop: 6, backgroundColor: color.white, borderWidth: 1, borderColor: color.line, borderRadius: 20, paddingHorizontal: 16, paddingVertical: 10, gap: 7 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   segs: { flexDirection: 'row', gap: 4 },
   seg: { flex: 1, height: 3, borderRadius: 2 },

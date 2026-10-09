@@ -234,8 +234,11 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
     // What they just said, until the assistant starts answering it.
     const sent = lastUser && !lastUser.partial && intake.lines.lastIndexOf(lastUser) > (lastAssistant ? intake.lines.lastIndexOf(lastAssistant) : -1) ? lastUser : null;
     const showRequest = Boolean(intake.draft.counterpartName || intake.draft.task);
+    // Something besides answer chips is in the action area (place cards now; more later): the
+    // captions step down to give it room.
+    const roomy = !showPlaces;
     return (
-      <Screen top={spacer} bottom={controls} padding={0}>
+      <Screen top={showRequest ? <RequestCard draft={intake.draft} need={intake.choices?.topic} /> : spacer} bottom={controls} padding={0}>
         {/* Two zones, so captions changing as the assistant talks never move what you tap: the
             captions fill the space above and grow upward from its bottom edge, like subtitles;
             the cards and answers sit below and move only when they change themselves. */}
@@ -246,19 +249,27 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
               {speaking ? 'Speaking' : thinking ? 'Thinking…' : 'Your turn · hold to answer'}
             </Text>
           </View>
-          {before ? (
+          {before && !roomy ? null : before ? (
             <Text style={[type.sub, s.before]} numberOfLines={2} ellipsizeMode="head">
               {before}
             </Text>
           ) : null}
           {question ? (
-            // A long sentence shrinks to fit four lines rather than growing taller.
-            <Animated.Text key={question.slice(0, 24)} entering={FadeIn.duration(250)} style={type.question} numberOfLines={4} adjustsFontSizeToFit minimumFontScale={0.7}>
+            // A long sentence shrinks to fit rather than growing taller; smaller still when cards
+            // (or anything else) share the screen.
+            <Animated.Text
+              key={question.slice(0, 24)}
+              entering={FadeIn.duration(250)}
+              style={[type.question, !roomy && s.questionSmall]}
+              numberOfLines={roomy ? 4 : 3}
+              adjustsFontSizeToFit
+              minimumFontScale={0.7}
+            >
               {question}
             </Animated.Text>
           ) : null}
           {!english && intake.choices?.questionEn ? (
-            <Text style={type.small} numberOfLines={2}>
+            <Text style={type.small} numberOfLines={roomy ? 2 : 1}>
               {intake.choices.questionEn}
             </Text>
           ) : null}
@@ -288,7 +299,6 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
           {intake.ready && !reviewing ? <Chip title="Review the call" variant="blue" onPress={() => setReviewing(true)} /> : null}
           {intake.error ? <Text style={[type.small, { color: color.redText }]}>{intake.error}</Text> : null}
         </View>
-        {showRequest ? <RequestCard draft={intake.draft} need={intake.choices?.topic} /> : null}
       </Screen>
     );
   }
@@ -504,6 +514,7 @@ const s = StyleSheet.create({
   typeRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, minHeight: 50, borderRadius: 25, backgroundColor: color.surface, paddingHorizontal: 16, paddingVertical: 10 },
   dock: { position: 'absolute', left: 0, right: 0, top: 0, height: 120, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 28 },
   before: { opacity: 0.8 },
+  questionSmall: { fontSize: 22, lineHeight: 29, letterSpacing: -0.2 },
   stage: { flex: 1, justifyContent: 'flex-end', gap: 12, paddingHorizontal: 34, paddingBottom: 14, overflow: 'hidden' },
   act: { gap: 12, paddingHorizontal: 34, paddingBottom: 12 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
