@@ -1,10 +1,9 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Keyboard, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
-import Animated, { Easing, FadeIn, FadeInUp, FadeOut, SlideInDown, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, FadeIn, FadeOut, SlideInDown, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { sentenceStarts } from '@shared/captions';
-import { nativeLanguageName } from '@shared/languages';
 import type { PlaceResult } from '@shared/types';
 import { useActiveCall } from '@/call/ActiveCall';
 import { useGlow } from '@/glow/GlowContext';
@@ -119,6 +118,7 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
       onRelease={(tooShort) => void intake.releaseTalk(tooShort)}
       disabled={intake.status === 'connecting' && !intake.holding}
       onType={() => setTyping(true)}
+      onEnd={cancel}
     />
   );
   return (
@@ -141,41 +141,19 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
   function renderView() {
     if (view === 'home') return <Home onSuggestion={(t) => void intake.choose(t)} />;
 
-    // Tap the voice pill to mute or unmute the assistant (its words still appear on screen).
-    const languagePill =
-      view === 'listening' ? (
-        <View style={s.pill}>
-          <Text style={[type.caption, { fontWeight: '500' }]}>
-            I speak <Text style={{ color: color.ink }}>{nativeLanguageName(me.profile.preferredLanguage)}</Text>
-          </Text>
-        </View>
-      ) : (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={intake.speakerOn ? 'Mute the assistant' : 'Unmute the assistant'}
-          onPress={() => {
-            haptic.select();
-            intake.toggleSpeaker();
-          }}
-          hitSlop={6}
-          style={s.pill}
-        >
-          <Text style={[type.caption, { fontWeight: '500' }]}>
-            {intake.speakerOn ? 'Voice ' : 'Muted '}
-            <Text style={{ color: color.ink }}>{cap(context.voice ?? 'marin')}</Text>
-          </Text>
-        </Pressable>
-      );
+    // While conversing there's no top bar (more room for the conversation; End is in the dock).
+    // Review keeps one: Back to the conversation, and that it's ready.
     const header = (
       <TopBar
         left={
-          <Pressable onPress={view === 'review' ? () => setReviewing(false) : cancel} style={s.pill} hitSlop={6}>
-            <Text style={[type.caption, { color: color.ink, fontWeight: '500' }]}>{view === 'review' ? 'Back' : 'Cancel'}</Text>
+          <Pressable onPress={() => setReviewing(false)} style={s.pill} hitSlop={6}>
+            <Text style={[type.caption, { color: color.ink, fontWeight: '500' }]}>Back</Text>
           </Pressable>
         }
-        right={view === 'review' ? <Text style={s.ready}>Ready to call</Text> : languagePill}
+        right={<Text style={s.ready}>Ready to call</Text>}
       />
     );
+    const spacer = <View style={{ height: 16 }} />;
 
     if (view === 'review') {
       return (
@@ -206,7 +184,7 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
       // Your words appear just above your finger, wherever the button is.
       const top = insets.top + 60;
       return (
-        <Screen top={header} padding={34}>
+        <Screen top={spacer} padding={34}>
           <View style={[s.listening, { top, height: Math.max(120, center - 80 - top) }]}>
             <View style={s.label}>
               <Bars color={color.blue} />
@@ -223,7 +201,7 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
 
     if (view === 'research') {
       return (
-        <Screen top={header} padding={20}>
+        <Screen top={spacer} padding={20}>
           <ScrollView contentContainerStyle={{ paddingTop: 16 }}>
             <Searching asked={lastUser?.text} />
           </ScrollView>
@@ -246,8 +224,11 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
     const sent = lastUser && !lastUser.partial && intake.lines.lastIndexOf(lastUser) > (lastAssistant ? intake.lines.lastIndexOf(lastAssistant) : -1) ? lastUser : null;
     const showRequest = Boolean(intake.draft.counterpartName || intake.draft.task);
     return (
-      <Screen top={header} bottom={controls} padding={0}>
-        <ScrollView contentContainerStyle={s.asks} showsVerticalScrollIndicator={false}>
+      <Screen top={spacer} bottom={controls} padding={0}>
+        {/* Two zones, so captions changing as the assistant talks never move what you tap: the
+            captions fill the space above and grow upward from its bottom edge, like subtitles;
+            the cards and answers sit below and move only when they change themselves. */}
+        <View style={s.stage}>
           <View style={s.label}>
             {speaking ? <Bars color={color.violet} /> : null}
             <Text style={[type.label, { color: speaking ? color.violet : color.secondary }]}>
@@ -255,35 +236,47 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
             </Text>
           </View>
           {before ? (
-            <Text style={[type.sub, s.before]} numberOfLines={3} ellipsizeMode="head">
+            <Text style={[type.sub, s.before]} numberOfLines={2} ellipsizeMode="head">
               {before}
             </Text>
           ) : null}
           {question ? (
-            <Animated.Text key={question.slice(0, 24)} entering={FadeInUp.duration(350)} style={[type.question, question.length > 90 && s.longQuestion]}>
+            // A long sentence shrinks to fit four lines rather than growing taller.
+            <Animated.Text key={question.slice(0, 24)} entering={FadeIn.duration(250)} style={type.question} numberOfLines={4} adjustsFontSizeToFit minimumFontScale={0.7}>
               {question}
             </Animated.Text>
           ) : null}
-          {!english && intake.choices?.questionEn ? <Text style={type.small}>{intake.choices.questionEn}</Text> : null}
+          {!english && intake.choices?.questionEn ? (
+            <Text style={type.small} numberOfLines={2}>
+              {intake.choices.questionEn}
+            </Text>
+          ) : null}
+          {heard ? (
+            <Animated.View entering={FadeIn} style={s.heard}>
+              <Text style={type.callout}>{heard}</Text>
+            </Animated.View>
+          ) : sent ? (
+            <SentLine key={sent.id} text={sent.text} />
+          ) : null}
+        </View>
+        <View style={s.act}>
           {/* The places stay up, next to the conversation, until one is chosen. */}
           {intake.research?.places.length && !intake.draft.phoneNumber ? (
             <Found result={intake.research} note={false} onPick={(p) => void intake.choose(pickText(p))} />
           ) : intake.research && !intake.choices && !intake.draft.phoneNumber ? (
             <Found result={intake.research} onPick={(p) => void intake.choose(pickText(p))} />
           ) : null}
-          <View style={s.chips}>
-            {heard ? (
-              <Animated.View entering={FadeIn} style={s.heard}>
-                <Text style={type.callout}>{heard}</Text>
-              </Animated.View>
-            ) : sent ? (
-              <SentLine key={sent.id} text={sent.text} />
-            ) : null}
-            {!speaking && intake.choices?.choices.map((c) => <Chip key={c} title={c} onPress={() => void intake.choose(c)} />)}
-          </View>
+          {intake.choices?.choices.length ? (
+            // Dimmed, not hidden, while the assistant is still talking (a tap interrupts it).
+            <View style={[s.chips, speaking && { opacity: 0.55 }]}>
+              {intake.choices.choices.map((c) => (
+                <Chip key={c} title={c} onPress={() => void intake.choose(c)} />
+              ))}
+            </View>
+          ) : null}
           {intake.ready && !reviewing ? <Chip title="Review the call" variant="blue" onPress={() => setReviewing(true)} /> : null}
           {intake.error ? <Text style={[type.small, { color: color.redText }]}>{intake.error}</Text> : null}
-        </ScrollView>
+        </View>
         {showRequest ? <RequestCard draft={intake.draft} need={intake.choices?.topic} /> : null}
       </Screen>
     );
@@ -448,6 +441,7 @@ function TalkDock({
   onRelease,
   disabled,
   onType,
+  onEnd,
 }: {
   view: View_;
   /** Where the button's center sits on screen (window y). */
@@ -458,6 +452,8 @@ function TalkDock({
   disabled: boolean;
   /** Type an answer instead of saying it. */
   onType: () => void;
+  /** Ends the conversation (the right slot, once one has started; Home shows the mic state). */
+  onEnd: () => void;
 }) {
   const hidden = view === 'review' || view === 'research';
   return (
@@ -466,14 +462,19 @@ function TalkDock({
         <Icon name="keyboard" size={20} />
       </RoundButton>
       <HoldToTalk holding={holding} onPressIn={onPressIn} onRelease={onRelease} size={84} label="Hold to talk" disabled={disabled} />
-      <View style={{ width: 58, alignItems: 'center' }}>
-        <MicState on={holding} />
-      </View>
+      {view === 'home' || holding ? (
+        <View style={{ width: 58, alignItems: 'center' }}>
+          <MicState on={holding} />
+        </View>
+      ) : (
+        <RoundButton label="End conversation" onPress={onEnd} size={58} bg={color.surface} ring={false}>
+          <Icon name="close" size={18} />
+        </RoundButton>
+      )}
     </View>
   );
 }
 
-const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const pickText = (p: PlaceResult) => `${p.name}${p.address ? `, ${p.address}` : ''}${p.phone ? ` (${p.phone})` : ''}`;
 function last<T>(list: T[], test: (x: T) => boolean): T | undefined {
   for (let i = list.length - 1; i >= 0; i--) if (test(list[i]!)) return list[i];
@@ -490,9 +491,9 @@ const s = StyleSheet.create({
   typeRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, minHeight: 50, borderRadius: 25, backgroundColor: color.surface, paddingHorizontal: 16, paddingVertical: 10 },
   dock: { position: 'absolute', left: 0, right: 0, top: 0, height: 120, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 28 },
   before: { opacity: 0.8 },
-  longQuestion: { fontSize: 24, lineHeight: 32 },
-  asks: { flexGrow: 1, justifyContent: 'center', gap: 14, paddingHorizontal: 34, paddingVertical: 16 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
+  stage: { flex: 1, justifyContent: 'flex-end', gap: 12, paddingHorizontal: 34, paddingBottom: 14, overflow: 'hidden' },
+  act: { gap: 12, paddingHorizontal: 34, paddingBottom: 12 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   heard: { borderWidth: 1.5, borderStyle: 'dashed', borderColor: color.blue, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 9, backgroundColor: 'rgba(255,255,255,0.9)' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
   suggest: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginBottom: 12 },
