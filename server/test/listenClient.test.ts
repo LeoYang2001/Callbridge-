@@ -1,7 +1,7 @@
 import websocket from '@fastify/websocket';
 import Fastify from 'fastify';
 import { afterEach, describe, expect, it } from 'vitest';
-import { startListening, type ListenOutput } from '../../shared/client/listen';
+import { resample, startListening, type ListenOutput } from '../../shared/client/listen';
 import type { CallRecord } from '../../shared/types';
 import type { ListenEvent } from '../src/calls/callSession';
 import type { CallManager } from '../src/calls/callManager';
@@ -74,5 +74,23 @@ describe('live listening, server to client', () => {
     expect(ended).toBe('The call ended.');
     expect(closed).toBe(true);
     clock = 1;
+  });
+});
+
+describe('resample', () => {
+  it('keeps the duration when converting call audio to the device rate', () => {
+    const chunk = new Float32Array(160).map((_, i) => Math.sin(i / 5));
+    for (const rate of [44100, 48000]) {
+      const out = resample(chunk, 8000, rate);
+      expect(out.length / rate).toBeCloseTo(160 / 8000, 4);
+      expect(out[0]).toBeCloseTo(chunk[0]!);
+      // Halfway between two source samples, the value is between them.
+      expect(out[3]).toBeCloseTo((chunk[0]! + chunk[1]!) / 2, 1);
+    }
+  });
+
+  it('returns the same samples when the rates match', () => {
+    const chunk = new Float32Array([0.1, 0.2]);
+    expect(resample(chunk, 8000, 8000)).toBe(chunk);
   });
 });

@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
-import Animated, { FadeIn, FadeInUp, SlideInDown } from 'react-native-reanimated';
+import { Keyboard, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import Animated, { Easing, FadeIn, FadeInUp, SlideInDown, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { nativeLanguageName } from '@shared/languages';
 import type { PlaceResult } from '@shared/types';
@@ -341,33 +341,60 @@ function Upcoming({ date, time, title, detail }: { date: string; time: string; t
 }
 
 /** Typing instead of talking: the same conversation, the words sent as typed. */
+/**
+ * The keyboard's height, followed as it moves. (KeyboardAvoidingView misses a keyboard that opens
+ * before its first layout, which is what an autofocused field does, and left the sheet under it.)
+ */
+function useKeyboardLift() {
+  const lift = useSharedValue(Keyboard.metrics()?.height ?? 0);
+  useEffect(() => {
+    const ios = Platform.OS === 'ios';
+    const move = (height: number, duration?: number) => {
+      lift.value = withTiming(height, { duration: duration || 250, easing: Easing.out(Easing.cubic) });
+    };
+    const show = Keyboard.addListener(ios ? 'keyboardWillShow' : 'keyboardDidShow', (e) => move(e.endCoordinates.height, e.duration));
+    const hide = Keyboard.addListener(ios ? 'keyboardWillHide' : 'keyboardDidHide', (e) => move(0, e.duration));
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, [lift]);
+  return lift;
+}
+
 function TypeSheet({ placeholder, onSend, onClose }: { placeholder: string; onSend: (text: string) => void; onClose: () => void }) {
   const insets = useSafeAreaInsets();
   const [text, setText] = useState('');
   const send = () => text.trim() && onSend(text.trim());
+  const keyboard = useKeyboardLift();
+  const bottom = Math.max(insets.bottom, 12);
+  // Above the keyboard when it's up (it covers the home-indicator area too), else above the inset.
+  const raised = useAnimatedStyle(() => ({ transform: [{ translateY: keyboard.value > 0 ? -(keyboard.value - bottom + 12) : 0 }] }));
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={StyleSheet.absoluteFill} pointerEvents="box-none">
+    <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
       <Pressable style={{ flex: 1 }} onPress={onClose} accessibilityLabel="Close" />
-      <Animated.View entering={SlideInDown.duration(220)} style={[s.sheet, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-        <View style={s.typeRow}>
-          <TextInput
-            value={text}
-            onChangeText={setText}
-            placeholder={placeholder}
-            placeholderTextColor={color.tertiary}
-            style={[type.callout, { flex: 1, maxHeight: 120 }]}
-            multiline
-            autoFocus
-            returnKeyType="send"
-            submitBehavior="submit"
-            onSubmitEditing={send}
-          />
-          <Pressable accessibilityRole="button" accessibilityLabel="Send" onPress={send} disabled={!text.trim()} hitSlop={8} style={{ opacity: text.trim() ? 1 : 0.35 }}>
-            <Icon name="send" size={30} color={color.blue} />
-          </Pressable>
-        </View>
+      <Animated.View style={raised}>
+        <Animated.View entering={SlideInDown.duration(220)} style={[s.sheet, { paddingBottom: bottom }]}>
+          <View style={s.typeRow}>
+            <TextInput
+              value={text}
+              onChangeText={setText}
+              placeholder={placeholder}
+              placeholderTextColor={color.tertiary}
+              style={[type.callout, { flex: 1, maxHeight: 120, color: color.ink }]}
+              multiline
+              autoFocus
+              returnKeyType="send"
+              submitBehavior="submit"
+              onSubmitEditing={send}
+            />
+            <Pressable accessibilityRole="button" accessibilityLabel="Send" onPress={send} disabled={!text.trim()} hitSlop={8} style={{ opacity: text.trim() ? 1 : 0.35 }}>
+              <Icon name="send" size={30} color={color.blue} />
+            </Pressable>
+          </View>
+        </Animated.View>
       </Animated.View>
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 

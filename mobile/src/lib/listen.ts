@@ -1,5 +1,5 @@
 import { AudioContext } from 'react-native-audio-api';
-import { startListening as start, type Listener, type ListenOutput } from '@shared/client/listen';
+import { resample, startListening as start, type Listener, type ListenOutput } from '@shared/client/listen';
 import type { Connection } from './api';
 import { routeAudioForListening } from './audioSession';
 
@@ -14,8 +14,10 @@ export async function startListening(conn: Connection, callId: string, onEnd: (r
   const output: ListenOutput = {
     currentTime: () => ctx.currentTime,
     play: (samples, sampleRate, when) => {
-      const buffer = ctx.createBuffer(1, samples.length, sampleRate);
-      buffer.copyToChannel(samples, 0);
+      // The library plays buffers at the device rate, so convert first (see resample).
+      const pcm = resample(samples, sampleRate, ctx.sampleRate);
+      const buffer = ctx.createBuffer(1, pcm.length, ctx.sampleRate);
+      buffer.copyToChannel(pcm, 0);
       const src = ctx.createBufferSource();
       src.buffer = buffer;
       src.connect(ctx.destination);

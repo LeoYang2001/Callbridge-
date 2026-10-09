@@ -28,6 +28,27 @@ export function decodeUlawBase64(b64: string): Float32Array<ArrayBuffer> {
   return out;
 }
 
+/**
+ * Converts mono samples to another sample rate (linear interpolation). Call audio is 8 kHz;
+ * react-native-audio-api plays a buffer at the device's rate whatever rate the buffer says, so
+ * the phone has to hand it samples at that rate (unconverted, 8 kHz plays six times too fast:
+ * 3 ms of sound every 20 ms, heard as a steady buzz).
+ */
+export function resample(samples: Float32Array<ArrayBuffer>, from: number, to: number): Float32Array<ArrayBuffer> {
+  if (from === to || !samples.length) return samples;
+  const out = new Float32Array(Math.max(1, Math.round((samples.length * to) / from)));
+  const step = from / to;
+  const last = samples.length - 1;
+  for (let i = 0; i < out.length; i++) {
+    const pos = i * step;
+    const j = Math.floor(pos);
+    const a = samples[Math.min(j, last)] ?? 0;
+    const b = samples[Math.min(j + 1, last)] ?? 0;
+    out[i] = a + (b - a) * (pos - j);
+  }
+  return out;
+}
+
 export interface ScheduledSound {
   stop: () => void;
   onEnded: (fn: () => void) => void;
