@@ -1,4 +1,6 @@
+import * as Application from 'expo-application';
 import { router } from 'expo-router';
+import { versionLabel } from '@/lib/updates';
 import { useState } from 'react';
 import { Alert, Text, View } from 'react-native';
 import { APP_LANGUAGES, nativeLanguageName } from '@shared/languages';
@@ -95,6 +97,7 @@ export default function Me() {
       </Group>
       {error ? <Text style={[type.small, { color: color.redText }]}>{error}</Text> : null}
 
+      <Text style={[type.caption, { textAlign: 'center' }]}>CallBridge {versionLabel(Application.nativeApplicationVersion ?? undefined, Application.nativeBuildVersion)}</Text>
       <Text style={[type.callout, { textAlign: 'center', fontWeight: '600', marginTop: 8 }]} onPress={() => void signOut()}>
         Sign out
       </Text>

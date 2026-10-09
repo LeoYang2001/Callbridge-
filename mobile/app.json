@@ -116,6 +116,14 @@
         "projectId": "a3dd3fe7-4335-4d0d-96ab-13b7c59a19b5"
       }
     },
-    "owner": "leoyang_202207"
+    "owner": "leoyang_202207",
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/a3dd3fe7-4335-4d0d-96ab-13b7c59a19b5",
+      "checkAutomatically": "ON_LOAD",
+      "fallbackToCacheTimeout": 0
+    }
   }
 }

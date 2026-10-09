@@ -7,6 +7,7 @@ import { ActiveCallProvider } from '@/call/ActiveCall';
 import { CallCapsule } from '@/call/CallCapsule';
 import { GlowProvider } from '@/glow/GlowContext';
 import { useNotifications } from '@/hooks/useNotifications';
+import { useApplyUpdates } from '@/lib/updates';
 import { SessionProvider, useSession } from '@/lib/session';
 import { MenuProvider } from '@/nav/Menu';
 import { ToastProvider } from '@/ui/Toast';
@@ -15,6 +16,12 @@ SplashScreen.preventAutoHideAsync();
 
 /** Navigation draws nothing behind screens, so the edge glow at the root shows through. */
 const theme = { ...DefaultTheme, colors: { ...DefaultTheme.colors, background: 'transparent', card: 'transparent' } };
+
+/** Applies a downloaded over-the-air update at a safe moment (see lib/updates). */
+function UpdateGate() {
+  useApplyUpdates();
+  return null;
+}
 
 function Routes() {
   const { state } = useSession();
@@ -55,6 +62,7 @@ function Routes() {
           </Stack.Protected>
         </Stack>
         <CallCapsule />
+        <UpdateGate />
       </MenuProvider>
     </ActiveCallProvider>
   );

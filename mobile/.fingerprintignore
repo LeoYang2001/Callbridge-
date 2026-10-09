@@ -1,0 +1,4 @@
+# ios/ and android/ are generated (CNG) and not committed; EAS builds without them, so the
+# runtime version must not depend on whether they exist on this Mac.
+ios/**/*
+android/**/*

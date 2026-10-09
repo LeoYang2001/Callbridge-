@@ -6,6 +6,7 @@
     "@config-plugins/react-native-webrtc": "^15.0.2",
     "@shopify/react-native-skia": "2.6.2",
     "expo": "57.0.14",
+    "expo-application": "57.0.2",
     "expo-calendar": "57.0.2",
     "expo-constants": "57.0.12",
     "expo-contacts": "57.0.4",
@@ -23,6 +24,7 @@
     "expo-status-bar": "~57.0.1",
     "expo-symbols": "57.0.2",
     "expo-system-ui": "57.0.2",
+    "expo-updates": "57.0.15",
     "react": "19.2.3",
     "react-dom": "19.2.3",
     "react-native": "0.86.3",
@@ -48,7 +50,11 @@
     "lint": "expo lint",
     "postinstall": "patch-package",
     "pods": "cd ios && LANG=en_US.UTF-8 pod install && cd .. && ./scripts/verify-pod-configs.sh",
-    "eas-build-post-install": "F=\"ios/Pods/Target Support Files/Pods-CallBridge/Pods-CallBridge-frameworks.sh\"; if [ -f \"$F\" ]; then grep -q ExpoModulesJSI.framework \"$F\" || { echo \"FATAL: ExpoModulesJSI missing from the embed script - the app would crash at launch\"; exit 1; }; echo \"OK: ExpoModulesJSI is in the embed script\"; fi"
+    "eas-build-post-install": "F=\"ios/Pods/Target Support Files/Pods-CallBridge/Pods-CallBridge-frameworks.sh\"; if [ -f \"$F\" ]; then grep -q ExpoModulesJSI.framework \"$F\" || { echo \"FATAL: ExpoModulesJSI missing from the embed script - the app would crash at launch\"; exit 1; }; echo \"OK: ExpoModulesJSI is in the embed script\"; fi",
+    "dev": "expo start --dev-client --port 8082",
+    "build:dev": "eas build --platform ios --profile development-device",
+    "build:testflight": "eas build --platform ios --profile testflight --auto-submit",
+    "update": "eas update --channel testflight --environment production --message"
   },
   "private": true,
   "overrides": {
