@@ -9,7 +9,7 @@ import { useGlow } from '@/glow/GlowContext';
 import { usePreferences } from '@/hooks/usePreferences';
 import { useProfile } from '@/hooks/useProfile';
 import { useSignedIn } from '@/lib/session';
-import { playVoiceSample, stopVoiceSample } from '@/lib/voiceSample';
+import { playVoiceSample, stopVoiceSample, type SampleState } from '@/lib/voiceSample';
 import { MenuButton } from '@/nav/MenuButton';
 import { color, type } from '@/theme/tokens';
 import { Avatar } from '@/ui/Avatar';
@@ -35,16 +35,22 @@ export default function Me() {
   const { conn } = useSignedIn();
 
   // A sample plays when a voice is picked (or tapped again); it stops on leaving or closing the row.
+  const [sample, setSample] = useState<{ voice: string; state: SampleState } | null>(null);
   useEffect(() => stopVoiceSample, []);
   useEffect(() => {
-    if (open !== 'voice') stopVoiceSample();
+    if (open !== 'voice') {
+      stopVoiceSample();
+      setSample(null);
+    }
   }, [open]);
   const pickVoice = (v: string) => {
     if (v !== voice) {
       prefs.setVoice(v as 'marin' | 'cedar');
       void save({ voice: v });
     }
-    playVoiceSample(conn, v, profile.preferredLanguage).catch((e: Error) => setError(e.message));
+    // Repeated taps while it loads don't queue more samples.
+    if (sample?.voice === v && sample.state === 'loading') return;
+    playVoiceSample(conn, v, profile.preferredLanguage, (state) => setSample(state === 'done' ? null : { voice: v, state })).catch((e: Error) => setError(e.message));
   };
 
   return (
@@ -65,8 +71,10 @@ export default function Me() {
         <Row label="Assistant voice" value={cap(voice)} onPress={() => toggle('voice')} />
         {open === 'voice' && (
           <>
-            <Text style={[type.caption, { marginBottom: 8 }]}>Tap a voice to hear it.</Text>
-            <Chips options={['marin', 'cedar']} label={cap} value={voice} onPick={pickVoice} />
+            <Text style={[type.caption, { marginBottom: 8 }]}>
+              {sample?.state === 'loading' ? `Loading ${cap(sample.voice)}…` : sample?.state === 'playing' ? `Playing ${cap(sample.voice)} · tap again to replay` : 'Tap a voice to hear it.'}
+            </Text>
+            <Chips options={['marin', 'cedar']} label={cap} value={voice} onPick={pickVoice} busy={sample?.state === 'loading' ? sample.voice : undefined} />
           </>
         )}
         <Row
@@ -127,11 +135,11 @@ export default function Me() {
   );
 }
 
-function Chips({ options, value, onPick, label }: { options: string[]; value: string; onPick: (v: string) => void; label: (v: string) => string }) {
+function Chips({ options, value, onPick, label, busy }: { options: string[]; value: string; onPick: (v: string) => void; label: (v: string) => string; busy?: string }) {
   return (
     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingBottom: 12 }}>
       {options.map((o) => (
-        <Chip key={o} title={label(o)} selected={o === value} onPress={() => onPick(o)} />
+        <Chip key={o} title={label(o)} selected={o === value} busy={o === busy} onPress={() => onPick(o)} />
       ))}
     </View>
   );

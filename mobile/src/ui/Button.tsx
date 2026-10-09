@@ -67,7 +67,8 @@ export function PillButton({
 }
 
 /** A tappable answer chip (44 pt, white, 1 px ring) or a suggestion chip (38 pt, grey). */
-export function Chip({ title, onPress, variant = 'answer', selected }: { title: string; onPress: () => void; variant?: 'answer' | 'suggestion' | 'blue'; selected?: boolean }) {
+/** busy: a small spinner beside the title (e.g. a voice sample loading). */
+export function Chip({ title, onPress, variant = 'answer', selected, busy }: { title: string; onPress: () => void; variant?: 'answer' | 'suggestion' | 'blue'; selected?: boolean; busy?: boolean }) {
   return (
     <Pressable
       accessibilityRole="button"
@@ -82,7 +83,10 @@ export function Chip({ title, onPress, variant = 'answer', selected }: { title: 
         pressed && s.pressed,
       ]}
     >
-      <Text numberOfLines={variant === 'suggestion' ? 1 : undefined} style={[variant === 'suggestion' ? type.small : type.callout, variant === 'suggestion' && { color: color.ink }, variant === 'blue' && { color: color.white }]}>{title}</Text>
+      <View style={s.row}>
+        {busy ? <ActivityIndicator size="small" color={variant === 'blue' ? color.white : color.blue} /> : null}
+        <Text numberOfLines={variant === 'suggestion' ? 1 : undefined} style={[variant === 'suggestion' ? type.small : type.callout, variant === 'suggestion' && { color: color.ink }, variant === 'blue' && { color: color.white }]}>{title}</Text>
+      </View>
     </Pressable>
   );
 }
