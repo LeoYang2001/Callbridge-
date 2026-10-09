@@ -90,6 +90,8 @@ export const saveContact = (s: Connection, contact: { name: string; phone: strin
 export const deleteContact = (s: Connection, id: string) => request<Me>(s, `/api/me/contacts/${id}`, { method: 'DELETE' });
 export const research = (s: Connection, body: { question: string; depth: 'quick' | 'thorough'; lat?: number; lng?: number; near?: string; userLanguage?: string }) =>
   postJson<ResearchResult>(s, '/api/research', body);
+/** Deletes a finished call from the history. */
+export const deleteCall = (s: Connection, id: string) => request<{ ok: boolean }>(s, `/api/calls/${id}`, { method: 'DELETE' });
 export const deleteAccount = (s: Connection) => request<{ ok: boolean }>(s, '/api/me', { method: 'DELETE' });
 
 // ── push notifications (mobile app) ──

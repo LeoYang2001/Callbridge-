@@ -3,13 +3,15 @@ import { errandStatusText } from '@shared/client/errands';
 import { displayPhone } from '@shared/phone';
 import type { Errand } from '@shared/types';
 import { useErrands } from '@/hooks/useErrands';
-import { Body, Button, Card, ErrorText, Label, Row, Screen, Title } from '@/ui/placeholder';
+import { Body, Button, Card, ErrorText, Label, Row, Title } from '@/ui/placeholder';
+import { BackLink } from '@/ui/BackLink';
+import { Screen, TopBar } from '@/ui/Screen';
 
 /** The errand queue: what's waiting, what's being called, and how the rest went. */
 export default function Errands() {
   const q = useErrands();
   return (
-    <Screen>
+    <Screen top={<TopBar left={<BackLink fallback="/me" label="Me" />} />} title="Errands" padding={22} scroll>
       <Body muted>
         The assistant calls these on its own, one at a time, within calling hours. You'll get a notification if one needs you, and a summary when they're done.
       </Body>

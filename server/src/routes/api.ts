@@ -91,6 +91,16 @@ export function registerApiRoutes(
     return manager.liveView(r);
   });
 
+  /** Deletes a finished call from the user's history (swiped away in the app). */
+  app.delete<{ Params: { id: string } }>('/api/calls/:id', async (req, reply) => {
+    const r = ownCall(req, req.params.id);
+    if (!r) return reply.code(404).send({ error: 'Not found' });
+    if (manager.isLive(r.id)) return reply.code(409).send({ error: 'That call is still going. End it first.' });
+    db.deleteCall(req.user!.id, r.id);
+    store.forget(r.id);
+    return { ok: true };
+  });
+
   /** Server-sent events: the full call record on every change. */
   app.get<{ Params: { id: string } }>('/api/calls/:id/stream', (req, reply) => {
     const r = ownCall(req, req.params.id) && store.get(req.params.id);

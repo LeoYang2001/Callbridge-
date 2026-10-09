@@ -91,6 +91,17 @@ describe('phone sign-in', () => {
     expect(db.userById(body.me.id)).toBeUndefined();
     expect(db.callsForUser(body.me.id)).toHaveLength(0);
   });
+
+  it("deletes one call from the user's history, and only their own", async () => {
+    const { db, signIn } = app();
+    const { body } = await signIn();
+    const id = '6a1d0b7e-1c2f-4b8e-9f0a-2d3c4b5a6f70';
+    db.saveCall({ ...newCallRecord(id, dentistRequest()), userId: body.me.id });
+    expect(db.deleteCall('someone-else', id)).toBe(false);
+    expect(db.call(id)).toBeDefined();
+    expect(db.deleteCall(body.me.id, id)).toBe(true);
+    expect(db.call(id)).toBeUndefined();
+  });
 });
 
 describe('learning from calls', () => {

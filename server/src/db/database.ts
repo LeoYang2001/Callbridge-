@@ -147,6 +147,11 @@ export class Database {
     );
   }
 
+  /** Deletes one of the user's calls from the history; false if it isn't theirs. */
+  deleteCall(userId: string, id: string): boolean {
+    return Number(this.db.prepare('DELETE FROM calls WHERE id = ? AND user_id = ?').run(id, userId).changes) > 0;
+  }
+
   // ── push tokens ── (one per installed app; a phone that signs in as someone else moves over)
   addPushToken(userId: string, token: string, platform: string) {
     this.db

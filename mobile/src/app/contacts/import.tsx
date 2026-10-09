@@ -73,10 +73,10 @@ export default function Import() {
           }
         />
       }
+      title="Import contacts"
       padding={22}
       scroll
     >
-      <Text style={type.title}>Import contacts</Text>
       <Text style={type.sub}>Pick someone from your contacts. CallBridge only reads the person you pick.</Text>
       {added.length ? <Text style={[type.small, { color: color.greenText }]}>Added {added.join(', ')}.</Text> : null}
 

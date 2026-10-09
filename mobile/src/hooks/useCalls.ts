@@ -1,7 +1,7 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
 import type { CallSummary } from '@shared/types';
-import { listCalls } from '@/lib/api';
+import { deleteCall, listCalls } from '@/lib/api';
 import { useSignedIn } from '@/lib/session';
 
 /** The call history, newest first; refreshed whenever the screen comes into view. */
@@ -29,5 +29,21 @@ export function useCalls() {
     }, [refresh]),
   );
 
-  return { calls, error, refreshing, refresh };
+  /** Swiped away: gone from the list at once, and back with the reason if the server says no. */
+  const remove = useCallback(
+    async (id: string) => {
+      const before = calls;
+      setCalls((list) => list?.filter((c) => c.id !== id) ?? list);
+      try {
+        await deleteCall(conn, id);
+        setError(null);
+      } catch (e) {
+        setCalls(before);
+        setError((e as Error).message);
+      }
+    },
+    [conn, calls],
+  );
+
+  return { calls, error, refreshing, refresh, remove };
 }

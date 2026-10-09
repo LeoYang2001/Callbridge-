@@ -1,5 +1,9 @@
 import { router } from 'expo-router';
 import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import ReanimatedSwipeable from 'react-native-gesture-handler/ReanimatedSwipeable';
+import Animated, { FadeOut, LinearTransition } from 'react-native-reanimated';
+import { haptic } from '@/lib/haptics';
+import { Icon } from '@/ui/Icon';
 import { displayPhone } from '@shared/phone';
 import type { CallSummary, UpcomingAppointment } from '@shared/types';
 import { summaryTag } from '@/call/outcome';
@@ -9,18 +13,26 @@ import { useSignedIn } from '@/lib/session';
 import { MenuButton } from '@/nav/MenuButton';
 import { color, type } from '@/theme/tokens';
 import { StatusPill } from '@/ui/Text';
-import { Screen, TopBar } from '@/ui/Screen';
+import { Screen, ScreenTitle, TopBar } from '@/ui/Screen';
 
 /** Calls: what's coming up (booked by calls) and recent calls with how each went. */
 export default function Calls() {
   useGlow('none');
   const { me } = useSignedIn();
-  const { calls, refreshing, refresh } = useCalls();
+  const { calls, refreshing, refresh, remove, error } = useCalls();
   const today = new Date().toISOString().slice(0, 10);
   const upcoming = me.profile.appointments.filter((a) => a.date >= today).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time));
 
   return (
-    <Screen top={<TopBar right={<MenuButton />} />} padding={0}>
+    <Screen
+      top={
+        <>
+          <TopBar right={<MenuButton />} />
+          <ScreenTitle title="Calls" />
+        </>
+      }
+      padding={0}
+    >
       <FlatList
         data={calls ?? []}
         keyExtractor={(c) => c.id}
@@ -28,7 +40,6 @@ export default function Calls() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} />}
         ListHeaderComponent={
           <View style={{ gap: 14 }}>
-            <Text style={[type.title, { paddingHorizontal: 22 }]}>Calls</Text>
             {upcoming.length ? (
               <>
                 <Text style={[type.label, { paddingHorizontal: 22 }]}>Upcoming</Text>
@@ -43,7 +54,8 @@ export default function Calls() {
           </View>
         }
         ListEmptyComponent={calls ? <Text style={[type.sub, { paddingHorizontal: 22 }]}>No calls yet.</Text> : null}
-        renderItem={({ item }) => <Row c={item} />}
+        ListFooterComponent={error ? <Text style={[type.small, { color: color.redText, paddingHorizontal: 22, paddingTop: 12 }]}>{error}</Text> : null}
+        renderItem={({ item }) => <SwipeToDelete onDelete={() => void remove(item.id)} label={item.counterpartName || displayPhone(item.to)}><Row c={item} /></SwipeToDelete>}
       />
     </Screen>
   );
@@ -65,6 +77,32 @@ function UpcomingCard({ a }: { a: UpcomingAppointment }) {
         {a.description}
       </Text>
     </Pressable>
+  );
+}
+
+/** Swipe a call left to reveal Delete; a long swipe deletes it straight away. */
+function SwipeToDelete({ children, onDelete, label }: { children: React.ReactNode; onDelete: () => void; label: string }) {
+  const del = () => {
+    haptic.commit();
+    onDelete();
+  };
+  return (
+    <Animated.View exiting={FadeOut.duration(200)} layout={LinearTransition.duration(220)}>
+      <ReanimatedSwipeable
+        friction={1.6}
+        rightThreshold={60}
+        overshootRight={false}
+        onSwipeableWillOpen={(direction) => direction === 'left' && haptic.select()}
+        renderRightActions={() => (
+          <Pressable accessibilityRole="button" accessibilityLabel={`Delete call with ${label}`} onPress={del} style={s.delete}>
+            <Icon name="trash" size={18} color={color.white} />
+            <Text style={[type.caption, { color: color.white, fontWeight: '600' }]}>Delete</Text>
+          </Pressable>
+        )}
+      >
+        <View style={{ backgroundColor: color.white }}>{children}</View>
+      </ReanimatedSwipeable>
+    </Animated.View>
   );
 }
 
@@ -95,4 +133,5 @@ const s = StyleSheet.create({
   upcoming: { width: 200, backgroundColor: color.white, borderWidth: 1, borderColor: color.divider, borderRadius: 20, padding: 14, gap: 4 },
   row: { marginHorizontal: 22, paddingVertical: 14, borderBottomWidth: 1, borderBottomColor: color.divider },
   line: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
+  delete: { width: 92, backgroundColor: color.red, alignItems: 'center', justifyContent: 'center', gap: 3 },
 });

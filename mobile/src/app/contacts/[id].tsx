@@ -129,10 +129,10 @@ export function EditContact({ initial, id, onDone, title }: { initial: ContactIn
           }
         />
       }
+      title={title ?? (id ? 'Edit contact' : 'New contact')}
       padding={22}
       scroll
     >
-      <Text style={type.title}>{title ?? (id ? 'Edit contact' : 'New contact')}</Text>
       <Field label="Name" value={input.name} onChange={(name) => set({ name })} />
       <Field label="Phone (+1)" value={formatUsPhone(input.phone)} onChange={(t) => set({ phone: usNationalDigits(t) })} keyboard="phone-pad" />
       <Field label="Who they are to you" value={input.relationship ?? ''} onChange={(relationship) => set({ relationship })} placeholder="mom, girlfriend, dentist…" />

@@ -1,5 +1,5 @@
 import { EventEmitter } from 'node:events';
-import { readFileSync } from 'node:fs';
+import { readFileSync, rmSync } from 'node:fs';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import type { CallRecord } from '../../../shared/types';
@@ -40,6 +40,12 @@ export class CallStore {
     } catch {
       return undefined;
     }
+  }
+
+  /** Drops a finished call from memory and its debug file (it was deleted from the history). */
+  forget(id: string) {
+    this.calls.delete(id);
+    if (this.persistDir && /^[0-9a-f-]{36}$/.test(id)) rmSync(path.join(this.persistDir, `${id}.json`), { force: true });
   }
 
   list() {

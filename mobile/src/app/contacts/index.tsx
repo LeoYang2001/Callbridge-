@@ -11,7 +11,7 @@ import { Avatar } from '@/ui/Avatar';
 import { RoundButton } from '@/ui/Button';
 import { Icon } from '@/ui/Icon';
 import { Pill } from '@/ui/Text';
-import { Screen, TopBar } from '@/ui/Screen';
+import { Screen, ScreenTitle, TopBar } from '@/ui/Screen';
 
 /** The phone book: people and places to call by name ("call my mom"). Calls add to it on their own. */
 export default function PhoneBook() {
@@ -26,26 +26,32 @@ export default function PhoneBook() {
   }, [contacts, q]);
 
   return (
-    <Screen top={<TopBar right={<MenuButton />} />} padding={0}>
+    <Screen
+      top={
+        <>
+          <TopBar right={<MenuButton />} />
+          <ScreenTitle
+            title="Phone book"
+            right={
+              <Text style={[type.small, { color: color.blue, fontWeight: '600' }]} onPress={() => router.push('/contacts/import')}>
+                Import
+              </Text>
+            }
+          >
+            <View style={s.search}>
+              <Icon name="search" size={17} color={color.secondary} />
+              <TextInput value={q} onChangeText={setQ} placeholder="Name, relationship or number" placeholderTextColor={color.secondary} style={[type.callout, { flex: 1 }]} autoCorrect={false} />
+            </View>
+          </ScreenTitle>
+        </>
+      }
+      padding={0}
+    >
       <FlatList
         data={list}
         keyExtractor={(c) => c.id}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingHorizontal: 22, paddingBottom: 24 }}
-        ListHeaderComponent={
-          <View style={{ gap: 14, marginBottom: 8 }}>
-            <View style={s.head}>
-              <Text style={type.title}>Phone book</Text>
-              <Text style={[type.small, { color: color.blue, fontWeight: '600' }]} onPress={() => router.push('/contacts/import')}>
-                Import
-              </Text>
-            </View>
-            <View style={s.search}>
-              <Icon name="search" size={17} color={color.secondary} />
-              <TextInput value={q} onChangeText={setQ} placeholder="Name, relationship or number" placeholderTextColor={color.secondary} style={[type.callout, { flex: 1 }]} autoCorrect={false} />
-            </View>
-          </View>
-        }
         ListEmptyComponent={<Text style={[type.sub, { marginTop: 20 }]}>{q ? 'No one matches.' : 'No one yet. People you call are added here after the call, or import them from your contacts.'}</Text>}
         renderItem={({ item }) => <ContactRow c={item} />}
       />
