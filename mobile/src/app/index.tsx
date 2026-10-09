@@ -65,6 +65,17 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
   const queue = useAddErrand();
   const { follow } = useActiveCall();
   const [reviewing, setReviewing] = useState(true);
+  // Which of the user's lines was last when these results came in: the cards stay up until they
+  // answer after them (the assistant may save its top suggestion before they've chosen).
+  const [resultsAfter, setResultsAfter] = useState<{ research: unknown; userLine?: string } | null>(null);
+  const lastUserLine = last(intake.lines, (l) => l.role === 'user' && !l.partial)?.id;
+  useEffect(() => {
+    if (intake.research) setResultsAfter({ research: intake.research, userLine: lastUserLine });
+    // Only when new results arrive.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [intake.research]);
+  const answeredResults = resultsAfter !== null && resultsAfter.research === intake.research && lastUserLine !== resultsAfter.userLine;
+  const showPlaces = Boolean(intake.research?.places.length) && !(answeredResults && intake.draft.phoneNumber);
 
   const started = intake.live || intake.holding || intake.lines.length > 0 || intake.status === 'connecting';
   const view: View_ = !started
@@ -261,9 +272,9 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
         </View>
         <View style={s.act}>
           {/* The places stay up, next to the conversation, until one is chosen. */}
-          {intake.research?.places.length && !intake.draft.phoneNumber ? (
+          {showPlaces && intake.research ? (
             <Found result={intake.research} note={false} onPick={(p) => void intake.choose(pickText(p))} />
-          ) : intake.research && !intake.choices && !intake.draft.phoneNumber ? (
+          ) : intake.research && !intake.research.places.length && !intake.choices && !intake.draft.phoneNumber ? (
             <Found result={intake.research} onPick={(p) => void intake.choose(pickText(p))} />
           ) : null}
           {intake.choices?.choices.length ? (
@@ -291,8 +302,10 @@ function SentLine({ text }: { text: string }) {
   }, [sent]);
   const style = useAnimatedStyle(() => ({ opacity: 1 - 0.6 * sent.value, transform: [{ translateY: -6 * sent.value }] }));
   return (
-    <Animated.View exiting={FadeOut.duration(250)} style={[s.heard, style]}>
-      <Text style={type.callout}>{text}</Text>
+    <Animated.View exiting={FadeOut.duration(250)} style={{ alignSelf: 'flex-start' }}>
+      <Animated.View style={[s.heard, style]}>
+        <Text style={type.callout}>{text}</Text>
+      </Animated.View>
     </Animated.View>
   );
 }
