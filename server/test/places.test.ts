@@ -56,6 +56,39 @@ describe('Google Places', () => {
     expect(results).toMatchObject([{ name: 'Taqueria Uno', phone: '+19015550101', openNow: true, rating: 4.6, source: 'google', verified: true }]);
     expect(results[0]!.distanceMeters).toBeLessThan(200);
   });
+
+  it('adds hours, category, price and a photo for the cards', async () => {
+    const fetch = vi.fn(async (url: string) =>
+      url.includes('/media')
+        ? new Response(JSON.stringify({ photoUri: 'https://lh3.googleusercontent.com/p/abc' }))
+        : new Response(
+            JSON.stringify({
+              places: [
+                {
+                  displayName: { text: 'CVS Pharmacy' },
+                  internationalPhoneNumber: '+1 931-555-0102',
+                  currentOpeningHours: { openNow: true, nextCloseTime: '2026-10-10T02:00:00Z', weekdayDescriptions: ['Monday: 8:00 AM – 9:00 PM'] },
+                  primaryTypeDisplayName: { text: 'Pharmacy' },
+                  priceLevel: 'PRICE_LEVEL_MODERATE',
+                  photos: [{ name: 'places/1/photos/p1' }],
+                  websiteUri: 'https://cvs.com',
+                },
+              ],
+            }),
+          ),
+    );
+    vi.stubGlobal('fetch', fetch);
+    const [r] = await new GooglePlaces('key').search({ query: 'pharmacy' });
+    expect(fetch.mock.calls[1]![0]).toBe('https://places.googleapis.com/v1/places/1/photos/p1/media?maxWidthPx=640&skipHttpRedirect=true');
+    expect(r).toMatchObject({
+      category: 'Pharmacy',
+      priceLevel: 2,
+      closesAt: '2026-10-10T02:00:00Z',
+      weekHours: ['Monday: 8:00 AM – 9:00 PM'],
+      photoUrl: 'https://lh3.googleusercontent.com/p/abc',
+      website: 'https://cvs.com',
+    });
+  });
 });
 
 describe('research route', () => {

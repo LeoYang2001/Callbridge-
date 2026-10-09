@@ -66,6 +66,13 @@ export class GooglePlaces implements PlaceSearch {
           'places.rating',
           'places.userRatingCount',
           'places.currentOpeningHours.openNow',
+          'places.currentOpeningHours.nextCloseTime',
+          'places.currentOpeningHours.nextOpenTime',
+          'places.currentOpeningHours.weekdayDescriptions',
+          'places.primaryTypeDisplayName',
+          'places.priceLevel',
+          'places.photos',
+          'places.websiteUri',
           'places.googleMapsUri',
         ].join(','),
       },
@@ -79,8 +86,11 @@ export class GooglePlaces implements PlaceSearch {
     });
     if (!res.ok) throw new Error(`Google Places error ${res.status}: ${(await res.text()).slice(0, 200)}`);
     const body = (await res.json()) as { places?: GooglePlace[] };
+    const places = body.places ?? [];
+    // One photo per place, looked up together; a slow or missing photo just means no photo.
+    const photos = await Promise.all(places.map((p) => (p.photos?.[0]?.name ? this.photoUrl(p.photos[0].name) : Promise.resolve(undefined))));
     return cleanResults(
-      (body.places ?? []).map((p) => ({
+      places.map((p, i) => ({
         name: p.displayName?.text ?? 'Unknown',
         phone: p.internationalPhoneNumber ?? p.nationalPhoneNumber ?? null,
         address: p.formattedAddress,
@@ -88,13 +98,41 @@ export class GooglePlaces implements PlaceSearch {
         rating: p.rating,
         ratingCount: p.userRatingCount,
         openNow: p.currentOpeningHours?.openNow,
+        closesAt: p.currentOpeningHours?.nextCloseTime,
+        opensAt: p.currentOpeningHours?.nextOpenTime,
+        weekHours: p.currentOpeningHours?.weekdayDescriptions,
+        category: p.primaryTypeDisplayName?.text,
+        priceLevel: PRICE_LEVELS[p.priceLevel ?? ''],
+        photoUrl: photos[i],
+        website: p.websiteUri,
         url: p.googleMapsUri,
         source: 'google',
         verified: true,
       })),
     );
   }
+
+  /** A photo's image URL (Google's short-lived link, so the API key never reaches the phone). */
+  private async photoUrl(name: string): Promise<string | undefined> {
+    try {
+      const res = await fetch(`https://places.googleapis.com/v1/${name}/media?maxWidthPx=640&skipHttpRedirect=true`, {
+        headers: { 'X-Goog-Api-Key': this.apiKey },
+        signal: AbortSignal.timeout(2500),
+      });
+      if (!res.ok) return undefined;
+      return ((await res.json()) as { photoUri?: string }).photoUri;
+    } catch {
+      return undefined;
+    }
+  }
 }
+
+const PRICE_LEVELS: Record<string, number> = {
+  PRICE_LEVEL_INEXPENSIVE: 1,
+  PRICE_LEVEL_MODERATE: 2,
+  PRICE_LEVEL_EXPENSIVE: 3,
+  PRICE_LEVEL_VERY_EXPENSIVE: 4,
+};
 
 interface GooglePlace {
   displayName?: { text: string };
@@ -104,6 +142,10 @@ interface GooglePlace {
   location?: { latitude: number; longitude: number };
   rating?: number;
   userRatingCount?: number;
-  currentOpeningHours?: { openNow?: boolean };
+  currentOpeningHours?: { openNow?: boolean; nextCloseTime?: string; nextOpenTime?: string; weekdayDescriptions?: string[] };
+  primaryTypeDisplayName?: { text: string };
+  priceLevel?: string;
+  photos?: { name: string }[];
+  websiteUri?: string;
   googleMapsUri?: string;
 }

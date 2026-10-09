@@ -37,13 +37,15 @@ const SCHEMA = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['name', 'phone', 'address', 'approximate_distance_miles', 'why', 'source_url', 'verified'],
+        required: ['name', 'phone', 'address', 'approximate_distance_miles', 'why', 'hours', 'category', 'source_url', 'verified'],
         properties: {
           name: { type: 'string' },
           phone: { type: ['string', 'null'], description: 'Only a number seen in a source or returned by google_places; null if none.' },
           address: { type: ['string', 'null'] },
           approximate_distance_miles: { type: ['number', 'null'] },
           why: { type: 'string', description: 'Short reason it fits, in the user language (e.g. "open now, takes Geico").' },
+          hours: { type: ['string', 'null'], description: "Today's hours as a source states them, short, in the user's language (e.g. \"open until 9 PM\"); null if not seen." },
+          category: { type: ['string', 'null'], description: "What kind of place, a word or two in the user's language (e.g. \"pharmacy\")." },
           source_url: { type: ['string', 'null'] },
           verified: { type: 'boolean', description: 'True only if the phone number came from google_places.' },
         },
@@ -104,6 +106,9 @@ export class OpenAIResearcher implements ResearchAgent {
       text: { format: { type: 'json_schema', name: 'research', strict: true, schema: SCHEMA as unknown as Record<string, unknown> } },
     });
 
+    // What Google returned, by phone number: its listing is the authority on hours, rating and
+    // photos (the model's copy keeps only what the schema has room for), and on what's verified.
+    const listings = new Map<string, PlaceResult>();
     // Let the agent call its own tools (web search runs on OpenAI's side; ours run here).
     for (let round = 0; round < 3; round++) {
       const calls = response.output.filter((o) => o.type === 'function_call');
@@ -113,7 +118,10 @@ export class OpenAIResearcher implements ResearchAgent {
           let output: unknown;
           try {
             const args = JSON.parse(call.arguments) as { query: string; near: string | null };
-            output = await google.search({ query: args.query, near: args.near ?? q.near, lat: q.lat, lng: q.lng });
+            const found = await google.search({ query: args.query, near: args.near ?? q.near, lat: q.lat, lng: q.lng });
+            for (const f of found) if (f.phone) listings.set(f.phone, f);
+            // The model sees what it needs to choose, not photo links or the whole week's hours.
+            output = found.map(({ photoUrl: _p, weekHours: _w, website: _s, url: _u, ...brief }) => brief);
           } catch (err) {
             output = { error: (err as Error).message };
           }
@@ -131,7 +139,7 @@ export class OpenAIResearcher implements ResearchAgent {
 
     const parsed = JSON.parse(response.output_text) as {
       answer: string;
-      places: { name: string; phone: string | null; address: string | null; approximate_distance_miles: number | null; why: string; source_url: string | null; verified: boolean }[];
+      places: { name: string; phone: string | null; address: string | null; approximate_distance_miles: number | null; why: string; hours: string | null; category: string | null; source_url: string | null; verified: boolean }[];
       sources: { title: string; url: string }[];
     };
     const places: PlaceResult[] = cleanResults(
@@ -141,12 +149,17 @@ export class OpenAIResearcher implements ResearchAgent {
         address: p.address ?? undefined,
         distanceMeters: p.approximate_distance_miles != null ? Math.round(p.approximate_distance_miles * 1609) : undefined,
         why: p.why,
+        hoursText: p.hours ?? undefined,
+        category: p.category ?? undefined,
         url: p.source_url ?? undefined,
-        // Only Google's data counts as verified, and only when Google is actually configured.
-        source: google && p.verified ? 'google' : 'web',
-        verified: Boolean(google && p.verified),
+        source: 'web' as const,
+        verified: false,
       })),
-    );
+    ).map((p) => {
+      // Only a number Google actually returned counts as verified, whatever the model says.
+      const listing = p.phone ? listings.get(p.phone) : undefined;
+      return listing ? { ...listing, name: p.name || listing.name, why: p.why, ...(listing.distanceMeters === undefined && p.distanceMeters !== undefined ? { distanceMeters: p.distanceMeters } : {}) } : p;
+    });
     return { answer: parsed.answer, places, sources: parsed.sources.slice(0, 6) };
   }
 }

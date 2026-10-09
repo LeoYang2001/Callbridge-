@@ -420,6 +420,20 @@ export interface PlaceResult {
   rating?: number;
   ratingCount?: number;
   openNow?: boolean;
+  /** When it next closes or opens (ISO time), from Google. */
+  closesAt?: string;
+  opensAt?: string;
+  /** This week's hours, one line per day ("Monday: 9:00 AM – 9:00 PM"), from Google. */
+  weekHours?: string[];
+  /** Hours as a web page put it ("Open until 9 PM"), when Google's aren't available. */
+  hoursText?: string;
+  /** "Pharmacy", "Mexican restaurant". */
+  category?: string;
+  /** 1 (inexpensive) to 4 (very expensive). */
+  priceLevel?: number;
+  /** A photo of the place (a short-lived Google image URL). */
+  photoUrl?: string;
+  website?: string;
   /** Google Maps link, or the page the number came from. */
   url?: string;
   source: 'google' | 'web';

@@ -265,7 +265,12 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
             </Animated.Text>
           ) : null}
           {!english && intake.choices?.questionEn ? <Text style={type.small}>{intake.choices.questionEn}</Text> : null}
-          {intake.research && !intake.choices ? <Found result={intake.research} onPick={(p) => void intake.choose(pickText(p))} /> : null}
+          {/* The places stay up, next to the conversation, until one is chosen. */}
+          {intake.research?.places.length && !intake.draft.phoneNumber ? (
+            <Found result={intake.research} note={false} onPick={(p) => void intake.choose(pickText(p))} />
+          ) : intake.research && !intake.choices && !intake.draft.phoneNumber ? (
+            <Found result={intake.research} onPick={(p) => void intake.choose(pickText(p))} />
+          ) : null}
           <View style={s.chips}>
             {heard ? (
               <Animated.View entering={FadeIn} style={s.heard}>
