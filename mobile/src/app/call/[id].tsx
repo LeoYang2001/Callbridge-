@@ -170,7 +170,14 @@ export default function CallScreen() {
         {listen.note && phase !== 'result' ? <Text style={[type.caption, { textAlign: 'center', paddingBottom: 6 }]}>{listen.note}</Text> : null}
       </Screen>
       {composer && phase !== 'result' && <Composer language={me.profile.preferredLanguage} onSend={c.message} onClose={() => setComposer(false)} />}
-      {transcript && <TranscriptSheet lines={call.transcript} them={them} onClose={() => setTranscript(false)} />}
+      {transcript && (
+        <TranscriptSheet
+          lines={call.transcript}
+          them={them}
+          onClose={() => setTranscript(false)}
+          recording={call.recording && !c.live ? { callId: call.id, durationMs: call.recording.durationMs } : undefined}
+        />
+      )}
     </View>
   );
 }

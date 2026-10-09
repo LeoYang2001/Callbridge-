@@ -267,7 +267,7 @@ Alternatives considered:
 
 - **Logged (structured JSON plus a per-call event log in the UI):** lifecycle and connection events, AI events, tool calls and policy rulings, interruptions, latency, errors, failure reasons, and the final result.
 - **Not logged:** audio, request bodies, auth headers, and Twilio signatures. Passwords, card numbers, and SSNs are rejected before they reach the server's call pipeline at all.
-- **No call recording.** Twilio recording is not enabled, because consent requirements vary by state (several US states require consent from all parties). Transcripts come from the AI session itself.
+- **Call recording (testing only, LAUNCH BLOCKER).** While testing, calls are recorded on the server as heard on the line (`data/recordings/<call>.wav`, gitignored), unless the user turns off *Record calls* in Me. The app replays them with the transcript. Recordings are served only to the call's owner and deleted with the call or the account. **The other party is not told.** Several US states (CA, FL, WA, PA, IL, …) require every party's consent, so before real users the assistant must announce recording at the start of the call (or recording must be off), and retention (e.g. 30 days) must be set and stated in the privacy policy. Test only with calls to yourself or people who agreed to be recorded.
 - `PERSIST_CALLS=true` writes transcripts to `./data/calls/` (gitignored) for debugging. Turn it off when calls may contain sensitive information.
 
 ## Known limitations (Phase 0)
@@ -295,7 +295,7 @@ This product is for **user-requested calls on that user's behalf, to specific bu
 
 - **AI disclosure:** state laws on bots and AI voices (e.g. California's B.O.T. Act), plus any new AI-voice disclosure laws.
 - **TCPA:** the FCC's 2024 ruling treats AI-generated voices as "artificial or prerecorded voice" under the TCPA. Calls to businesses at the user's request are a different profile from marketing calls, but consent and exemption analysis is needed, especially for calls to mobile numbers.
-- **Recording and transcription consent:** whether real-time transcription counts as recording under all-party-consent states (CA, FL, WA, PA, IL, etc.).
+- **Recording and transcription consent:** calls are recorded in testing with no notice (see Logging and privacy): add the announcement or turn it off. Also whether real-time transcription counts as recording under all-party-consent states (CA, FL, WA, PA, IL, etc.).
 - **Privacy:** what you retain, for how long, and data-processing terms with Twilio and OpenAI.
 - **Caller ID:** use a number the business can call back, and consider letting users verify and use their own number.
 - **SHAKEN/STIR attestation, carrier spam reputation** (register numbers with the CNAM and analytics services), and call volume patterns.

@@ -1,4 +1,5 @@
 import { randomBytes, randomUUID } from 'node:crypto';
+import { mkdir, writeFile } from 'node:fs/promises';
 import type { CallRecord, CallResult, CallStatus, Speaker, UserAnswer, UserQuestion } from '../../../shared/types';
 import { buildInstructions, INTRO_NUDGE } from '../agent/prompt';
 import { executeTool, TOOL_DEFINITIONS } from '../agent/tools';
@@ -11,6 +12,8 @@ import { localToday } from '../util/time';
 import { captionFor } from '../../../shared/captions';
 import { languageCode } from '../../../shared/languages';
 import { SpeechGate } from './speechGate';
+import { CallRecorder } from './recorder';
+import { recordingPath } from './recordings';
 import type { CallStore } from './store';
 import { addUsage, callCost, pricesFromEnv, type Prices } from '../usage/cost';
 
@@ -37,6 +40,8 @@ export interface CallSessionDeps {
   prices?: Prices;
   /** Called exactly once, when the session is fully finished. */
   onFinished: (callId: string) => void;
+  /** Where call recordings are saved; null or unset disables recording. */
+  recordingsDir?: string | null;
 }
 
 const TERMINAL_FAILURES: Partial<Record<TelephonyCallState, CallResult['status']>> = {
@@ -113,6 +118,8 @@ export class CallSession {
   private currentItemSentMs = 0;
   /** Outbound audio chunks sent but not yet played, per assistant item (Twilio echoes marks). */
   private readonly unplayed = new Map<string, number>();
+  /** The call as heard, when the user records calls (see CallRecorder). */
+  private recorder: CallRecorder | null = null;
   /**
    * Each assistant line's audio, for captions in step with the voice (see liveView): the lengths
    * of chunks not yet played, and how much was sent and played. Dropped once a line has played
@@ -282,6 +289,7 @@ export class CallSession {
     }
     this.transport = transport;
     this.log('media.started');
+    if (this.deps.recordingsDir && this.record.request.record) this.recorder = new CallRecorder(this.deps.maxCallSeconds * 1000);
     if (!this.answered) {
       this.answered = true;
       this.update((r) => (r.metrics.answeredAt ??= Date.now()));
@@ -290,6 +298,7 @@ export class CallSession {
 
     transport.on('audio', (payload, ts) => {
       this.latestMediaTs = ts;
+      this.recorder?.them(payload, ts);
       this.gate.observe(payload, ts);
       this.emitListen({ t: 'them', a: payload });
       this.agent?.sendAudio(payload);
@@ -326,10 +335,12 @@ export class CallSession {
       if (!this.transport || this.finalizing) return;
       // Audio from a response cancelled by a barge-in can still arrive; drop it.
       if (this.cancelledItems.has(itemId) || (this.bargedIn && this.turnActive)) return;
+      const playsAt = this.recorder?.ai(payload, this.latestMediaTs);
       if (itemId !== this.currentItemId) {
         this.currentItemId = itemId;
         this.currentItemStartTs = this.latestMediaTs;
         this.currentItemSentMs = 0;
+        if (playsAt !== undefined) this.markAudio(itemId, playsAt);
         const now = Date.now();
         if (this.speechStoppedAt) {
           const latency = now - this.speechStoppedAt;
@@ -396,6 +407,8 @@ export class CallSession {
         this.lastTurn = null;
       }
       this.upsertTranscript(itemId, speaker, '', true);
+      // Their words started a moment before the turn was detected.
+      if (speaker === 'counterpart' && this.recorder) this.markAudio(itemId, Math.max(0, this.turnStartTs - TURN_LEAD_IN_MS));
     });
 
     agent.on('transcript', (itemId, speaker, text) => {
@@ -508,6 +521,7 @@ export class CallSession {
       });
     }
     this.transport?.clearAudio();
+    this.recorder?.cut(this.latestMediaTs);
     this.emitListen({ t: 'clear' });
     this.update((r) => r.metrics.interruptions++);
     this.log('ai.interrupted', `${Math.round(heardMs)}ms heard · ${speechMs}ms speech`);
@@ -705,6 +719,30 @@ export class CallSession {
       .catch((err) => this.log('translate.error', (err as Error).message));
   }
 
+  /** Where a transcript line starts in the recording. */
+  private markAudio(itemId: string, ms: number) {
+    this.update((r) => {
+      const entry = r.transcript.find((t) => t.id === itemId);
+      if (entry && entry.audioMs === undefined) entry.audioMs = Math.round(ms);
+    });
+  }
+
+  /** Saves the recording once the call is over (the file outlives the session; see recordings.ts). */
+  private async saveRecording() {
+    const rec = this.recorder;
+    this.recorder = null;
+    if (!rec || !this.deps.recordingsDir || rec.durationMs < 1000) return;
+    try {
+      await mkdir(this.deps.recordingsDir, { recursive: true });
+      await writeFile(recordingPath(this.deps.recordingsDir, this.id), rec.wav());
+      const durationMs = Math.round(rec.durationMs);
+      this.update((r) => (r.recording = { durationMs }));
+      this.log('recording.saved', `${Math.round(durationMs / 1000)}s`);
+    } catch (err) {
+      this.log('recording.error', (err as Error).message);
+    }
+  }
+
   /** How much of an assistant line has been heard (0–1), or undefined once it has all played. */
   private heardFraction(itemId: string): number | undefined {
     const line = this.lineAudio.get(itemId);
@@ -868,6 +906,7 @@ export class CallSession {
       this.setStatus('analyzing');
       await this.waitForPendingTranscripts(3_000);
       this.closeConnections();
+      await this.saveRecording();
 
       let analysis: TranscriptAnalysis | null = null;
       let analysisError: string | null = null;

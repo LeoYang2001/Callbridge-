@@ -72,6 +72,8 @@ export interface CallRequest {
   involvement?: 'supervised' | 'handoff';
   /** How long the other party holds while the user answers a question (seconds, 10-120). */
   holdSeconds?: number;
+  /** Set by the server from the user's setting (UserProfile.recordCalls), not by clients. */
+  record?: boolean;
   /** Who is being called, e.g. "Smile Dental" or "Maria". */
   counterpartName?: string;
   /** Who they are to the user, e.g. "girlfriend" (saved in the phone book). */
@@ -137,6 +139,8 @@ export interface TranscriptEntry {
   interrupted?: boolean;
   /** The line in the user's language, added shortly after it's final (calls in another language). */
   translation?: string;
+  /** Where the line starts in the call's recording (ms), when it was recorded. */
+  audioMs?: number;
 }
 
 export type DecisionOutcome =
@@ -261,6 +265,8 @@ export interface CallLogEvent {
 
 export interface CallRecord {
   id: string;
+  /** The call's recording, when it was recorded (fetched from /api/calls/:id/recording). */
+  recording?: { durationMs: number };
   /** The signed-in user who placed the call. */
   userId?: string;
   createdAt: number;
@@ -386,6 +392,12 @@ export interface UserProfile {
   voice?: RealtimeVoice;
   /** How long the other party holds for the user's answer, in seconds (default 30). */
   holdSeconds?: number;
+  /**
+   * Record calls for replay with the transcript (default on while testing). LAUNCH BLOCKER: the
+   * other party isn't told; before real users, the assistant must announce recording (some
+   * states require everyone's consent).
+   */
+  recordCalls?: boolean;
   /** Extra charges the assistant may accept without asking, in USD (default 0: ask first). */
   maxChargeUsd?: number;
   /** Unset fields mean on. */

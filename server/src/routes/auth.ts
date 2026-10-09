@@ -3,6 +3,7 @@ import { z } from 'zod';
 import type { AuthResult, Me } from '../../../shared/types';
 import type { OtpRateLimit, OtpSender } from '../auth/otp';
 import type { Database, UserRow } from '../db/database';
+import { removeRecording } from '../calls/recordings';
 import { isExpoPushToken } from '../push/push';
 import { applyProfilePatch, ContactInputSchema, emptyProfile, ProfilePatchSchema, saveContact } from '../profile/profile';
 import { blockedReason, normalizePhone } from '../util/phone';
@@ -27,6 +28,8 @@ export function registerAuthRoutes(
     perAddress: OtpRateLimit;
     /** When set, only these numbers can create an account (existing users can always sign in). */
     signupAllowlist: string[] | null;
+    /** Call recordings, deleted with the account. */
+    recordingsDir?: string | null;
   },
 ) {
   const { db, otp, perPhone, perAddress, signupAllowlist } = deps;
@@ -138,6 +141,8 @@ export function registerAuthRoutes(
 
   /** Deletes the account, its profile, and its call history. */
   app.delete('/api/me', async (req) => {
+    // Recordings live on disk, outside the database: they go first.
+    await Promise.all(db.callsForUser(req.user!.id, 100_000).map((c) => removeRecording(deps.recordingsDir, c.id)));
     db.deleteUser(req.user!.id);
     return { ok: true };
   });

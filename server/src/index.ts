@@ -1,3 +1,4 @@
+import type { CallRequest } from '../../shared/types';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -59,6 +60,10 @@ await app.register(cors, {
 // the app gets by verifying a code sent to the user's phone. Twilio routes authenticate separately
 // (webhook signatures + a per-call stream token).
 const db = new Database(path.resolve(root, config.DATABASE_FILE));
+/** Call recordings (replayed with the transcript in the app). */
+const recordingsDir = path.join(root, 'data', 'recordings');
+/** Records the call if its user records calls (on unless they turned it off). */
+const withRecording = (request: CallRequest, userId: string): CallRequest => ({ ...request, record: db.userById(userId)?.profile.recordCalls !== false });
 const PUBLIC_API = new Set(['/api/health', '/api/config', '/api/auth/start', '/api/auth/verify']);
 app.addHook('onRequest', async (req: FastifyRequest, reply) => {
   if (req.method === 'OPTIONS' || !req.url.startsWith('/api/') || PUBLIC_API.has(req.url.split('?')[0]!)) return;
@@ -75,6 +80,7 @@ const otp =
     : new LogOtp((message) => app.log.warn(message));
 registerAuthRoutes(app, {
   db,
+  recordingsDir,
   otp,
   perPhone: new OtpRateLimit(5),
   perAddress: new OtpRateLimit(20),
@@ -131,6 +137,7 @@ const manager = new CallManager(
     maxCallSeconds: config.MAX_CALL_SECONDS,
     introDelayMs: config.INTRO_DELAY_MS,
     holdTimeoutMs: config.HOLD_TIMEOUT_SECONDS * 1000,
+    recordingsDir,
     log: logCallEvent,
   }),
   {
@@ -152,12 +159,12 @@ const checkDeps = {
   classifier: config.OPENAI_API_KEY ? new OpenAITaskClassifier(config.OPENAI_API_KEY, config.ANALYSIS_MODEL) : null,
   allowedDestinations: config.allowedDestinations,
 };
-registerApiRoutes(app, { config, manager, store, checkDeps, db });
+registerApiRoutes(app, { config, manager, store, checkDeps, db, recordingsDir });
 
 // Errands: calls the server places later, on its own, while the user does something else.
 const errands = new ErrandQueue({
   db,
-  startCall: (request, userId) => manager.startCall(request, userId),
+  startCall: (request, userId) => manager.startCall(withRecording(request, userId), userId),
   lineFree: () => manager.activeCount === 0,
   isLive: (callId) => manager.isLive(callId),
   callRecord: (callId) => store.getOrLoad(callId),

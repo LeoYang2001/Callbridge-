@@ -28,6 +28,8 @@ const ICONS = {
   star: { ios: 'star.fill', android: 'star' },
   store: { ios: 'storefront', android: 'storefront' },
   trash: { ios: 'trash.fill', android: 'delete' },
+  play: { ios: 'play.fill', android: 'play_arrow' },
+  pause: { ios: 'pause.fill', android: 'pause' },
 } as const satisfies Record<string, { ios: SFSymbol; android: AndroidSymbol }>;
 
 export type IconName = keyof typeof ICONS;

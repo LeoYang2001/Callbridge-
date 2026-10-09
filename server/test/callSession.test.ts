@@ -1,4 +1,7 @@
 import { EventEmitter } from 'node:events';
+import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { CallRecord, UserQuestion } from '../../shared/types';
 import { CallManager, type CallManagerOptions } from '../src/calls/callManager';
@@ -128,7 +131,7 @@ const waitFor = async (pred: () => boolean, ms = 3000) => {
 
 const translator = { translate: async (text: string, to: string) => `[${to}] ${text}` };
 
-function setup(opts: { failConnect?: boolean; analyzer?: CallAnalyzer | null; holdTimeoutMs?: number; holdCheckInMs?: number; onUserQuestion?: CallManagerOptions['onUserQuestion'] } = {}) {
+function setup(opts: { failConnect?: boolean; analyzer?: CallAnalyzer | null; holdTimeoutMs?: number; holdCheckInMs?: number; onUserQuestion?: CallManagerOptions['onUserQuestion']; recordingsDir?: string } = {}) {
   const store = new CallStore(null);
   const agent = new FakeAgent(opts.failConnect);
   const telephony = new FakeTelephony();
@@ -143,12 +146,67 @@ function setup(opts: { failConnect?: boolean; analyzer?: CallAnalyzer | null; ho
       introDelayMs: 50,
       holdTimeoutMs: opts.holdTimeoutMs,
       holdCheckInMs: opts.holdCheckInMs,
+      recordingsDir: opts.recordingsDir,
       log: (callId, type, detail) => store.update(callId, (r) => r.events.push({ at: Date.now(), type, detail })),
     }),
     { allowedDestinations: null, maxCallsPerHour: 10, maxConcurrentCalls: 1, onUserQuestion: opts.onUserQuestion },
   );
   return { store, agent, telephony, manager };
 }
+
+describe('recording', () => {
+  it('saves the call as heard, with each line placed on the recording', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'cb-rec-'));
+    try {
+      const { store, agent, telephony, manager } = setup({ recordingsDir: dir });
+      const created = manager.startCall({ ...dentistRequest(), record: true });
+      await waitFor(() => telephony.placed.length === 1);
+      manager.handleTelephonyState(created.id, 'answered');
+      const transport = new FakeTransport();
+      manager.attachMedia(created.id, (manager as any).sessions.get(created.id).streamToken, transport);
+      // They speak for 1 s from 0.5 s; the assistant answers at 2 s for 0.5 s (sent all at once).
+      agent.emit('speechStarted');
+      let ts = frames(transport, 0, 25, 'AAAA');
+      agent.emit('speechStopped');
+      agent.emit('utteranceStarted', 'c1', 'counterpart');
+      agent.emit('transcript', 'c1', 'counterpart', 'Smile Dental, how can I help?');
+      ts = frames(transport, ts, 50, 'AAAA');
+      agent.emit('utteranceStarted', 'a1', 'assistant');
+      for (let i = 0; i < 25; i++) agent.emit('audio', 'a1', Buffer.alloc(160, 0).toString('base64'));
+      agent.emit('transcript', 'a1', 'assistant', "Hi, I'm Leo's assistant.");
+      agent.emit('responseDone');
+      manager.handleTelephonyState(created.id, 'completed');
+      await waitFor(() => store.get(created.id)!.status === 'completed');
+      const r = store.get(created.id)!;
+      expect(r.recording?.durationMs).toBe(2000);
+      expect(r.transcript.find((t) => t.id === 'a1')?.audioMs).toBe(1500);
+      expect(r.transcript.find((t) => t.id === 'c1')?.audioMs).toBe(0);
+      const wav = await readFile(path.join(dir, `${created.id}.wav`));
+      expect(wav.readUInt32LE(40)).toBe(2000 * 8 * 2);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("doesn't record when the user turned it off", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'cb-rec-'));
+    try {
+      const { store, telephony, manager } = setup({ recordingsDir: dir });
+      const created = manager.startCall({ ...dentistRequest(), record: false });
+      await waitFor(() => telephony.placed.length === 1);
+      manager.handleTelephonyState(created.id, 'answered');
+      const transport = new FakeTransport();
+      manager.attachMedia(created.id, (manager as any).sessions.get(created.id).streamToken, transport);
+      frames(transport, 0, 100);
+      manager.handleTelephonyState(created.id, 'completed');
+      await waitFor(() => ['completed', 'failed'].includes(store.get(created.id)!.status));
+      expect(store.get(created.id)!.recording).toBeUndefined();
+      expect(await readdir(dir)).toEqual([]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});
 
 describe('personal calls', () => {
   it("don't offer the appointment-slot check (the time in the message is the user's own)", async () => {

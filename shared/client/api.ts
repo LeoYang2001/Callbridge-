@@ -185,3 +185,13 @@ export async function voiceSample(s: Connection, voice: string, language?: strin
   }
   return res.arrayBuffer();
 }
+
+/** A finished call's recording (WAV), for replay with the transcript. */
+export async function callRecording(s: Connection, id: string): Promise<ArrayBuffer> {
+  const res = await fetch(endpoint(s, `/api/calls/${encodeURIComponent(id)}/recording`), { headers: headers(s), signal: timeoutSignal(30_000) });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error ?? `Request failed (${res.status})`);
+  }
+  return res.arrayBuffer();
+}

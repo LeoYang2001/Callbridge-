@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated, { FadeInUp, SlideInDown, SlideOutDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { displayPhone } from '@shared/phone';
@@ -8,6 +8,9 @@ import { color, font, type } from '@/theme/tokens';
 import { Chip, PillButton, RoundButton } from '@/ui/Button';
 import { Icon } from '@/ui/Icon';
 import { clock } from './ActiveCall';
+import { haptic } from '@/lib/haptics';
+import { loadRecording, type RecordingPlayer } from '@/lib/recording';
+import { useSignedIn } from '@/lib/session';
 
 /** Ringing: the number being dialed, the AI disclosure, and Cancel. */
 export function Ringing({ call, onCancel }: { call: CallRecord; onCancel: () => void }) {
@@ -211,8 +214,24 @@ export function Composer({ language, onSend, onClose }: { language: string; onSe
 }
 
 /** The whole conversation so far: them on the left, the assistant on the right, your notes dashed. */
-export function TranscriptSheet({ lines, them, onClose }: { lines: TranscriptEntry[]; them: string; onClose: () => void }) {
+/**
+ * The whole conversation, each line in the user's language with what was actually said under it.
+ * With a recording, it plays along: the line being heard is highlighted (and scrolled to), and
+ * tapping a line plays from there, to hear exactly how it was said.
+ */
+export function TranscriptSheet({ lines, them, onClose, recording }: { lines: TranscriptEntry[]; them: string; onClose: () => void; recording?: { callId: string; durationMs: number } }) {
   const insets = useSafeAreaInsets();
+  const player = useRecording(recording?.callId);
+  const scroll = useRef<ScrollView>(null);
+  const tops = useRef(new Map<string, number>());
+  // The line being heard: the last one that starts at or before the playback position.
+  const timed = lines.filter((t) => t.audioMs !== undefined);
+  const active = player.started ? [...timed].reverse().find((t) => t.audioMs! <= player.positionMs + 150)?.id : undefined;
+  useEffect(() => {
+    const y = active ? tops.current.get(active) : undefined;
+    if (y !== undefined && player.playing) scroll.current?.scrollTo({ y: Math.max(0, y - 80), animated: true });
+  }, [active, player.playing]);
+
   return (
     <Animated.View entering={SlideInDown.duration(280)} exiting={SlideOutDown.duration(220)} style={[s.sheet, { top: 110 }]}>
       <View style={s.composerHead}>
@@ -221,27 +240,118 @@ export function TranscriptSheet({ lines, them, onClose }: { lines: TranscriptEnt
           <Icon name="close" size={14} />
         </Pressable>
       </View>
-      <ScrollView contentContainerStyle={{ gap: 10, paddingBottom: insets.bottom + 20 }}>
+      {recording ? <RecordingBar player={player} durationMs={recording.durationMs} /> : null}
+      <ScrollView ref={scroll} contentContainerStyle={{ gap: 10, paddingBottom: insets.bottom + 20 }}>
         {lines.map((t) => {
+          const onLayout = (e: { nativeEvent: { layout: { y: number } } }) => tops.current.set(t.id, e.nativeEvent.layout.y);
           if (t.speaker === 'system') {
             return (
-              <View key={t.id} style={[s.bubble, s.note]}>
+              <View key={t.id} onLayout={onLayout} style={[s.bubble, s.note]}>
                 <Text style={type.caption}>Private · they can't hear this</Text>
                 <Text style={type.callout}>{t.text}</Text>
               </View>
             );
           }
           const theirs = t.speaker === 'counterpart';
+          const canPlay = Boolean(recording) && t.audioMs !== undefined;
           return (
-            <View key={t.id} style={[s.bubble, theirs ? s.them : s.ai]}>
+            <Pressable
+              key={t.id}
+              onLayout={onLayout}
+              disabled={!canPlay}
+              onPress={() => player.play(t.audioMs)}
+              accessibilityHint={canPlay ? 'Plays the recording from here' : undefined}
+              style={[s.bubble, theirs ? s.them : s.ai, active === t.id && (theirs ? s.themNow : s.aiNow), player.started && active !== t.id && { opacity: 0.55 }]}
+            >
               <Text style={[type.caption, { color: theirs ? color.secondary : 'rgba(255,255,255,0.75)' }]}>{theirs ? them : 'Assistant'}</Text>
               <Text style={[type.callout, { color: theirs ? color.ink : color.white }]}>{t.translation ?? t.text}</Text>
               {t.translation && t.translation !== t.text ? <Text style={[type.caption, { color: theirs ? color.secondary : 'rgba(255,255,255,0.75)' }]}>{t.text}</Text> : null}
-            </View>
+            </Pressable>
           );
         })}
       </ScrollView>
     </Animated.View>
+  );
+}
+
+/** Loads a call's recording and tracks where it's playing. */
+function useRecording(callId: string | undefined) {
+  const { conn } = useSignedIn();
+  const ref = useRef<RecordingPlayer | null>(null);
+  const loading = useRef<Promise<RecordingPlayer | null> | null>(null);
+  const [state, setState] = useState({ ready: false, busy: false, playing: false, started: false, positionMs: 0, error: null as string | null });
+
+  useEffect(() => () => ref.current?.close(), []);
+  // While playing, follow the position (for the bar and the highlighted line).
+  useEffect(() => {
+    if (!state.playing) return;
+    const t = setInterval(() => setState((s) => ({ ...s, positionMs: ref.current?.positionMs() ?? 0 })), 120);
+    return () => clearInterval(t);
+  }, [state.playing]);
+
+  const load = () => {
+    if (!callId) return Promise.resolve(null);
+    loading.current ??= loadRecording(conn, callId, () => setState((s) => ({ ...s, playing: false, positionMs: 0, started: false }))).then(
+      (p) => (ref.current = p),
+      (e: Error) => {
+        loading.current = null;
+        setState((s) => ({ ...s, busy: false, error: e.message }));
+        return null;
+      },
+    );
+    return loading.current;
+  };
+
+  return {
+    ...state,
+    // The first play loads it.
+    play: (fromMs?: number) => {
+      setState((s) => ({ ...s, busy: !ref.current, error: null }));
+      void load().then((p) => {
+        if (!p) return;
+        p.play(fromMs);
+        setState((s) => ({ ...s, ready: true, busy: false, playing: true, started: true, positionMs: p.positionMs() }));
+      });
+    },
+    pause: () => {
+      ref.current?.pause();
+      setState((s) => ({ ...s, playing: false, positionMs: ref.current?.positionMs() ?? s.positionMs }));
+    },
+  };
+}
+
+type Player = ReturnType<typeof useRecording>;
+
+/** Play / pause, the time, and a bar to tap to jump. */
+function RecordingBar({ player, durationMs }: { player: Player; durationMs: number }) {
+  const [width, setWidth] = useState(1);
+  const at = Math.min(durationMs, player.positionMs);
+  return (
+    <View style={s.player}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={player.playing ? 'Pause the recording' : 'Play the recording'}
+        onPress={() => (haptic.select(), player.playing ? player.pause() : player.play())}
+        style={s.playButton}
+      >
+        {player.busy ? <ActivityIndicator size="small" color={color.white} /> : <Icon name={player.playing ? 'pause' : 'play'} size={16} color={color.white} />}
+      </Pressable>
+      <View style={{ flex: 1, gap: 6 }}>
+        <Pressable
+          onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
+          onPress={(e) => player.play((e.nativeEvent.locationX / width) * durationMs)}
+          hitSlop={{ top: 12, bottom: 12 }}
+          style={s.track}
+          accessibilityLabel="Recording position"
+        >
+          <View style={[s.trackFill, { width: `${(at / durationMs) * 100}%` }]} />
+        </Pressable>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+          <Text style={[type.caption, { fontVariant: ['tabular-nums'] }]}>{clock(Math.floor(at / 1000))}</Text>
+          <Text style={[type.caption, { fontVariant: ['tabular-nums'] }]}>{player.error ?? clock(Math.round(durationMs / 1000))}</Text>
+        </View>
+      </View>
+    </View>
   );
 }
 
@@ -259,5 +369,11 @@ const s = StyleSheet.create({
   bubble: { maxWidth: '85%', paddingHorizontal: 14, paddingVertical: 10, gap: 3 },
   them: { alignSelf: 'flex-start', backgroundColor: color.surface, borderRadius: 20, borderBottomLeftRadius: 6 },
   ai: { alignSelf: 'flex-end', backgroundColor: color.blue, borderRadius: 20, borderBottomRightRadius: 6 },
+  themNow: { borderWidth: 2, borderColor: color.blue },
+  aiNow: { borderWidth: 2, borderColor: color.ink },
+  player: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: color.surface, borderRadius: 20, padding: 12 },
+  playButton: { width: 40, height: 40, borderRadius: 20, backgroundColor: color.blue, alignItems: 'center', justifyContent: 'center' },
+  track: { height: 6, borderRadius: 3, backgroundColor: color.line, overflow: 'hidden' },
+  trackFill: { height: 6, backgroundColor: color.blue },
   note: { alignSelf: 'flex-end', borderWidth: 1.5, borderStyle: 'dashed', borderColor: color.blue, borderRadius: 18 },
 });

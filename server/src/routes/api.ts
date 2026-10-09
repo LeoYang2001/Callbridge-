@@ -1,3 +1,5 @@
+import { readFile } from 'node:fs/promises';
+import { recordingPath, removeRecording } from '../calls/recordings';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import type { CallRecord, CallRequest, CallSummary, PublicConfig, TaskReview } from '../../../shared/types';
@@ -10,9 +12,9 @@ import type { Database } from '../db/database';
 
 export function registerApiRoutes(
   app: FastifyInstance,
-  deps: { config: AppConfig; manager: CallManager; store: CallStore; checkDeps: CheckDeps; db: Database },
+  deps: { config: AppConfig; manager: CallManager; store: CallStore; checkDeps: CheckDeps; db: Database; recordingsDir?: string | null },
 ) {
-  const { config, manager, store, checkDeps, db } = deps;
+  const { config, manager, store, checkDeps, db, recordingsDir } = deps;
   /** A call the signed-in user placed; other users' calls look like they don't exist. */
   const ownCall = (req: FastifyRequest, id: string) => {
     const r = store.getOrLoad(id);
@@ -36,7 +38,8 @@ export function registerApiRoutes(
     const checked = await validateCallRequest(req.body, checkDeps);
     if ('error' in checked) return reply.code(checked.status).send({ error: checked.error, review: checked.review });
     try {
-      const record = manager.startCall(checked.request, req.user!.id);
+      // Recorded unless the user turned it off (UserProfile.recordCalls).
+      const record = manager.startCall({ ...checked.request, record: req.user!.profile.recordCalls !== false }, req.user!.id);
       return reply.code(201).send(record);
     } catch (err) {
       if (err instanceof CallRejectedError) return reply.code(err.statusCode).send({ error: err.message });
@@ -98,7 +101,17 @@ export function registerApiRoutes(
     if (manager.isLive(r.id)) return reply.code(409).send({ error: 'That call is still going. End it first.' });
     db.deleteCall(req.user!.id, r.id);
     store.forget(r.id);
+    await removeRecording(recordingsDir, r.id);
     return { ok: true };
+  });
+
+  /** The call's recording (WAV), for replay with the transcript. */
+  app.get<{ Params: { id: string } }>('/api/calls/:id/recording', async (req, reply) => {
+    const r = ownCall(req, req.params.id);
+    if (!r || !r.recording || !recordingsDir) return reply.code(404).send({ error: 'No recording for this call.' });
+    const audio = await readFile(recordingPath(recordingsDir, r.id)).catch(() => null);
+    if (!audio) return reply.code(404).send({ error: 'No recording for this call.' });
+    return reply.header('Content-Type', 'audio/wav').header('Cache-Control', 'private, max-age=3600').send(audio);
   });
 
   /** Server-sent events: the full call record on every change. */
