@@ -6,6 +6,7 @@ import { useSignIn } from '@/hooks/useSignIn';
 import { color, font, type } from '@/theme/tokens';
 import { PillButton } from '@/ui/Button';
 import { Icon } from '@/ui/Icon';
+import { Logo } from '@/ui/Logo';
 import { Screen } from '@/ui/Screen';
 
 /** Sign in with a phone number, then the 6-digit code. No glow: nothing is happening yet. */
@@ -26,9 +27,7 @@ function PhoneStep({ f }: { f: Form }) {
     <View style={{ flex: 1 }}>
       <View style={s.hero}>
         <View style={s.brand}>
-          <View style={s.mark}>
-            <Icon name="phone" size={18} color={color.white} />
-          </View>
+          <Logo size={34} />
           <Text style={[type.h3, { fontSize: 18 }]}>CallBridge</Text>
         </View>
         <Text style={type.hero}>{'Call anyone,\nin your language.'}</Text>
@@ -133,7 +132,6 @@ function CodeStep({ f }: { f: Form }) {
 const s = StyleSheet.create({
   hero: { flex: 1, justifyContent: 'center', gap: 14 },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  mark: { width: 36, height: 36, borderRadius: 11, backgroundColor: color.blue, alignItems: 'center', justifyContent: 'center' },
   field: { height: 56, borderRadius: 18, backgroundColor: color.surface, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 18 },
   boxes: { flexDirection: 'row', gap: 8, marginTop: 20 },
   box: { flex: 1, height: 60, borderRadius: 14, backgroundColor: color.white, borderWidth: 1, borderColor: color.line, alignItems: 'center', justifyContent: 'center' },

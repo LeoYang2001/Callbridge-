@@ -11,6 +11,7 @@ import { useSession } from '@/lib/session';
 import { EdgeSwipe, peek } from './EdgeSwipe';
 import { color, type } from '@/theme/tokens';
 import { Icon } from '@/ui/Icon';
+import { Logo } from '@/ui/Logo';
 
 /**
  * The full-screen menu (no tab bar): Call / Calls / Phone book / Me, the live call when there
@@ -75,6 +76,9 @@ function MenuOverlay({ onClose }: { onClose: () => void }) {
     <Animated.View entering={SlideInRight.duration(280)} exiting={SlideOutRight.duration(220)} style={[StyleSheet.absoluteFill, s.overlay]}>
       {/* A tap anywhere that isn't a menu item closes it; the items take their own taps first. */}
       <Pressable accessible={false} onPress={onClose} style={StyleSheet.absoluteFill} />
+      <View pointerEvents="none" style={s.watermark}>
+        <Logo variant="pale" size={260} style={{ opacity: 0.4 }} />
+      </View>
       <View pointerEvents="none" style={{ height: insets.top }} />
       <View pointerEvents="box-none" style={s.head}>
         <Text style={type.caption}>
@@ -121,6 +125,8 @@ function MenuOverlay({ onClose }: { onClose: () => void }) {
 
 const s = StyleSheet.create({
   overlay: { backgroundColor: color.overlay, zIndex: 40 },
+  // The mark, large and faint, off the bottom-right corner.
+  watermark: { position: 'absolute', right: -70, bottom: 60 },
   head: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingLeft: 26, paddingRight: 18, paddingTop: 8 },
   close: { width: 40, height: 40, borderRadius: 20, backgroundColor: color.surface, alignItems: 'center', justifyContent: 'center' },
   items: { flex: 1, justifyContent: 'center', paddingHorizontal: 30, gap: 6 },

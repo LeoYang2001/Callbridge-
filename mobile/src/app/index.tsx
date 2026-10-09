@@ -29,6 +29,7 @@ import { Chip, RoundButton } from '@/ui/Button';
 import { Bars } from '@/ui/Bars';
 import { HoldToTalk, MicState } from '@/ui/HoldToTalk';
 import { Icon } from '@/ui/Icon';
+import { Logo } from '@/ui/Logo';
 import { Screen, TopBar } from '@/ui/Screen';
 
 /**
@@ -353,7 +354,21 @@ function Home({ onSuggestion }: { onSuggestion: (text: string) => void }) {
   const next = me.profile.appointments.filter((a) => a.date >= new Date().toISOString().slice(0, 10)).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))[0];
 
   return (
-    <Screen top={<TopBar right={<MenuButton />} />} padding={24} bottom={<View style={{ height: DOCK_HEIGHT }} />}>
+    <Screen
+      top={
+        <TopBar
+          left={
+            <View style={s.brand}>
+              <Logo size={24} />
+              <Text style={[type.bodyStrong, { fontSize: 16 }]}>CallBridge</Text>
+            </View>
+          }
+          right={<MenuButton />}
+        />
+      }
+      padding={24}
+      bottom={<View style={{ height: DOCK_HEIGHT }} />}
+    >
       <View style={{ gap: 6, marginTop: 8, paddingHorizontal: 6 }}>
         <Text style={type.sub}>{greetingFor(t, me.profile.name)}</Text>
         <Text style={type.title}>{t.title}</Text>
@@ -363,7 +378,10 @@ function Home({ onSuggestion }: { onSuggestion: (text: string) => void }) {
           <Upcoming date={next.date} time={next.time} title={next.with} detail={next.description} />
         </View>
       ) : null}
-      <View style={{ flex: 1 }} />
+      {/* The empty middle carries the mark, faintly. */}
+      <View style={s.watermark} pointerEvents="none">
+        <Logo variant="pale" size={150} style={{ opacity: 0.55 }} />
+      </View>
       <Text style={[type.caption, { textAlign: 'center', marginBottom: 12 }]}>The mic stays off until you hold. Or tap a suggestion.</Text>
       <View style={s.suggest}>
         {suggestions.map((x) => (
@@ -521,6 +539,8 @@ const s = StyleSheet.create({
   typeRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, minHeight: 50, borderRadius: 25, backgroundColor: color.surface, paddingHorizontal: 16, paddingVertical: 10 },
   dock: { position: 'absolute', left: 0, right: 0, top: 0, height: 120, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 28 },
   before: { opacity: 0.8 },
+  brand: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  watermark: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   stop: { color: color.blue, marginLeft: 6, paddingHorizontal: 4 },
   questionSmall: { fontSize: 22, lineHeight: 29, letterSpacing: -0.2 },
   stage: { flex: 1, justifyContent: 'flex-end', gap: 12, paddingHorizontal: 34, paddingBottom: 14, overflow: 'hidden' },

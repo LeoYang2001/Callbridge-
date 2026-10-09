@@ -13,6 +13,7 @@ import { playVoiceSample, stopVoiceSample, type SampleState } from '@/lib/voiceS
 import { MenuButton } from '@/nav/MenuButton';
 import { color, type } from '@/theme/tokens';
 import { Avatar } from '@/ui/Avatar';
+import { Logo } from '@/ui/Logo';
 import { Chip } from '@/ui/Button';
 import { Group, Row, SectionLabel } from '@/ui/Rows';
 import { Segmented } from '@/ui/Segmented';
@@ -116,7 +117,10 @@ export default function Me() {
       </Group>
       {error ? <Text style={[type.small, { color: color.redText }]}>{error}</Text> : null}
 
-      <Text style={[type.caption, { textAlign: 'center' }]}>CallBridge {versionLabel(Application.nativeApplicationVersion ?? undefined, Application.nativeBuildVersion)}</Text>
+      <View style={{ alignItems: 'center', gap: 6, marginTop: 8 }}>
+        <Logo variant="blue" size={20} style={{ opacity: 0.9 }} />
+        <Text style={[type.caption, { textAlign: 'center' }]}>CallBridge {versionLabel(Application.nativeApplicationVersion ?? undefined, Application.nativeBuildVersion)}</Text>
+      </View>
       <Text style={[type.callout, { textAlign: 'center', fontWeight: '600', marginTop: 8 }]} onPress={() => void signOut()}>
         Sign out
       </Text>
