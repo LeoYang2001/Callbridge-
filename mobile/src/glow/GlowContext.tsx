@@ -1,13 +1,14 @@
 import { useFocusEffect } from 'expo-router';
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
-import { View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { color } from '@/theme/tokens';
 import { EdgeGlow } from './EdgeGlow';
 import type { GlowMode } from './modes';
 
 /**
  * Screens say which glow they want with useGlow(mode); the root draws it. A screen that's
- * focused owns the glow, so going back restores the previous screen's mode.
+ * focused owns the glow, so going back restores the previous screen's mode. The glow is drawn
+ * over everything (cards and sheets included), and touches pass through it.
  */
 
 interface GlowState {
@@ -24,8 +25,10 @@ export function GlowProvider({ children }: { children: ReactNode }) {
   return (
     <GlowContext.Provider value={set}>
       <View style={{ flex: 1, backgroundColor: color.white }}>
-        <EdgeGlow mode={state.mode} holdFraction={state.holdFraction} />
         {children}
+        <View pointerEvents="none" style={[StyleSheet.absoluteFill, { zIndex: 100 }]}>
+          <EdgeGlow mode={state.mode} holdFraction={state.holdFraction} />
+        </View>
       </View>
     </GlowContext.Provider>
   );
