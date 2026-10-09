@@ -86,6 +86,8 @@ export interface IntakeSessionControls {
   cancelTurn?: () => void;
   /** Stops the assistant mid-sentence (the user started talking; their words will follow as text). */
   interrupt?: () => void;
+  /** Stops a lookup in progress; the assistant is told the user moved on. */
+  stopSearch?: () => void;
   stop: () => void;
 }
 
@@ -129,11 +131,14 @@ export function createIntakeConversation(deps: {
    * sentence (starting or finishing) must not interrupt the "looking it up" screen while the
    * search still runs.
    */
-  let searching = 0;
+  /** Lookups in flight that the user can stop, by tool call id. */
+  const searches = new Map<string, AbortController>();
+  /** Tool calls the user stopped: the assistant doesn't get a turn to talk about them. */
+  const stopped = new Set<string>();
   const h: IntakeHandlers = {
     ...handlers,
     onStatus: (status, detail) =>
-      handlers.onStatus(searching > 0 && (status === 'listening' || status === 'yourTurn' || status === 'thinking' || status === 'speaking') ? 'searching' : status, detail),
+      handlers.onStatus(searches.size > 0 && (status === 'listening' || status === 'yourTurn' || status === 'thinking' || status === 'speaking') ? 'searching' : status, detail),
   };
   let draft: IntakeDraft = { ...deps.initialDraft };
   const heard = new Map<string, string>();
@@ -209,7 +214,7 @@ export function createIntakeConversation(deps: {
     send({ type: 'response.create' });
   };
 
-  const runTool = async (name: string, rawArgs: string): Promise<unknown> => {
+  const runTool = async (name: string, rawArgs: string, callId = ''): Promise<unknown> => {
     let args: Record<string, unknown> = {};
     try {
       args = JSON.parse(rawArgs || '{}');
@@ -233,10 +238,12 @@ export function createIntakeConversation(deps: {
       const near = typeof args.near === 'string' && args.near.trim() ? args.near.trim() : undefined;
       // Location only helps "near me" questions; asked once, with the user's permission.
       const here = near ? null : await deps.locate();
-      searching++;
+      const abort = new AbortController();
+      searches.set(callId, abort);
       h.onStatus('searching');
       try {
-        const result = await research(conn, { question, depth, near, userLanguage: ctx.userLanguage, ...(here ? { lat: here.lat, lng: here.lng } : {}) });
+        const result = await research(conn, { question, depth, near, userLanguage: ctx.userLanguage, ...(here ? { lat: here.lat, lng: here.lng } : {}) }, abort.signal);
+        if (abort.signal.aborted) throw new Error('stopped');
         h.onResearch?.(result);
         // Compact for the model: enough to answer and pick, with what's unverified marked.
         return {
@@ -253,10 +260,13 @@ export function createIntakeConversation(deps: {
           location_used: near ?? (here ? 'the user’s current location' : 'unknown (ask for a city or zip if it matters)'),
         };
       } catch (e) {
+        if (abort.signal.aborted) {
+          return { stopped: true, note: 'The user stopped this search and moved on. Follow what they say next; mention the search only if they ask.' };
+        }
         return { error: (e as Error).message };
       } finally {
-        searching--;
-        h.onStatus('thinking');
+        searches.delete(callId);
+        if (!abort.signal.aborted) h.onStatus('thinking');
       }
     }
     if (name === 'update_profile') {
@@ -286,6 +296,16 @@ export function createIntakeConversation(deps: {
     return { error: `Unknown tool ${name}` };
   };
 
+  /** Stops every lookup in flight (the user talked, typed, or tapped Stop). */
+  const stopSearches = () => {
+    for (const [callId, abort] of searches) {
+      stopped.add(callId);
+      abort.abort();
+    }
+    // Cleared now, not when the requests unwind, so the status that follows isn't held at searching.
+    searches.clear();
+  };
+
   const output = (callId: string, value: unknown) =>
     send({ type: 'conversation.item.create', item: { type: 'function_call_output', call_id: callId, output: JSON.stringify(value) } });
 
@@ -301,7 +321,9 @@ export function createIntakeConversation(deps: {
     const others = calls.filter((c) => c.name !== 'show_choices');
     await Promise.all(calls.map((c) => toolRuns.get(c.call_id ?? '') ?? Promise.resolve()));
     calls.forEach((c) => toolRuns.delete(c.call_id ?? ''));
-    if (others.length || !spoke) send({ type: 'response.create' });
+    // A search the user stopped: they're talking or typing now, and that turn gets the answer.
+    const wasStopped = calls.some((c) => stopped.delete(c.call_id ?? ''));
+    if (!wasStopped && (others.length || !spoke)) send({ type: 'response.create' });
   };
 
   return {
@@ -313,6 +335,7 @@ export function createIntakeConversation(deps: {
 
     /** Push-to-talk: the button went down. Stops the assistant and starts a fresh turn. */
     startTurn() {
+      stopSearches();
       send({ type: 'response.cancel' });
       send({ type: 'output_audio_buffer.clear' });
       send({ type: 'input_audio_buffer.clear' });
@@ -328,9 +351,17 @@ export function createIntakeConversation(deps: {
 
     /** Stops the assistant mid-sentence; the user's turn follows as text (dictation). */
     interrupt() {
+      stopSearches();
       send({ type: 'response.cancel' });
       send({ type: 'output_audio_buffer.clear' });
       h.onStatus('listening');
+    },
+
+    /** Tap Stop while it's looking something up. */
+    stopSearch() {
+      if (!searches.size) return;
+      stopSearches();
+      h.onStatus(idle());
     },
 
     /** Push-to-talk: a tap too short to be speech. Drops it and waits again. */
@@ -340,6 +371,7 @@ export function createIntakeConversation(deps: {
     },
 
     sendText(text: string) {
+      stopSearches();
       h.onLine({ id: `typed-${++textCount}`, role: 'user', text });
       if (deps.isOpen()) pushText(text);
       else pendingTexts.push(text);
@@ -410,7 +442,7 @@ export function createIntakeConversation(deps: {
         case 'response.function_call_arguments.done':
           toolRuns.set(
             ev.call_id,
-            runTool(ev.name, ev.arguments).then(
+            runTool(ev.name, ev.arguments, ev.call_id).then(
               (value) => void output(ev.call_id, value),
               (err: Error) => void output(ev.call_id, { error: err.message }),
             ),

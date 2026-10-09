@@ -108,6 +108,7 @@ export async function startIntake(settings: Settings, ctx: IntakeContext, h: Int
 
   return {
     sendText: conversation.sendText,
+    stopSearch: () => conversation.stopSearch(),
     setMic: async (on) => {
       if (on && !micTrack) {
         micTrack = await openMic();

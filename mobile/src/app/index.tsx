@@ -22,7 +22,7 @@ import { greetingFor, homeText } from '@/i18n/home';
 import { MenuButton } from '@/nav/MenuButton';
 import { useToast } from '@/ui/Toast';
 import { RequestCard } from '@/talk/RequestCard';
-import { Found, Searching } from '@/talk/Research';
+import { Found } from '@/talk/Research';
 import { Review } from '@/talk/Review';
 import { color, type } from '@/theme/tokens';
 import { Chip, RoundButton } from '@/ui/Button';
@@ -43,7 +43,7 @@ export default function CallScreen() {
   return <Conversation key={`${round}-${contact ?? ''}`} contactId={round === 0 ? contact : undefined} onReset={() => setRound((r) => r + 1)} />;
 }
 
-type View_ = 'home' | 'listening' | 'asks' | 'research' | 'review';
+type View_ = 'home' | 'listening' | 'asks' | 'review';
 
 function Conversation({ contactId, onReset }: { contactId?: string; onReset: () => void }) {
   const { me } = useSignedIn();
@@ -84,14 +84,12 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
       ? // The first turn, from Home: nothing to answer yet, so the words get the screen. Later
         // turns stay on the conversation, so the question and cards don't vanish mid-answer.
         'listening'
-      : intake.status === 'searching'
-        ? 'research'
-        : intake.ready && reviewing
+      : intake.ready && reviewing
           ? 'review'
           : 'asks';
 
   const glow: GlowMode =
-    view === 'home' ? 'idle' : view === 'listening' || intake.holding ? 'listen' : view === 'research' ? 'think' : view === 'review' ? 'ready' : intake.status === 'speaking' ? 'speak' : 'idle';
+    view === 'home' ? 'idle' : view === 'listening' || intake.holding ? 'listen' : intake.status === 'searching' ? 'think' : view === 'review' ? 'ready' : intake.status === 'speaking' ? 'speak' : 'idle';
   useGlow(glow);
 
   const cancel = () => {
@@ -211,19 +209,11 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
       );
     }
 
-    if (view === 'research') {
-      return (
-        <Screen top={spacer} padding={20}>
-          <ScrollView contentContainerStyle={{ paddingTop: 16 }}>
-            <Searching asked={lastUser?.text} />
-          </ScrollView>
-        </Screen>
-      );
-    }
 
     // The assistant asks; the user answers by holding the button or tapping a chip.
     const speaking = intake.status === 'speaking';
     const thinking = intake.status === 'thinking' || intake.status === 'connecting';
+    const searching = intake.status === 'searching';
     // Captions: the sentence being said (or the question asked) large, what came before it in the
     // same turn small above it, so a long answer never fills the screen.
     const said = lastAssistant?.text ?? '';
@@ -245,10 +235,16 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
             the cards and answers sit below and move only when they change themselves. */}
         <View style={s.stage}>
           <View style={s.label}>
-            {intake.holding ? <Bars color={color.blue} /> : speaking ? <Bars color={color.violet} /> : null}
-            <Text style={[type.label, { color: intake.holding ? color.blue : speaking ? color.violet : color.secondary }]}>
-              {intake.holding ? 'Listening · release to send' : speaking ? 'Speaking' : thinking ? 'Thinking…' : 'Your turn · hold to answer'}
+            {intake.holding ? <Bars color={color.blue} /> : speaking || searching ? <Bars color={color.violet} /> : null}
+            <Text style={[type.label, { color: intake.holding ? color.blue : speaking || searching ? color.violet : color.secondary }]}>
+              {intake.holding ? 'Listening · release to send' : searching ? 'Looking it up…' : speaking ? 'Speaking' : thinking ? 'Thinking…' : 'Your turn · hold to answer'}
             </Text>
+            {/* Talking or typing also stops it; the glow shows it's working. */}
+            {searching && !intake.holding ? (
+              <Text accessibilityRole="button" onPress={() => (haptic.select(), intake.stopSearch())} style={[type.label, s.stop]} suppressHighlighting>
+                Stop
+              </Text>
+            ) : null}
           </View>
           {before && !roomy ? null : before ? (
             <Text style={[type.sub, s.before]} numberOfLines={2} ellipsizeMode="head">
@@ -485,7 +481,7 @@ function TalkDock({
   /** Ends the conversation (the right slot, once one has started; Home shows the mic state). */
   onEnd: () => void;
 }) {
-  const hidden = view === 'review' || view === 'research';
+  const hidden = view === 'review';
   return (
     <View pointerEvents={hidden ? 'none' : 'box-none'} style={[s.dock, { transform: [{ translateY: center - 60 }], opacity: hidden ? 0 : 1 }]}>
       <RoundButton label="Type instead" onPress={onType} size={58} bg={color.surface} ring={false}>
@@ -521,6 +517,7 @@ const s = StyleSheet.create({
   typeRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, minHeight: 50, borderRadius: 25, backgroundColor: color.surface, paddingHorizontal: 16, paddingVertical: 10 },
   dock: { position: 'absolute', left: 0, right: 0, top: 0, height: 120, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 28 },
   before: { opacity: 0.8 },
+  stop: { color: color.blue, marginLeft: 6, paddingHorizontal: 4 },
   questionSmall: { fontSize: 22, lineHeight: 29, letterSpacing: -0.2 },
   stage: { flex: 1, justifyContent: 'flex-end', gap: 12, paddingHorizontal: 34, paddingBottom: 14, overflow: 'hidden' },
   act: { gap: 12, paddingHorizontal: 34, paddingBottom: 12 },

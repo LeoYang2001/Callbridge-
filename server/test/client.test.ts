@@ -117,6 +117,21 @@ describe('intake conversation', () => {
     await vi.waitFor(() => expect(statuses.at(-1)).toBe('thinking'));
   });
 
+  it('stops a search when the user talks, without the assistant then talking about it', async () => {
+    vi.stubGlobal('fetch', (_url: string, init: RequestInit) => new Promise((_resolve, reject) => init.signal?.addEventListener('abort', () => reject(new Error('aborted')))));
+    const { c, sent, statuses } = bare();
+    c.handle(JSON.stringify({ type: 'response.function_call_arguments.done', name: 'research', call_id: 'r1', arguments: '{"question":"nearest pharmacy"}' }));
+    c.handle(JSON.stringify({ type: 'response.done', response: { output: [{ type: 'message' }, { type: 'function_call', name: 'research', call_id: 'r1' }] } }));
+    await vi.waitFor(() => expect(statuses.at(-1)).toBe('searching'));
+    c.startTurn();
+    expect(statuses.at(-1)).toBe('listening');
+    await vi.waitFor(() => expect(sent.some((e) => e.item?.call_id === 'r1')).toBe(true));
+    expect(JSON.parse(sent.find((e) => e.item?.call_id === 'r1').item.output)).toMatchObject({ stopped: true });
+    await new Promise((r) => setTimeout(r, 20));
+    // Only the press's own events; no response.create for the stopped search.
+    expect(sent.filter((e) => e.type === 'response.create')).toHaveLength(0);
+  });
+
   it('captions the assistant a sentence at a time once its voice starts', () => {
     vi.useFakeTimers();
     try {

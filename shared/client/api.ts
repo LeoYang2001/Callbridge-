@@ -88,8 +88,8 @@ export const updateProfile = (s: Connection, patch: Record<string, unknown>) => 
 export const saveContact = (s: Connection, contact: { name: string; phone: string; relationship?: string; language?: string; address?: string }, id?: string) =>
   send<Me>(s, id ? 'PATCH' : 'POST', id ? `/api/me/contacts/${id}` : '/api/me/contacts', contact);
 export const deleteContact = (s: Connection, id: string) => request<Me>(s, `/api/me/contacts/${id}`, { method: 'DELETE' });
-export const research = (s: Connection, body: { question: string; depth: 'quick' | 'thorough'; lat?: number; lng?: number; near?: string; userLanguage?: string }) =>
-  postJson<ResearchResult>(s, '/api/research', body);
+export const research = (s: Connection, body: { question: string; depth: 'quick' | 'thorough'; lat?: number; lng?: number; near?: string; userLanguage?: string }, signal?: AbortSignal) =>
+  request<ResearchResult>(s, '/api/research', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal });
 /** Deletes a finished call from the history. */
 export const deleteCall = (s: Connection, id: string) => request<{ ok: boolean }>(s, `/api/calls/${id}`, { method: 'DELETE' });
 export const deleteAccount = (s: Connection) => request<{ ok: boolean }>(s, '/api/me', { method: 'DELETE' });

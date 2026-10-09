@@ -212,6 +212,9 @@ export function useIntake({ context, mode = 'call', followUp, seed, keepLines = 
     [live, connect],
   );
 
+  /** Stops a lookup in progress (the Stop beside "Looking it up…"). */
+  const stopSearch = useCallback(() => sessionRef.current?.stopSearch?.(), []);
+
   const toggleSpeaker = useCallback(() => {
     sessionRef.current?.setSpeaker(!speakerOn);
     setSpeakerOn(!speakerOn);
@@ -244,6 +247,7 @@ export function useIntake({ context, mode = 'call', followUp, seed, keepLines = 
     pressTalk,
     releaseTalk,
     choose,
+    stopSearch,
     toggleMic,
     say,
     toggleSpeaker,

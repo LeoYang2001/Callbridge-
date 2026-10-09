@@ -149,6 +149,7 @@ export async function startIntake(conn: Connection, ctx: IntakeContext, h: Intak
       conversation.cancelTurn();
     },
     interrupt: () => conversation.interrupt(),
+    stopSearch: () => conversation.stopSearch(),
     stop,
   };
 }
