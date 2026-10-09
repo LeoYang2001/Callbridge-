@@ -47,8 +47,9 @@ export function useIntake({ context, mode = 'call', followUp, seed, keepLines = 
 
   useEffect(() => () => sessionRef.current?.stop(), []);
 
+  /** first: the user's opening message, or 'user' when they're already holding the talk button. */
   const connect = useCallback(
-    async (withMic: boolean) => {
+    async (withMic: boolean, first?: { text: string } | 'user') => {
       setError(null);
       setReady(false);
       try {
@@ -76,13 +77,18 @@ export function useIntake({ context, mode = 'call', followUp, seed, keepLines = 
             onResearch: setResearch,
             onChoices: setChoices,
           },
-          { mic: withMic, mode, followUpOf: followUp?.callId, initialDraft: followUp?.draft ?? seed?.draft, pushToTalk },
+          {
+            mic: withMic,
+            mode,
+            followUpOf: followUp?.callId,
+            initialDraft: followUp?.draft ?? seed?.draft,
+            pushToTalk,
+            // From the phone book: say who to call first (once), so the assistant only asks what for.
+            firstText: typeof first === 'object' ? first.text : seed && !seededRef.current ? seed.text : undefined,
+            waitForUser: first === 'user',
+          },
         );
-        // From the phone book: say who to call first (once), so the assistant only asks what for.
-        if (seed && !seededRef.current) {
-          seededRef.current = true;
-          session.sendText(seed.text);
-        }
+        if (seed) seededRef.current = true;
         session.setSpeaker(speakerOn);
         sessionRef.current = session;
         setMicOn(withMic);
@@ -113,8 +119,8 @@ export function useIntake({ context, mode = 'call', followUp, seed, keepLines = 
     async (text: string) => {
       const t = text.trim();
       if (!t) return;
-      const session = live ? sessionRef.current : await connect(false);
-      session?.sendText(t);
+      if (live) sessionRef.current?.sendText(t);
+      else await connect(false, { text: t });
     },
     [live, connect],
   );
@@ -156,12 +162,12 @@ export function useIntake({ context, mode = 'call', followUp, seed, keepLines = 
         },
       );
       // Stop the assistant if it's talking; connect in the meantime if this is the first turn.
-      const session = live ? sessionRef.current : await connect(false);
-      session?.interrupt?.();
+      if (live) sessionRef.current?.interrupt?.();
+      else await connect(false, 'user');
       return;
     }
     try {
-      const session = live ? sessionRef.current : await connect(true);
+      const session = live ? sessionRef.current : await connect(true, 'user');
       await session?.startTurn?.();
     } catch (e) {
       setHolding(false);
@@ -200,8 +206,8 @@ export function useIntake({ context, mode = 'call', followUp, seed, keepLines = 
   const choose = useCallback(
     async (answer: string) => {
       setChoices(null);
-      const session = live ? sessionRef.current : await connect(false);
-      session?.sendText(answer);
+      if (live) sessionRef.current?.sendText(answer);
+      else await connect(false, { text: answer });
     },
     [live, connect],
   );

@@ -1,4 +1,5 @@
 import { draftPatchFromArgs, type IntakeContext } from '../intake';
+import { captionAt, defaultCharsPerSecond } from '../captions';
 import { profilePatchFromArgs } from '../profilePatch';
 import type { IntakeCheckResult, IntakeDraft, Me, ResearchResult } from '../types';
 import { checkIntake, research, updateProfile, type Connection } from './api';
@@ -61,6 +62,13 @@ export interface IntakeOptions {
   initialDraft?: IntakeDraft;
   /** Push-to-talk turns and answer chips (the mobile app). */
   pushToTalk?: boolean;
+  /**
+   * The user's first message (a tapped suggestion, typed text). Sent as the opening turn instead
+   * of the greeting; sending it after connecting races the greeting.
+   */
+  firstText?: string;
+  /** Don't greet: the user is already holding the talk button, so their turn comes first. */
+  waitForUser?: boolean;
 }
 
 export interface IntakeSessionControls {
@@ -111,16 +119,85 @@ export function createIntakeConversation(deps: {
   /** The phone's location for "nearest …" searches, or null if unknown or not allowed. */
   locate: Locate;
   pushToTalk?: boolean;
+  /** Opens the conversation instead of the greeting (see IntakeOptions.firstText). */
+  firstText?: string;
+  waitForUser?: boolean;
 }) {
-  const { conn, ctx, handlers: h, send } = deps;
+  const { conn, ctx, handlers, send } = deps;
+  /**
+   * Lookups in flight. The assistant says "let me check" in the same turn that starts one; that
+   * sentence finishing must not end the "looking it up" screen while the search still runs.
+   */
+  let searching = 0;
+  const h: IntakeHandlers = {
+    ...handlers,
+    onStatus: (status, detail) =>
+      handlers.onStatus(searching > 0 && (status === 'listening' || status === 'yourTurn' || status === 'thinking') ? 'searching' : status, detail),
+  };
   let draft: IntakeDraft = { ...deps.initialDraft };
-  const partial = new Map<string, string>();
   const heard = new Map<string, string>();
   /** Typed before the data channel opened; sent as soon as it does. */
   const pendingTexts: string[] = [];
   /** Tool calls in flight, by call id: answered once the whole assistant turn is done. */
   const toolRuns = new Map<string, Promise<void>>();
   let textCount = 0;
+  if (deps.firstText?.trim()) {
+    const text = deps.firstText.trim();
+    pendingTexts.push(text);
+    h.onLine({ id: `typed-${++textCount}`, role: 'user', text });
+  }
+
+  /**
+   * The assistant line being spoken, shown a sentence at a time as the voice reaches it (its text
+   * arrives far faster than it's spoken). Timed from when the voice starts, at a speaking speed
+   * measured from earlier lines.
+   */
+  let speaking: { id: string; text: string; done: boolean; shown: number } | null = null;
+  let voiceStartedAt: number | null = null;
+  let voicedChars = 0;
+  let charsPerSecond: number | null = null;
+  let ticker: ReturnType<typeof setInterval> | undefined;
+  let noVoice: ReturnType<typeof setTimeout> | undefined;
+
+  /** final: all of it (the voice finished, or never played); 'cut': only what was said (interrupted). */
+  const showSpeaking = (end?: 'final' | 'cut') => {
+    const line = speaking;
+    if (!line) return;
+    if (!end) {
+      if (voiceStartedAt === null) return;
+      const rate = charsPerSecond ?? defaultCharsPerSecond(line.text);
+      const n = captionAt(line.text, ((Date.now() - voiceStartedAt) / 1000) * rate);
+      // Whole and spoken through: final now.
+      if (line.done && n >= line.text.length) return showSpeaking('final');
+      if (n === line.shown) return;
+      line.shown = n;
+      h.onLine({ id: line.id, role: 'assistant', text: line.text.slice(0, n).trimEnd(), partial: true });
+      return;
+    }
+    speaking = null;
+    clearInterval(ticker);
+    ticker = undefined;
+    clearTimeout(noVoice);
+    const text = end === 'final' ? line.text : line.text.slice(0, line.shown).trimEnd();
+    if (text) h.onLine({ id: line.id, role: 'assistant', text });
+  };
+  const tick = () => {
+    if (!ticker) ticker = setInterval(() => (deps.isOpen() ? showSpeaking() : showSpeaking('cut')), 150);
+    showSpeaking();
+  };
+  /** The voice for this turn stopped: learn the speaking speed from it. */
+  const voiceEnded = (finished: boolean) => {
+    if (finished && voiceStartedAt !== null && voicedChars > 0) {
+      const seconds = (Date.now() - voiceStartedAt) / 1000;
+      if (seconds > 1.2) {
+        const measured = voicedChars / seconds;
+        charsPerSecond = charsPerSecond === null ? measured : (charsPerSecond + measured) / 2;
+      }
+    }
+    voiceStartedAt = null;
+    voicedChars = 0;
+  };
+
   const idle = (): IntakeStatus => (deps.pushToTalk ? 'yourTurn' : 'listening');
 
   const pushText = (text: string) => {
@@ -155,6 +232,7 @@ export function createIntakeConversation(deps: {
       const near = typeof args.near === 'string' && args.near.trim() ? args.near.trim() : undefined;
       // Location only helps "near me" questions; asked once, with the user's permission.
       const here = near ? null : await deps.locate();
+      searching++;
       h.onStatus('searching');
       try {
         const result = await research(conn, { question, depth, near, userLanguage: ctx.userLanguage, ...(here ? { lat: here.lat, lng: here.lng } : {}) });
@@ -176,6 +254,7 @@ export function createIntakeConversation(deps: {
       } catch (e) {
         return { error: (e as Error).message };
       } finally {
+        searching--;
         h.onStatus('thinking');
       }
     }
@@ -225,10 +304,10 @@ export function createIntakeConversation(deps: {
   };
 
   return {
-    /** The data channel opened. Started by typing: answer that. Started by the mic: the assistant greets first. */
+    /** The data channel opened. Started by typing: answer that. Started by the mic: the assistant greets first, unless the user is already talking. */
     opened() {
       if (pendingTexts.length) pendingTexts.splice(0).forEach(pushText);
-      else send({ type: 'response.create' });
+      else if (!deps.waitForUser) send({ type: 'response.create' });
     },
 
     /** Push-to-talk: the button went down. Stops the assistant and starts a fresh turn. */
@@ -286,10 +365,19 @@ export function createIntakeConversation(deps: {
           h.onStatus('thinking');
           break;
         case 'output_audio_buffer.started':
+          voiceStartedAt = Date.now();
+          voicedChars = 0;
+          if (speaking) tick();
           h.onStatus('speaking');
           break;
         case 'output_audio_buffer.stopped':
+          showSpeaking('final');
+          voiceEnded(true);
+          h.onStatus(idle());
+          break;
         case 'output_audio_buffer.cleared':
+          showSpeaking('cut');
+          voiceEnded(false);
           h.onStatus(idle());
           break;
         case 'conversation.item.input_audio_transcription.completed':
@@ -297,15 +385,27 @@ export function createIntakeConversation(deps: {
           if (ev.transcript?.trim()) h.onLine({ id: ev.item_id, role: 'user', text: ev.transcript.trim() });
           break;
         case 'response.output_audio_transcript.delta': {
-          const text = (partial.get(ev.item_id) ?? '') + (ev.delta ?? '');
-          partial.set(ev.item_id, text);
-          h.onLine({ id: ev.item_id, role: 'assistant', text, partial: true });
+          if (speaking && speaking.id !== ev.item_id) showSpeaking('final');
+          speaking ??= { id: ev.item_id, text: '', done: false, shown: 0 };
+          speaking.text += ev.delta ?? '';
+          tick();
           break;
         }
-        case 'response.output_audio_transcript.done':
-          partial.delete(ev.item_id);
-          if (ev.transcript) h.onLine({ id: ev.item_id, role: 'assistant', text: ev.transcript });
+        case 'response.output_audio_transcript.done': {
+          if (speaking && speaking.id !== ev.item_id) showSpeaking('final');
+          speaking ??= { id: ev.item_id, text: '', done: false, shown: 0 };
+          speaking.text = ev.transcript ?? speaking.text;
+          speaking.done = true;
+          voicedChars += speaking.text.length;
+          // No voice at all (it failed, or this turn was text only): show it anyway.
+          const line = speaking;
+          clearTimeout(noVoice);
+          noVoice = setTimeout(() => {
+            if (speaking === line && voiceStartedAt === null) showSpeaking('final');
+          }, 1500);
+          tick();
           break;
+        }
         case 'response.function_call_arguments.done':
           toolRuns.set(
             ev.call_id,

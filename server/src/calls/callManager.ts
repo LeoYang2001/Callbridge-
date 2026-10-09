@@ -142,6 +142,11 @@ export class CallManager {
     return true;
   }
 
+  /** A live call as watchers see it (captions in step with the voice); other records as stored. */
+  liveView(record: CallRecord): CallRecord {
+    return this.sessions.get(record.id)?.liveView(record) ?? record;
+  }
+
   /** Attach a media stream to its call. Returns false if the call/token don't match. */
   attachMedia(callId: string, token: string, transport: MediaTransport): boolean {
     const session = this.sessions.get(callId);

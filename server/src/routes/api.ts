@@ -88,7 +88,7 @@ export function registerApiRoutes(
   app.get<{ Params: { id: string } }>('/api/calls/:id', async (req, reply) => {
     const r = ownCall(req, req.params.id);
     if (!r) return reply.code(404).send({ error: 'Not found' });
-    return r;
+    return manager.liveView(r);
   });
 
   /** Server-sent events: the full call record on every change. */
@@ -106,7 +106,7 @@ export function registerApiRoutes(
     });
 
     let pending: NodeJS.Timeout | null = null;
-    const send = (rec: CallRecord) => res.write(`data: ${JSON.stringify(rec)}\n\n`);
+    const send = (rec: CallRecord) => res.write(`data: ${JSON.stringify(manager.liveView(rec))}\n\n`);
     // Coalesce bursts (audio-rate updates) into at most ~10 messages per second.
     const unsubscribe = store.subscribe(r.id, (rec) => {
       if (pending) return;

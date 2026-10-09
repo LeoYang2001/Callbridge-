@@ -146,6 +146,34 @@ function setup(opts: { failConnect?: boolean; analyzer?: CallAnalyzer | null; ho
   return { store, agent, telephony, manager };
 }
 
+describe('live captions', () => {
+  it('shows an assistant line a sentence at a time as its audio plays', async () => {
+    const { store, agent, telephony, manager } = setup();
+    const created = manager.startCall(dentistRequest());
+    await waitFor(() => telephony.placed.length === 1);
+    manager.handleTelephonyState(created.id, 'answered');
+    const transport = new FakeTransport();
+    const token = (manager as any).sessions.get(created.id).streamToken as string;
+    manager.attachMedia(created.id, token, transport);
+    const live = () => manager.liveView(store.get(created.id)!).transcript.find((t) => t.id === 'a1')?.text;
+
+    const text = 'Hi, this is an assistant. I am calling about a cleaning. Is Thursday open?';
+    agent.emit('utteranceStarted', 'a1', 'assistant');
+    for (let i = 0; i < 4; i++) agent.emit('audio', 'a1', 'AAAAAAAA'); // four equal chunks
+    agent.emit('transcript', 'a1', 'assistant', text);
+
+    // Written in full, but nothing played yet: only the first sentence.
+    expect(store.get(created.id)!.transcript.find((t) => t.id === 'a1')?.text).toBe(text);
+    expect(live()).toBe('Hi, this is an assistant.');
+    transport.emit('mark', 'a1');
+    transport.emit('mark', 'a1'); // half played
+    expect(live()).toBe('Hi, this is an assistant. I am calling about a cleaning.');
+    transport.emit('mark', 'a1');
+    transport.emit('mark', 'a1'); // all played
+    expect(live()).toBe(text);
+  });
+});
+
 describe('CallSession (simulated dentist call)', () => {
   beforeEach(() => {
     vi.useFakeTimers({ now: new Date('2026-10-06T17:00:00Z'), toFake: ['Date'], shouldAdvanceTime: true });

@@ -8,6 +8,7 @@ import type { MediaTransport, TelephonyCallState, TelephonyProvider } from '../p
 import type { Translator } from '../providers/translation/openaiTranslator';
 import type { VoiceAgent } from '../providers/voice/types';
 import { localToday } from '../util/time';
+import { captionFor } from '../../../shared/captions';
 import { languageCode } from '../../../shared/languages';
 import { SpeechGate } from './speechGate';
 import type { CallStore } from './store';
@@ -106,6 +107,12 @@ export class CallSession {
   private currentItemSentMs = 0;
   /** Outbound audio chunks sent but not yet played, per assistant item (Twilio echoes marks). */
   private readonly unplayed = new Map<string, number>();
+  /**
+   * Each assistant line's audio, for captions in step with the voice (see liveView): the lengths
+   * of chunks not yet played, and how much was sent and played. Dropped once a line has played
+   * through; kept, cut short, for a line that was interrupted.
+   */
+  private readonly lineAudio = new Map<string, { queue: number[]; sentMs: number; playedMs: number; cut: boolean }>();
 
   // Turn-taking. The model detects turns; this session decides whether a turn interrupts us and
   // whether it gets an answer, using the speech gate's measurement of the actual phone audio.
@@ -282,6 +289,7 @@ export class CallSession {
       const left = (this.unplayed.get(itemId) ?? 0) - 1;
       if (left > 0) this.unplayed.set(itemId, left);
       else this.unplayed.delete(itemId);
+      this.linePlayed(itemId);
       this.maybeHangup();
       this.answerHeldTurn();
     });
@@ -326,7 +334,12 @@ export class CallSession {
       }
       this.transport.sendAudio(payload);
       this.emitListen({ t: 'ai', a: payload });
-      this.currentItemSentMs += b64Bytes(payload) / ULAW_BYTES_PER_MS;
+      const ms = b64Bytes(payload) / ULAW_BYTES_PER_MS;
+      this.currentItemSentMs += ms;
+      const line = this.lineAudio.get(itemId) ?? { queue: [], sentMs: 0, playedMs: 0, cut: false };
+      line.queue.push(ms);
+      line.sentMs += ms;
+      this.lineAudio.set(itemId, line);
       this.transport.sendMark(itemId);
       this.unplayed.set(itemId, (this.unplayed.get(itemId) ?? 0) + 1);
     });
@@ -389,6 +402,9 @@ export class CallSession {
         return;
       }
       this.upsertTranscript(itemId, speaker, clean, false);
+      // Its voice already played through before the text came in: show it whole.
+      const line = this.lineAudio.get(itemId);
+      if (line && !line.cut && !line.queue.length) this.lineAudio.delete(itemId);
       this.translateLine(itemId, clean);
     });
 
@@ -475,6 +491,13 @@ export class CallSession {
     this.log('ai.interrupted', `${Math.round(heardMs)}ms heard · ${speechMs}ms speech`);
     // Twilio echoes marks for cleared audio; forgetting the items makes those echoes no-ops.
     this.unplayed.clear();
+    // What wasn't played was never heard: those captions stop where the voice did.
+    for (const line of this.lineAudio.values()) {
+      if (line.queue.length) {
+        line.queue = [];
+        line.cut = true;
+      }
+    }
     this.currentItemId = null;
   }
 
@@ -658,6 +681,42 @@ export class CallSession {
         });
       })
       .catch((err) => this.log('translate.error', (err as Error).message));
+  }
+
+  /** How much of an assistant line has been heard (0–1), or undefined once it has all played. */
+  private heardFraction(itemId: string): number | undefined {
+    const line = this.lineAudio.get(itemId);
+    return line && line.sentMs > 0 ? Math.min(1, line.playedMs / line.sentMs) : undefined;
+  }
+
+  /** A chunk of a line finished playing: reveal its next sentence when the voice reaches it. */
+  private linePlayed(itemId: string) {
+    const line = this.lineAudio.get(itemId);
+    if (!line || line.cut) return;
+    const entry = this.record.transcript.find((t) => t.id === itemId);
+    const before = entry ? captionFor(entry.text, this.heardFraction(itemId) ?? 1) : '';
+    line.playedMs += line.queue.shift() ?? 0;
+    // Played through, and its text is in: nothing left to pace.
+    if (!line.queue.length && entry && !entry.pending && entry.text) this.lineAudio.delete(itemId);
+    const after = entry ? captionFor(entry.text, this.heardFraction(itemId) ?? 1) : '';
+    if (after !== before) this.update(() => {});
+  }
+
+  /**
+   * The record as people watching the call see it: each assistant line a sentence at a time as
+   * its voice reaches it, rather than all at once as soon as the model has written it. The stored
+   * record keeps the full lines.
+   */
+  liveView(r: CallRecord): CallRecord {
+    if (!this.lineAudio.size || this.finalizing) return r;
+    return {
+      ...r,
+      transcript: r.transcript.map((t) => {
+        const heard = t.speaker === 'assistant' && t.text ? this.heardFraction(t.id) : undefined;
+        if (heard === undefined) return t;
+        return { ...t, text: captionFor(t.text, heard), ...(t.translation ? { translation: captionFor(t.translation, heard) } : {}) };
+      }),
+    };
   }
 
   private upsertTranscript(itemId: string, speaker: Speaker, text: string, pending: boolean) {

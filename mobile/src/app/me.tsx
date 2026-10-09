@@ -1,13 +1,15 @@
 import * as Application from 'expo-application';
 import { router } from 'expo-router';
 import { versionLabel } from '@/lib/updates';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, Text, View } from 'react-native';
 import { APP_LANGUAGES, nativeLanguageName } from '@shared/languages';
 import { displayPhone } from '@shared/phone';
 import { useGlow } from '@/glow/GlowContext';
 import { usePreferences } from '@/hooks/usePreferences';
 import { useProfile } from '@/hooks/useProfile';
+import { useSignedIn } from '@/lib/session';
+import { playVoiceSample, stopVoiceSample } from '@/lib/voiceSample';
 import { MenuButton } from '@/nav/MenuButton';
 import { color, type } from '@/theme/tokens';
 import { Avatar } from '@/ui/Avatar';
@@ -30,6 +32,20 @@ export default function Me() {
   const save = async (patch: Record<string, unknown>) => setError(await update(patch));
   const voice = prefs.voice ?? profile.voice ?? 'marin';
   const toggle = (k: typeof open) => setOpen(open === k ? null : k);
+  const { conn } = useSignedIn();
+
+  // A sample plays when a voice is picked (or tapped again); it stops on leaving or closing the row.
+  useEffect(() => stopVoiceSample, []);
+  useEffect(() => {
+    if (open !== 'voice') stopVoiceSample();
+  }, [open]);
+  const pickVoice = (v: string) => {
+    if (v !== voice) {
+      prefs.setVoice(v as 'marin' | 'cedar');
+      void save({ voice: v });
+    }
+    playVoiceSample(conn, v, profile.preferredLanguage).catch((e: Error) => setError(e.message));
+  };
 
   return (
     <Screen top={<TopBar right={<MenuButton />} />} padding={22} scroll>
@@ -48,15 +64,10 @@ export default function Me() {
         )}
         <Row label="Assistant voice" value={cap(voice)} onPress={() => toggle('voice')} />
         {open === 'voice' && (
-          <Chips
-            options={['marin', 'cedar']}
-            label={cap}
-            value={voice}
-            onPick={(v) => {
-              prefs.setVoice(v as 'marin' | 'cedar');
-              void save({ voice: v });
-            }}
-          />
+          <>
+            <Text style={[type.caption, { marginBottom: 8 }]}>Tap a voice to hear it.</Text>
+            <Chips options={['marin', 'cedar']} label={cap} value={voice} onPick={pickVoice} />
+          </>
         )}
         <Row
           label="Default call mode"

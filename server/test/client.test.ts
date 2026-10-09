@@ -76,6 +76,66 @@ describe('intake conversation', () => {
     await vi.waitFor(() => expect(sent.filter((e) => e.type === 'response.create')).toHaveLength(1));
   });
 
+  function bare(extra: Partial<Parameters<typeof createIntakeConversation>[0]> = {}) {
+    const sent: any[] = [];
+    const statuses: string[] = [];
+    const lines: { id: string; text: string; partial?: boolean }[] = [];
+    const c = createIntakeConversation({
+      conn: { serverUrl: 'https://cb.test', sessionToken: 'tok' },
+      ctx: { userName: 'Leo', userLanguage: 'English', timezone: 'America/Chicago' },
+      handlers: { onStatus: (s) => statuses.push(s), onLine: (l) => lines.push(l), onDraft: () => {}, onCheck: () => {}, onReady: () => {} },
+      send: (e) => (sent.push(e), true),
+      isOpen: () => true,
+      locate: async () => null,
+      pushToTalk: true,
+      ...extra,
+    });
+    return { c, sent, statuses, lines };
+  }
+
+  it('opens with a tapped suggestion instead of the greeting, or waits for the talk button', () => {
+    const tapped = bare({ firstText: 'the nearest pharmacy' });
+    expect(tapped.lines).toMatchObject([{ text: 'the nearest pharmacy' }]);
+    tapped.c.opened();
+    expect(tapped.sent.filter((e) => e.type === 'response.create')).toHaveLength(1);
+    expect(tapped.sent[0]).toMatchObject({ type: 'conversation.item.create', item: { content: [{ text: 'the nearest pharmacy' }] } });
+
+    const holding = bare({ waitForUser: true });
+    holding.c.opened();
+    expect(holding.sent).toEqual([]);
+  });
+
+  it('keeps "looking it up" on while a search runs, even after "let me check" finishes playing', async () => {
+    let finish!: () => void;
+    vi.stubGlobal('fetch', () => new Promise((resolve) => (finish = () => resolve(new Response(JSON.stringify({ answer: 'ok', places: [], sources: [] }))))));
+    const { c, statuses } = bare();
+    c.handle(JSON.stringify({ type: 'response.function_call_arguments.done', name: 'research', call_id: 'r1', arguments: '{"question":"nearest pharmacy"}' }));
+    await vi.waitFor(() => expect(statuses.at(-1)).toBe('searching'));
+    c.handle(JSON.stringify({ type: 'output_audio_buffer.stopped' }));
+    expect(statuses.at(-1)).toBe('searching');
+    finish();
+    await vi.waitFor(() => expect(statuses.at(-1)).toBe('thinking'));
+  });
+
+  it('captions the assistant a sentence at a time once its voice starts', () => {
+    vi.useFakeTimers();
+    try {
+      const { c, lines } = bare();
+      const say = 'One moment please. Let me look that up for you now. Okay, I found three.';
+      c.handle(JSON.stringify({ type: 'response.output_audio_transcript.delta', item_id: 'a1', delta: say }));
+      c.handle(JSON.stringify({ type: 'response.output_audio_transcript.done', item_id: 'a1', transcript: say }));
+      expect(lines).toEqual([]); // written, but not spoken yet
+      c.handle(JSON.stringify({ type: 'output_audio_buffer.started' }));
+      expect(lines.at(-1)).toMatchObject({ text: 'One moment please.', partial: true });
+      vi.advanceTimersByTime(2000); // ~30 characters in at 15 a second
+      expect(lines.at(-1)).toMatchObject({ text: 'One moment please. Let me look that up for you now.', partial: true });
+      c.handle(JSON.stringify({ type: 'output_audio_buffer.stopped' }));
+      expect(lines.at(-1)).toEqual({ id: 'a1', role: 'assistant', text: say });
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it('push-to-talk: clears on press, commits and asks for an answer on release', () => {
     const { c, sent } = conversation();
     c.startTurn();

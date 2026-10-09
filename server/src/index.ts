@@ -29,6 +29,7 @@ import { registerResearchRoutes } from './routes/research';
 import { registerListenRoutes } from './routes/listen';
 import { registerIntakeRoutes } from './routes/intake';
 import { registerTwilioRoutes } from './routes/twilio';
+import { registerVoiceRoutes } from './routes/voices';
 
 const config = loadConfig();
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
@@ -175,6 +176,7 @@ const sendReminder = (userId: string, message: Omit<PushMessage, 'to'>) => {
 setInterval(() => sendDueReminders(db, sendReminder), 15 * 60_000).unref();
 registerIntakeRoutes(app, { config, checkDeps, store });
 registerListenRoutes(app, { manager, store });
+registerVoiceRoutes(app, { apiKey: config.OPENAI_API_KEY, cacheDir: path.resolve(root, 'data/voice-samples') });
 registerResearchRoutes(app, {
   researcher: config.OPENAI_API_KEY
     ? new OpenAIResearcher(

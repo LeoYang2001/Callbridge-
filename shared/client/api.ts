@@ -172,3 +172,14 @@ export const listErrands = (s: Connection) => request<Errand[]>(s, '/api/errands
 export const addErrand = (s: Connection, req: CallRequest, notBefore?: number) => postJson<Errand>(s, '/api/errands', { request: req, notBefore });
 export const cancelErrand = (s: Connection, id: string) => postJson<Errand>(s, `/api/errands/${id}/cancel`, {});
 export const retryErrand = (s: Connection, id: string) => postJson<Errand>(s, `/api/errands/${id}/retry`, {});
+
+/** A few seconds of an assistant voice, in the user's language (WAV), to hear before picking it. */
+export async function voiceSample(s: Connection, voice: string, language?: string): Promise<ArrayBuffer> {
+  const q = language ? `?language=${encodeURIComponent(language)}` : '';
+  const res = await fetch(endpoint(s, `/api/voices/${encodeURIComponent(voice)}/sample${q}`), { headers: headers(s), signal: timeoutSignal(20_000) });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error ?? `Request failed (${res.status})`);
+  }
+  return res.arrayBuffer();
+}

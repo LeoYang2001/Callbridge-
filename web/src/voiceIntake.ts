@@ -69,6 +69,8 @@ export async function startIntake(settings: Settings, ctx: IntakeContext, h: Int
     ctx,
     handlers: h,
     initialDraft: opts.initialDraft,
+    firstText: opts.firstText,
+    waitForUser: opts.waitForUser,
     send: (event) => dc.readyState === 'open' && (dc.send(JSON.stringify(event)), true),
     isOpen: () => dc.readyState === 'open',
     locate: currentLocation,
