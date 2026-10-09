@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import Animated, { FadeIn, FadeInUp, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import Animated, { FadeIn, FadeInUp, SlideInDown, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { nativeLanguageName } from '@shared/languages';
 import type { PlaceResult } from '@shared/types';
@@ -14,6 +14,7 @@ import { useIntakeContext } from '@/hooks/useIntakeContext';
 import { usePhoneBook } from '@/hooks/usePhoneBook';
 import { usePreferences } from '@/hooks/usePreferences';
 import { useStartCall } from '@/hooks/useStartCall';
+import { haptic } from '@/lib/haptics';
 import { useSignedIn } from '@/lib/session';
 import * as SecureStore from 'expo-secure-store';
 import { useMenu } from '@/nav/Menu';
@@ -110,6 +111,7 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
   // The button never moves under a finger: while held it stays where the press began (and at
   // that size); it settles into its next place after release.
   const [pressedAt, setPressedAt] = useState<{ center: number; big: boolean } | null>(null);
+  const [typing, setTyping] = useState(false);
   const center = pressedAt?.center ?? target;
   const big = pressedAt?.big ?? view === 'home';
   const dock = (
@@ -127,28 +129,54 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
         void intake.releaseTalk(tooShort);
       }}
       disabled={intake.status === 'connecting' && !intake.holding}
-      speakerOn={intake.speakerOn}
-      onToggleSpeaker={intake.toggleSpeaker}
+      onType={() => setTyping(true)}
     />
   );
   return (
     <View style={{ flex: 1 }}>
       {renderView()}
       {dock}
+      {typing && (
+        <TypeSheet
+          placeholder={intake.choices?.question ? 'Type your answer' : 'Type a message'}
+          onSend={(text) => {
+            setTyping(false);
+            void intake.choose(text);
+          }}
+          onClose={() => setTyping(false)}
+        />
+      )}
     </View>
   );
 
   function renderView() {
     if (view === 'home') return <Home onSpot={setHomeSpot} onSuggestion={(t) => void intake.choose(t)} />;
 
-    const languagePill = (
-      <View style={s.pill}>
-        <Text style={[type.caption, { fontWeight: '500' }]}>
-          {view === 'listening' ? 'I speak ' : 'Voice '}
-          <Text style={{ color: color.ink }}>{view === 'listening' ? nativeLanguageName(me.profile.preferredLanguage) : cap(context.voice ?? 'marin')}</Text>
-        </Text>
-      </View>
-    );
+    // Tap the voice pill to mute or unmute the assistant (its words still appear on screen).
+    const languagePill =
+      view === 'listening' ? (
+        <View style={s.pill}>
+          <Text style={[type.caption, { fontWeight: '500' }]}>
+            I speak <Text style={{ color: color.ink }}>{nativeLanguageName(me.profile.preferredLanguage)}</Text>
+          </Text>
+        </View>
+      ) : (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={intake.speakerOn ? 'Mute the assistant' : 'Unmute the assistant'}
+          onPress={() => {
+            haptic.select();
+            intake.toggleSpeaker();
+          }}
+          hitSlop={6}
+          style={s.pill}
+        >
+          <Text style={[type.caption, { fontWeight: '500' }]}>
+            {intake.speakerOn ? 'Voice ' : 'Muted '}
+            <Text style={{ color: color.ink }}>{cap(context.voice ?? 'marin')}</Text>
+          </Text>
+        </Pressable>
+      );
     const header = (
       <TopBar
         left={
@@ -332,6 +360,37 @@ function Upcoming({ date, time, title, detail }: { date: string; time: string; t
   );
 }
 
+/** Typing instead of talking: the same conversation, the words sent as typed. */
+function TypeSheet({ placeholder, onSend, onClose }: { placeholder: string; onSend: (text: string) => void; onClose: () => void }) {
+  const insets = useSafeAreaInsets();
+  const [text, setText] = useState('');
+  const send = () => text.trim() && onSend(text.trim());
+  return (
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={StyleSheet.absoluteFill} pointerEvents="box-none">
+      <Pressable style={{ flex: 1 }} onPress={onClose} accessibilityLabel="Close" />
+      <Animated.View entering={SlideInDown.duration(220)} style={[s.sheet, { paddingBottom: Math.max(insets.bottom, 12) }]}>
+        <View style={s.typeRow}>
+          <TextInput
+            value={text}
+            onChangeText={setText}
+            placeholder={placeholder}
+            placeholderTextColor={color.tertiary}
+            style={[type.callout, { flex: 1, maxHeight: 120 }]}
+            multiline
+            autoFocus
+            returnKeyType="send"
+            submitBehavior="submit"
+            onSubmitEditing={send}
+          />
+          <Pressable accessibilityRole="button" accessibilityLabel="Send" onPress={send} disabled={!text.trim()} hitSlop={8} style={{ opacity: text.trim() ? 1 : 0.35 }}>
+            <Icon name="send" size={30} color={color.blue} />
+          </Pressable>
+        </View>
+      </Animated.View>
+    </KeyboardAvoidingView>
+  );
+}
+
 /** Room the dock takes at the bottom of the conversation views. */
 const DOCK_HEIGHT = 150;
 /** The Home button and its label. */
@@ -350,8 +409,7 @@ function TalkDock({
   onPressIn,
   onRelease,
   disabled,
-  speakerOn,
-  onToggleSpeaker,
+  onType,
 }: {
   view: View_;
   /** Where the button's center sits on screen (window y). */
@@ -362,8 +420,8 @@ function TalkDock({
   onPressIn: () => void;
   onRelease: (tooShort: boolean) => void;
   disabled: boolean;
-  speakerOn: boolean;
-  onToggleSpeaker: () => void;
+  /** Type an answer instead of saying it. */
+  onType: () => void;
 }) {
   const home = big;
   const hidden = view === 'review' || view === 'research';
@@ -376,11 +434,11 @@ function TalkDock({
   return (
     <Animated.View pointerEvents={hidden ? 'none' : 'box-none'} style={[s.dock, pos, { opacity: hidden ? 0 : 1 }]}>
       <Animated.View style={sides} pointerEvents={home ? 'none' : 'auto'}>
-        <RoundButton label={speakerOn ? 'Mute the assistant' : 'Unmute the assistant'} onPress={onToggleSpeaker} size={58} bg={color.surface} ring={false}>
-          <Icon name={speakerOn ? 'speaker' : 'speakerOff'} size={20} />
+        <RoundButton label="Type instead" onPress={onType} size={58} bg={color.surface} ring={false}>
+          <Icon name="keyboard" size={20} />
         </RoundButton>
       </Animated.View>
-      <HoldToTalk holding={holding} onPressIn={onPressIn} onRelease={onRelease} size={home ? 104 : 84} label={view === 'home' || (home && holding) ? 'Hold to talk' : 'Hold to answer'} disabled={disabled} />
+      <HoldToTalk holding={holding} onPressIn={onPressIn} onRelease={onRelease} size={home ? 104 : 84} label="Hold to talk" disabled={disabled} />
       <Animated.View style={[{ width: 58, alignItems: 'center' }, sides]}>
         <MicState on={holding} />
       </Animated.View>
@@ -401,6 +459,8 @@ const s = StyleSheet.create({
   middle: { flex: 1, justifyContent: 'center', gap: 14 },
   listening: { position: 'absolute', left: 34, right: 34, justifyContent: 'flex-end', gap: 14 },
   label: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  sheet: { backgroundColor: color.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 16, paddingTop: 12, shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 18 },
+  typeRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, minHeight: 50, borderRadius: 25, backgroundColor: color.surface, paddingHorizontal: 16, paddingVertical: 10 },
   dock: { position: 'absolute', left: 0, right: 0, top: 0, height: 120, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 28 },
   asks: { flexGrow: 1, justifyContent: 'center', gap: 14, paddingHorizontal: 34, paddingVertical: 16 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },

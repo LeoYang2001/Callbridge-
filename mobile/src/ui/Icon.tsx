@@ -22,6 +22,8 @@ const ICONS = {
   speakerOff: { ios: 'speaker.slash.fill', android: 'volume_off' },
   person: { ios: 'person.crop.circle', android: 'account_circle' },
   plus: { ios: 'plus', android: 'add' },
+  keyboard: { ios: 'keyboard', android: 'keyboard' },
+  send: { ios: 'arrow.up.circle.fill', android: 'send' },
 } as const satisfies Record<string, { ios: SFSymbol; android: AndroidSymbol }>;
 
 export type IconName = keyof typeof ICONS;

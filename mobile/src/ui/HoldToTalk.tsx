@@ -36,10 +36,12 @@ export function HoldToTalk({
     backgroundColor: withTiming(holding ? color.bluePressed : color.blue, { duration: 200 }),
   }));
   const rings = useAnimatedStyle(() => ({ opacity: withTiming(holding ? 1 : 0, { duration: 250 }) }));
+  const halo = useAnimatedStyle(() => ({ opacity: withTiming(holding ? 0 : 1, { duration: 250 }) }));
 
   return (
     <View style={s.wrap}>
       <View style={{ width: size, height: size, alignItems: 'center', justifyContent: 'center' }}>
+        <Animated.View pointerEvents="none" style={[s.ring, { width: size + 16, height: size + 16, borderRadius: (size + 16) / 2, backgroundColor: 'rgba(37,87,232,0.12)' }, halo]} />
         <Animated.View pointerEvents="none" style={[s.ring, { width: size + 60, height: size + 60, borderRadius: (size + 60) / 2, backgroundColor: 'rgba(37,87,232,0.07)' }, rings]} />
         <Animated.View pointerEvents="none" style={[s.ring, { width: size + 28, height: size + 28, borderRadius: (size + 28) / 2, backgroundColor: 'rgba(37,87,232,0.18)' }, rings]} />
         <Pressable

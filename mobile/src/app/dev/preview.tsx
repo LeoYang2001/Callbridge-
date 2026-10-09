@@ -11,7 +11,8 @@ import { RequestCard } from '@/talk/RequestCard';
 import { Found, Searching } from '@/talk/Research';
 import { Review } from '@/talk/Review';
 import { color, type } from '@/theme/tokens';
-import { Chip } from '@/ui/Button';
+import { Chip, RoundButton } from '@/ui/Button';
+import { Icon } from '@/ui/Icon';
 import { Bars } from '@/ui/Bars';
 import { HoldToTalk, MicState } from '@/ui/HoldToTalk';
 import { Screen } from '@/ui/Screen';
@@ -178,10 +179,7 @@ function Static({ v }: { v: Exclude<V, 'home' | 'book' | 'me' | 'notif' | 'conta
   return (
     <Screen padding={0}>
       <View style={{ flex: 1, justifyContent: 'center', gap: 14, paddingHorizontal: 34 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <Bars color={color.violet} />
-          <Text style={[type.label, { color: color.violet }]}>Speaking</Text>
-        </View>
+        <Text style={type.label}>Your turn · hold to answer</Text>
         <Text style={type.question}>好的，Smile Dental。您以前在那里看过牙吗？</Text>
         <Text style={type.small}>Got it, Smile Dental. Have you been there before?</Text>
         <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
@@ -191,8 +189,10 @@ function Static({ v }: { v: Exclude<V, 'home' | 'book' | 'me' | 'notif' | 'conta
       </View>
       <RequestCard draft={DRAFT} need="是否老患者？" />
       <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 28, paddingTop: 22, paddingBottom: 90 }}>
-        <View style={{ width: 58 }} />
-        <HoldToTalk holding={false} onPressIn={() => {}} onRelease={() => {}} label="Hold to answer" />
+        <RoundButton label="Type instead" onPress={() => {}} size={58} bg={color.surface} ring={false}>
+          <Icon name="keyboard" size={20} />
+        </RoundButton>
+        <HoldToTalk holding={false} onPressIn={() => {}} onRelease={() => {}} label="Hold to talk" />
         <MicState on={false} />
       </View>
     </Screen>
