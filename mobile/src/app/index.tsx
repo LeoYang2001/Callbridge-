@@ -80,8 +80,10 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
   const started = intake.live || intake.holding || intake.lines.length > 0 || intake.status === 'connecting';
   const view: View_ = !started
     ? 'home'
-    : intake.holding
-      ? 'listening'
+    : intake.holding && !intake.lines.some((l) => l.role === 'assistant')
+      ? // The first turn, from Home: nothing to answer yet, so the words get the screen. Later
+        // turns stay on the conversation, so the question and cards don't vanish mid-answer.
+        'listening'
       : intake.status === 'searching'
         ? 'research'
         : intake.ready && reviewing
@@ -89,7 +91,7 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
           : 'asks';
 
   const glow: GlowMode =
-    view === 'home' ? 'idle' : view === 'listening' ? 'listen' : view === 'research' ? 'think' : view === 'review' ? 'ready' : intake.status === 'speaking' ? 'speak' : 'idle';
+    view === 'home' ? 'idle' : view === 'listening' || intake.holding ? 'listen' : view === 'research' ? 'think' : view === 'review' ? 'ready' : intake.status === 'speaking' ? 'speak' : 'idle';
   useGlow(glow);
 
   const cancel = () => {
@@ -192,17 +194,16 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
 
     if (view === 'listening') {
       const heard = lastUser?.partial ? lastUser.text : '';
-      // Your words appear just above your finger, wherever the button is.
-      const top = insets.top + 60;
+      // Your words fill the space above the button, growing upward from just over your finger.
       return (
-        <Screen top={spacer} padding={34}>
-          <View style={[s.listening, { top, height: Math.max(120, center - 80 - top) }]}>
+        <Screen top={spacer} bottom={controls} padding={34}>
+          <View style={s.listening}>
             <View style={s.label}>
               <Bars color={color.blue} />
               <Text style={[type.label, { color: color.blue }]}>Listening · release to send</Text>
             </View>
-            <Text style={type.transcript} numberOfLines={6}>
-              {heard}
+            <Text style={[type.transcript, !heard && { color: color.tertiary }]} numberOfLines={6} adjustsFontSizeToFit minimumFontScale={0.75}>
+              {heard || 'Say who to call, or what you need…'}
               <Text style={{ color: color.blue }}>|</Text>
             </Text>
           </View>
@@ -244,9 +245,9 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
             the cards and answers sit below and move only when they change themselves. */}
         <View style={s.stage}>
           <View style={s.label}>
-            {speaking ? <Bars color={color.violet} /> : null}
-            <Text style={[type.label, { color: speaking ? color.violet : color.secondary }]}>
-              {speaking ? 'Speaking' : thinking ? 'Thinking…' : 'Your turn · hold to answer'}
+            {intake.holding ? <Bars color={color.blue} /> : speaking ? <Bars color={color.violet} /> : null}
+            <Text style={[type.label, { color: intake.holding ? color.blue : speaking ? color.violet : color.secondary }]}>
+              {intake.holding ? 'Listening · release to send' : speaking ? 'Speaking' : thinking ? 'Thinking…' : 'Your turn · hold to answer'}
             </Text>
           </View>
           {before && !roomy ? null : before ? (
@@ -273,9 +274,13 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
               {intake.choices.questionEn}
             </Text>
           ) : null}
-          {heard ? (
-            <Animated.View entering={FadeIn} style={s.heard}>
-              <Text style={type.callout}>{heard}</Text>
+          {intake.holding || heard ? (
+            // Your answer, live, under the question it answers; on release it fades back as sent.
+            <Animated.View entering={FadeIn.duration(150)} style={s.heard}>
+              <Text style={[type.callout, s.heardText, !heard && { color: color.tertiary }]} numberOfLines={4}>
+                {heard || 'Listening…'}
+                <Text style={{ color: color.blue }}>|</Text>
+              </Text>
             </Animated.View>
           ) : sent ? (
             <SentLine key={sent.id} text={sent.text} />
@@ -304,7 +309,7 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
   }
 }
 
-/** What the user just said: shown as heard, then fading back to show it's been sent. */
+/** What the user just said: the live bubble, kept on release and fading back to show it's been sent. */
 function SentLine({ text }: { text: string }) {
   const sent = useSharedValue(0);
   useEffect(() => {
@@ -312,9 +317,11 @@ function SentLine({ text }: { text: string }) {
   }, [sent]);
   const style = useAnimatedStyle(() => ({ opacity: 1 - 0.6 * sent.value, transform: [{ translateY: -6 * sent.value }] }));
   return (
-    <Animated.View exiting={FadeOut.duration(250)} style={{ alignSelf: 'flex-start' }}>
-      <Animated.View style={[s.heard, style]}>
-        <Text style={type.callout}>{text}</Text>
+    <Animated.View exiting={FadeOut.duration(250)} style={{ alignSelf: 'flex-end', maxWidth: '88%' }}>
+      <Animated.View style={[s.heard, { maxWidth: '100%' }, style]}>
+        <Text style={[type.callout, s.heardText]} numberOfLines={4}>
+          {text}
+        </Text>
       </Animated.View>
     </Animated.View>
   );
@@ -508,7 +515,7 @@ const s = StyleSheet.create({
   pill: { height: 36, borderRadius: 18, backgroundColor: color.surface, paddingHorizontal: 14, alignItems: 'center', justifyContent: 'center' },
   ready: { ...type.label, textTransform: 'none', letterSpacing: 0, color: color.blue, backgroundColor: color.blueTint, borderRadius: 99, paddingHorizontal: 11, paddingVertical: 5, overflow: 'hidden' },
   middle: { flex: 1, justifyContent: 'center', gap: 14 },
-  listening: { position: 'absolute', left: 34, right: 34, justifyContent: 'flex-end', gap: 14 },
+  listening: { flex: 1, justifyContent: 'flex-end', gap: 14, paddingBottom: 20 },
   label: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   sheet: { backgroundColor: color.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 16, paddingTop: 12, shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 18 },
   typeRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, minHeight: 50, borderRadius: 25, backgroundColor: color.surface, paddingHorizontal: 16, paddingVertical: 10 },
@@ -518,7 +525,8 @@ const s = StyleSheet.create({
   stage: { flex: 1, justifyContent: 'flex-end', gap: 12, paddingHorizontal: 34, paddingBottom: 14, overflow: 'hidden' },
   act: { gap: 12, paddingHorizontal: 34, paddingBottom: 12 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  heard: { borderWidth: 1.5, borderStyle: 'dashed', borderColor: color.blue, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 9, backgroundColor: 'rgba(255,255,255,0.9)' },
+  heard: { alignSelf: 'flex-end', maxWidth: '88%', borderWidth: 1.5, borderStyle: 'dashed', borderColor: color.blue, borderRadius: 20, borderBottomRightRadius: 6, paddingHorizontal: 14, paddingVertical: 10, backgroundColor: 'rgba(255,255,255,0.92)' },
+  heardText: { fontSize: 17, lineHeight: 23 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
   suggest: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginBottom: 12 },
   upcoming: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: color.white, borderWidth: 1, borderColor: color.divider, borderRadius: 20, padding: 14, marginBottom: 8 },
