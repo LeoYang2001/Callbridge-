@@ -1,6 +1,6 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Keyboard, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Keyboard, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import Animated, { Easing, FadeIn, FadeOut, SlideInDown, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { sentenceStarts } from '@shared/captions';
@@ -24,7 +24,7 @@ import { useToast } from '@/ui/Toast';
 import { RequestCard } from '@/talk/RequestCard';
 import { Found } from '@/talk/Research';
 import { Review } from '@/talk/Review';
-import { color, type } from '@/theme/tokens';
+import { color, glowPalette, type } from '@/theme/tokens';
 import { Chip, RoundButton } from '@/ui/Button';
 import { Bars } from '@/ui/Bars';
 import { HoldToTalk, MicState } from '@/ui/HoldToTalk';
@@ -235,8 +235,9 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
             the cards and answers sit below and move only when they change themselves. */}
         <View style={s.stage}>
           <View style={s.label}>
-            {intake.holding ? <Bars color={color.blue} /> : speaking || searching ? <Bars color={color.violet} /> : null}
-            <Text style={[type.label, { color: intake.holding ? color.blue : speaking || searching ? color.violet : color.secondary }]}>
+            {/* Bars for a voice (yours, the assistant's); a spinner in the search glow's color for a lookup. */}
+            {intake.holding ? <Bars color={color.blue} /> : searching ? <ActivityIndicator size="small" color={SEARCH_INK} /> : speaking ? <Bars color={color.violet} /> : null}
+            <Text style={[type.label, { color: intake.holding ? color.blue : searching ? SEARCH_INK : speaking ? color.violet : color.secondary }]}>
               {intake.holding ? 'Listening · release to send' : searching ? 'Looking it up…' : speaking ? 'Speaking' : thinking ? 'Thinking…' : 'Your turn · hold to answer'}
             </Text>
             {/* Talking or typing also stops it; the glow shows it's working. */}
@@ -322,6 +323,9 @@ function SentLine({ text }: { text: string }) {
     </Animated.View>
   );
 }
+
+/** The search glow's violet, for the "Looking it up" label. */
+const SEARCH_INK = glowPalette.search[2];
 
 const EDGE_HINT_KEY = 'callbridge.edgeHint.v1';
 
