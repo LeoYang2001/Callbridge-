@@ -84,5 +84,5 @@ export function useListen(callId: string) {
     }
   }, [conn, callId]);
 
-  return { listening: state === 'on', starting: state === 'starting', note, toggle };
+  return { listening: state === 'on', starting: state === 'starting', note, toggle, active: state !== 'off' };
 }

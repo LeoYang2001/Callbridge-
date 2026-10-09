@@ -12,10 +12,12 @@ interface Prefs {
   involvement: Involvement;
   /** The voice picked on this phone; falls back to the profile's, then the server default. */
   voice: RealtimeVoice | null;
+  /** Hear the call live (both sides) as soon as the call screen shows it connected. */
+  listenLive: boolean;
 }
 
 /** Small per-phone choices, remembered between launches and shared by every screen. */
-let prefs: Prefs = { involvement: 'supervised', voice: null };
+let prefs: Prefs = { involvement: 'supervised', voice: null, listenLive: true };
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
 
@@ -26,6 +28,7 @@ SecureStore.getItemAsync(KEY)
     prefs = {
       involvement: p.involvement === 'handoff' ? 'handoff' : 'supervised',
       voice: p.voice && (REALTIME_VOICES as readonly string[]).includes(p.voice) ? p.voice : null,
+      listenLive: p.listenLive !== false,
     };
     emit();
   })
@@ -48,5 +51,6 @@ export function usePreferences() {
     ...current,
     setInvolvement: (involvement: Involvement) => update({ involvement }),
     setVoice: (voice: RealtimeVoice) => update({ voice }),
+    setListenLive: (listenLive: boolean) => update({ listenLive }),
   };
 }

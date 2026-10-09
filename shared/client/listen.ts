@@ -66,7 +66,7 @@ export async function startListening(s: Connection, callId: string, output: List
     if (!samples.length || closed) return;
     const now = output.currentTime();
     // Fell behind (a gap, or just started)? Restart the clock a little ahead of now.
-    const startAt = Math.max(clock[track], now + (clock[track] < now ? JITTER_S : 0));
+    const startAt = Math.max(clock[track], now + (clock[track] <= now ? JITTER_S : 0));
     const sound = output.play(samples, SAMPLE_RATE, startAt);
     clock[track] = startAt + sound.duration;
     if (track === 'ai') {

@@ -10,6 +10,7 @@ import { Result } from '@/call/Result';
 import { useGlow } from '@/glow/GlowContext';
 import type { GlowMode } from '@/glow/modes';
 import { useCall, useListen } from '@/hooks/useCall';
+import { usePreferences } from '@/hooks/usePreferences';
 import { useStartCall } from '@/hooks/useStartCall';
 import { haptic } from '@/lib/haptics';
 import { useSignedIn } from '@/lib/session';
@@ -63,6 +64,17 @@ export default function CallScreen() {
         : call.status === 'analyzing'
           ? 'wrapping'
           : 'result';
+
+  // Hear the call as soon as it connects (a setting in Me), unless the user stopped it here.
+  const prefs = usePreferences();
+  const autoListened = useRef(false);
+  useEffect(() => {
+    if (!prefs.listenLive || autoListened.current || listen.active) return;
+    if (phase === 'live' || phase === 'hold') {
+      autoListened.current = true;
+      void listen.toggle();
+    }
+  }, [phase, prefs.listenLive, listen]);
 
   // Feel the moments that matter: connected, someone holding for you, how it ended.
   const lastPhase = useRef(phase);

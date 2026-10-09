@@ -62,6 +62,11 @@ export default function Me() {
         />
         <Row label="Extra charges" value={profile.maxChargeUsd ? `Up to $${profile.maxChargeUsd}` : 'Ask me first'} onPress={() => toggle('charges')} />
         {open === 'charges' && <Chips options={CHARGES.map(String)} label={(n) => (n === '0' ? 'Ask me first' : `Up to $${n}`)} value={String(profile.maxChargeUsd ?? 0)} onPick={(n) => void save({ maxChargeUsd: Number(n) })} />}
+        <Row
+          label="Listen to calls live"
+          sub="Hear both sides through the speaker while a call is on screen"
+          right={<Toggle label="Listen to calls live" value={prefs.listenLive} onChange={prefs.setListenLive} />}
+        />
         <Row label="Hold for my answer" sub="How long the other party waits while you decide" value={`${profile.holdSeconds ?? 30} s`} onPress={() => toggle('hold')} last={open !== 'hold'} />
         {open === 'hold' && <Chips options={HOLDS.map(String)} label={(n) => `${n} s`} value={String(profile.holdSeconds ?? 30)} onPick={(n) => void save({ holdSeconds: Number(n) })} />}
       </Group>

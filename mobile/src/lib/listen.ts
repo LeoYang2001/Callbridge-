@@ -7,9 +7,10 @@ export type { Listener };
 
 /** Live listening through react-native-audio-api (the Web Audio API, natively). */
 export async function startListening(conn: Connection, callId: string, onEnd: (reason: string) => void): Promise<Listener> {
-  routeAudioForListening();
+  await routeAudioForListening();
   const ctx = new AudioContext();
   await ctx.resume();
+  if (ctx.state !== 'running') throw new Error("Couldn't start the speaker. Check that another app isn't using audio, then tap Listen again.");
   const output: ListenOutput = {
     currentTime: () => ctx.currentTime,
     play: (samples, sampleRate, when) => {

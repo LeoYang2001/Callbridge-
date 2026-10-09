@@ -13,6 +13,8 @@ export function routeAudioForVoiceChat() {
   });
 }
 
-export function routeAudioForListening() {
+/** Playback only, through the speaker (and past the silent switch); activates the session. */
+export async function routeAudioForListening() {
   AudioManager.setAudioSessionOptions({ iosCategory: 'playback', iosMode: 'spokenAudio', iosOptions: [] });
+  await AudioManager.setAudioSessionActivity(true).catch(() => {});
 }
