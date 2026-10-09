@@ -1,5 +1,5 @@
 import { useFocusEffect } from 'expo-router';
-import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { color } from '@/theme/tokens';
 import { EdgeGlow } from './EdgeGlow';
@@ -15,19 +15,21 @@ interface GlowState {
   mode: GlowMode;
   /** Hold countdown, 1 → 0 (the edge is the countdown). */
   holdFraction: number;
+  /** An overlay that isn't part of the conversation (the menu) is up: no glow. */
+  hidden: boolean;
 }
 
 const GlowContext = createContext<((s: Partial<GlowState>) => void) | null>(null);
 
 export function GlowProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<GlowState>({ mode: 'none', holdFraction: 1 });
+  const [state, setState] = useState<GlowState>({ mode: 'none', holdFraction: 1, hidden: false });
   const set = useCallback((s: Partial<GlowState>) => setState((prev) => ({ ...prev, ...s })), []);
   return (
     <GlowContext.Provider value={set}>
       <View style={{ flex: 1, backgroundColor: color.white }}>
         {children}
         <View pointerEvents="none" style={[StyleSheet.absoluteFill, { zIndex: 100 }]}>
-          <EdgeGlow mode={state.mode} holdFraction={state.holdFraction} />
+          <EdgeGlow mode={state.hidden ? 'none' : state.mode} holdFraction={state.holdFraction} />
         </View>
       </View>
     </GlowContext.Provider>
@@ -45,7 +47,17 @@ export function useGlow(mode: GlowMode, holdFraction = 1) {
   );
 }
 
-/** For overlays that aren't screens (the menu): set the glow directly. */
+/** While an overlay that isn't a voice screen is up (the menu), the glow fades out; it comes back after. */
+export function useHideGlow() {
+  const set = useContext(GlowContext);
+  if (!set) throw new Error('useHideGlow must be used inside GlowProvider');
+  useEffect(() => {
+    set({ hidden: true });
+    return () => set({ hidden: false });
+  }, [set]);
+}
+
+/** For overlays that aren't screens: set the glow directly. */
 export function useSetGlow() {
   const set = useContext(GlowContext);
   if (!set) throw new Error('useSetGlow must be used inside GlowProvider');

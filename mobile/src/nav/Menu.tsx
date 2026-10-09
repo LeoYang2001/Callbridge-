@@ -5,7 +5,7 @@ import Animated, { FadeInUp, SlideInRight, SlideOutRight, useSharedValue } from 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { languageCode } from '@shared/languages';
 import { clock, useActiveCall, useCallSeconds } from '@/call/ActiveCall';
-import { EdgeGlow } from '@/glow/EdgeGlow';
+import { useHideGlow } from '@/glow/GlowContext';
 import { haptic } from '@/lib/haptics';
 import { useSession } from '@/lib/session';
 import { EdgeSwipe, peek } from './EdgeSwipe';
@@ -56,6 +56,8 @@ function MenuOverlay({ onClose }: { onClose: () => void }) {
   const code = me ? languageCode(me.profile.preferredLanguage) : undefined;
   const { call, live } = useActiveCall();
   const seconds = useCallSeconds(call);
+  // The menu isn't a voice screen: no glow while it's open.
+  useHideGlow();
 
   // Closing after navigating, once the new screen is in place.
   const pending = useRef(false);
@@ -73,7 +75,6 @@ function MenuOverlay({ onClose }: { onClose: () => void }) {
     <Animated.View entering={SlideInRight.duration(280)} exiting={SlideOutRight.duration(220)} style={[StyleSheet.absoluteFill, s.overlay]}>
       {/* A tap anywhere that isn't a menu item closes it; the items take their own taps first. */}
       <Pressable accessible={false} onPress={onClose} style={StyleSheet.absoluteFill} />
-      <EdgeGlow mode="idle" />
       <View pointerEvents="none" style={{ height: insets.top }} />
       <View pointerEvents="box-none" style={s.head}>
         <Text style={type.caption}>
