@@ -2,6 +2,7 @@ import OpenAI from 'openai';
 import type { PlaceResult, ResearchResult } from '../../../shared/types';
 import type { GooglePlaces } from '../places/places';
 import { cleanResults } from '../places/places';
+import { pricesFromEnv, textCost } from '../usage/cost';
 
 /**
  * The research agent: one GPT model with web search that any task can ask ("the nearest Mexican
@@ -19,6 +20,8 @@ export interface ResearchQuestion {
   near?: string;
   /** quick: a simple lookup (~10 s); thorough: several conditions or comparisons (~30-40 s). */
   depth: 'quick' | 'thorough';
+  /** Told what the lookup cost (USD, estimated at list prices), for the usage report. */
+  onCost?: (usd: number, detail: string) => void;
 }
 
 export interface ResearchAgent {
@@ -106,6 +109,16 @@ export class OpenAIResearcher implements ResearchAgent {
       text: { format: { type: 'json_schema', name: 'research', strict: true, schema: SCHEMA as unknown as Record<string, unknown> } },
     });
 
+    // Tokens and web searches across every round, for the cost.
+    const spent = { input: 0, cached: 0, output: 0, searches: 0 };
+    const tally = (r: typeof response) => {
+      spent.input += r.usage?.input_tokens ?? 0;
+      spent.cached += r.usage?.input_tokens_details?.cached_tokens ?? 0;
+      spent.output += r.usage?.output_tokens ?? 0;
+      spent.searches += r.output.filter((o) => o.type === 'web_search_call').length;
+    };
+    tally(response);
+
     // What Google returned, by phone number: its listing is the authority on hours, rating and
     // photos (the model's copy keeps only what the schema has room for), and on what's verified.
     const listings = new Map<string, PlaceResult>();
@@ -135,6 +148,12 @@ export class OpenAIResearcher implements ResearchAgent {
         tools: [{ type: 'web_search' }, GOOGLE_TOOL],
         text: { format: { type: 'json_schema', name: 'research', strict: true, schema: SCHEMA as unknown as Record<string, unknown> } },
       });
+      tally(response);
+    }
+    if (q.onCost) {
+      const prices = pricesFromEnv();
+      const usd = textCost(model, spent, prices) + spent.searches * prices.webSearch;
+      q.onCost(usd, `${model} · ${spent.searches} web searches`);
     }
 
     const parsed = JSON.parse(response.output_text) as {

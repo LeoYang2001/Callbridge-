@@ -195,3 +195,7 @@ export async function callRecording(s: Connection, id: string): Promise<ArrayBuf
   }
   return res.arrayBuffer();
 }
+
+/** Forwards a conversation's OpenAI usage to the server for the usage report (best effort). */
+export const reportIntakeUsage = (s: Connection, body: { usage?: unknown; transcriptionTokens?: number }) =>
+  postJson<{ ok: boolean }>(s, '/api/usage/intake', body).catch(() => undefined);

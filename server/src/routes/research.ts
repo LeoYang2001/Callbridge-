@@ -2,10 +2,11 @@ import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { ResearchResult } from '../../../shared/types';
 import type { OtpRateLimit } from '../auth/otp';
+import type { Database } from '../db/database';
 import type { ResearchAgent } from '../research/researcher';
 
 /** The intake's `research` tool: ask the research agent anything. Per-user rate limited (it costs money). */
-export function registerResearchRoutes(app: FastifyInstance, deps: { researcher: ResearchAgent | null; perUser: OtpRateLimit }) {
+export function registerResearchRoutes(app: FastifyInstance, deps: { researcher: ResearchAgent | null; perUser: OtpRateLimit; db?: Database }) {
   const { researcher, perUser } = deps;
 
   app.post('/api/research', async (req, reply) => {
@@ -25,7 +26,11 @@ export function registerResearchRoutes(app: FastifyInstance, deps: { researcher:
     const started = Date.now();
     let result: ResearchResult;
     try {
-      result = await researcher.research({ ...parsed.data, userLanguage: parsed.data.userLanguage || req.user!.profile.preferredLanguage });
+      result = await researcher.research({
+        ...parsed.data,
+        userLanguage: parsed.data.userLanguage || req.user!.profile.preferredLanguage,
+        onCost: (usd, detail) => deps.db?.addUsage(req.user!.id, 'research', usd, `${parsed.data.depth} · ${detail}`),
+      });
     } catch (err) {
       req.log.warn({ err: (err as Error).message }, 'research.failed');
       return reply.code(502).send({ error: "Couldn't look that up right now. Try again, or give me the details." });

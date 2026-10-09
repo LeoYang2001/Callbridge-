@@ -1,3 +1,5 @@
+import type { Database } from '../db/database';
+import { pricesFromEnv, realtimeCost, realtimePricesFor, realtimeUsage } from '../usage/cost';
 import type { FastifyInstance } from 'fastify';
 import OpenAI from 'openai';
 import { z } from 'zod';
@@ -52,7 +54,7 @@ const DraftSchema = z
 /** A minute to start the session; the session itself may then run longer. */
 const SECRET_TTL_SECONDS = 60;
 
-export function registerIntakeRoutes(app: FastifyInstance, deps: { config: AppConfig; checkDeps: CheckDeps; store: CallStore }) {
+export function registerIntakeRoutes(app: FastifyInstance, deps: { config: AppConfig; checkDeps: CheckDeps; store: CallStore; db?: Database }) {
   const { config, checkDeps, store } = deps;
   const openai = config.OPENAI_API_KEY ? new OpenAI({ apiKey: config.OPENAI_API_KEY }) : null;
 
@@ -84,7 +86,7 @@ export function registerIntakeRoutes(app: FastifyInstance, deps: { config: AppCo
       expires_after: { anchor: 'created_at', seconds: SECRET_TTL_SECONDS },
       session: {
         type: 'realtime',
-        model: config.REALTIME_MODEL,
+        model: config.INTAKE_REALTIME_MODEL,
         instructions,
         output_modalities: ['audio'],
         audio: {
@@ -98,11 +100,26 @@ export function registerIntakeRoutes(app: FastifyInstance, deps: { config: AppCo
         },
         tools: tools.map((t) => ({ type: 'function' as const, ...t })),
         tool_choice: 'auto',
-        ...(/^gpt-realtime-2/.test(config.REALTIME_MODEL) ? { reasoning: { effort: config.REALTIME_REASONING_EFFORT } } : {}),
+        ...(/^gpt-realtime-2/.test(config.INTAKE_REALTIME_MODEL) ? { reasoning: { effort: config.REALTIME_REASONING_EFFORT } } : {}),
       },
     });
-    const session: IntakeSession = { clientSecret: secret.value, expiresAt: secret.expires_at, model: config.REALTIME_MODEL };
+    const session: IntakeSession = { clientSecret: secret.value, expiresAt: secret.expires_at, model: config.INTAKE_REALTIME_MODEL };
     return session;
+  });
+
+  /**
+   * What a conversation in the app cost: the app forwards OpenAI's usage after each response
+   * (the session runs between the phone and OpenAI, so only the app sees it), and the input
+   * transcription. Kept for the usage report; it's our own estimate, not a bill.
+   */
+  app.post('/api/usage/intake', async (req, reply) => {
+    const parsed = z.object({ usage: z.record(z.string(), z.unknown()).optional(), transcriptionTokens: z.number().int().min(0).max(1_000_000).optional() }).safeParse(req.body);
+    if (!parsed.success) return reply.code(400).send({ error: 'Bad usage report.' });
+    const prices = pricesFromEnv();
+    const u = { ...realtimeUsage(parsed.data.usage), transcriptionIn: parsed.data.transcriptionTokens ?? 0 };
+    const cost = realtimeCost(u, realtimePricesFor(config.INTAKE_REALTIME_MODEL, prices), prices.transcription);
+    if (cost > 0) deps.db?.addUsage(req.user!.id, 'intake', cost, config.INTAKE_REALTIME_MODEL);
+    return { ok: true };
   });
 
   /** The intake's check_request tool: what's missing, and whether the task is allowed. */

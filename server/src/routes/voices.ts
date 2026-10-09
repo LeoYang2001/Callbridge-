@@ -36,10 +36,10 @@ export function sampleLanguage(language: string): string {
   return code && SAMPLE_TEXT[code] ? code : 'en';
 }
 
-export function registerVoiceRoutes(app: FastifyInstance, deps: { apiKey?: string; cacheDir: string; model?: string }) {
+export function registerVoiceRoutes(app: FastifyInstance, deps: { apiKey?: string; cacheDir: string; model?: string; onMade?: (userId: string | null, detail: string) => void }) {
   const making = new Map<string, Promise<Buffer>>();
 
-  const make = async (voice: string, lang: string): Promise<Buffer> => {
+  const make = async (voice: string, lang: string, userId: string | null): Promise<Buffer> => {
     const file = path.join(deps.cacheDir, `${voice}-${lang}.wav`);
     const cached = await readFile(file).catch(() => null);
     if (cached) return cached;
@@ -58,6 +58,7 @@ export function registerVoiceRoutes(app: FastifyInstance, deps: { apiKey?: strin
     const audio = Buffer.from(await res.arrayBuffer());
     await mkdir(deps.cacheDir, { recursive: true });
     await writeFile(file, audio);
+    deps.onMade?.(userId, `${voice} ${lang}`);
     return audio;
   };
 
@@ -69,7 +70,7 @@ export function registerVoiceRoutes(app: FastifyInstance, deps: { apiKey?: strin
     const key = `${voice}-${lang}`;
     let job = making.get(key);
     if (!job) {
-      job = make(voice, lang).finally(() => making.delete(key));
+      job = make(voice, lang, req.user?.id ?? null).finally(() => making.delete(key));
       making.set(key, job);
     }
     try {

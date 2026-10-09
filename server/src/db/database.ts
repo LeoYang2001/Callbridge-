@@ -59,6 +59,14 @@ export class Database {
       );
       CREATE INDEX IF NOT EXISTS errands_by_user ON errands(user_id, created_at DESC);
       CREATE INDEX IF NOT EXISTS errands_by_status ON errands(status);
+      CREATE TABLE IF NOT EXISTS usage_events (
+        user_id TEXT REFERENCES users(id) ON DELETE CASCADE,
+        at INTEGER NOT NULL,
+        kind TEXT NOT NULL,
+        cost_usd REAL NOT NULL,
+        detail TEXT
+      );
+      CREATE INDEX IF NOT EXISTS usage_by_time ON usage_events(at);
       CREATE TABLE IF NOT EXISTS push_tokens (
         token TEXT PRIMARY KEY,
         user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -150,6 +158,11 @@ export class Database {
   /** Deletes one of the user's calls from the history; false if it isn't theirs. */
   deleteCall(userId: string, id: string): boolean {
     return Number(this.db.prepare('DELETE FROM calls WHERE id = ? AND user_id = ?').run(id, userId).changes) > 0;
+  }
+
+  // ── usage ── (what isn't a phone call: setting up calls by voice, research, voice samples)
+  addUsage(userId: string | null, kind: 'intake' | 'research' | 'voice_sample', costUsd: number, detail?: string) {
+    this.db.prepare('INSERT INTO usage_events (user_id, at, kind, cost_usd, detail) VALUES (?, ?, ?, ?, ?)').run(userId, Date.now(), kind, costUsd, detail ?? null);
   }
 
   // ── push tokens ── (one per installed app; a phone that signs in as someone else moves over)

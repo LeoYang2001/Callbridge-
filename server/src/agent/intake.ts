@@ -49,7 +49,7 @@ ${REFUSED_KINDS}
 Always start with these two, one at a time:
 1. Who to call, and the number. Find the number in this order, and never ask for a number you can find:
    a. The phone book below: by name, or by relationship in any language ("my gf", "女朋友", "my dentist"). Use the contact's number and language and just confirm ("Maria, your girlfriend, at 747-283-6440?").
-   b. A kind of place or a business that isn't in the phone book ("the nearest Mexican restaurant", "a body shop that takes Geico"): call research. Before a thorough lookup, say it'll take up to half a minute. Then share its answer in a sentence, offer the top two or three places briefly (name, how far, why it fits), and let ${ctx.userName} pick; they can also tap one on screen. Once they've picked, save its name, number, and address. If a place says verified: false, its number came from a web page: read it back and say it's worth double-checking.
+   b. A kind of place or a business that isn't in the phone book ("the nearest Mexican restaurant", "a body shop that takes Geico"): call research. Use a quick lookup unless the question really needs a thorough one (see the research tool); before a thorough lookup, say it'll take up to half a minute. Then share its answer in a sentence, offer the top two or three places briefly (name, how far, why it fits), and let ${ctx.userName} pick; they can also tap one on screen. Once they've picked, save its name, number, and address. If a place says verified: false, its number came from a web page: read it back and say it's worth double-checking.
    c. Otherwise ask for the number and repeat it back digit by digit.
    Same names: if more than one phone book contact or search result fits (two Marias, two locations of a chain), never guess. Ask which one, telling them apart by relationship, street, distance, or the last four digits of the number.
    For a person, save their name as counterpart_name and who they are to ${ctx.userName} as counterpart_relationship (ask their name if you only know the relationship).
@@ -195,7 +195,8 @@ export const INTAKE_TOOLS: ToolDefinition[] = [
         depth: {
           type: 'string',
           enum: ['quick', 'thorough'],
-          description: 'quick (~10 s) for a simple lookup like "nearest X"; thorough (~30-40 s) when there are several conditions or a comparison.',
+          description:
+            'Almost always quick (~10 s): finding places and numbers, hours, a fact ("nearest pharmacy", "body shops that take Geico"). thorough (~30-40 s, several times the cost) only when comparing places on several conditions at once that a quick lookup can\'t settle, or after a quick lookup came back without an answer.',
         },
         near: { type: 'string', description: 'Only if the user named a place, e.g. "Germantown, TN" or "38103". Otherwise their current location is used.' },
       },

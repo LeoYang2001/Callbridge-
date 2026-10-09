@@ -181,9 +181,14 @@ const sendReminder = (userId: string, message: Omit<PushMessage, 'to'>) => {
   if (tokens.length) void push.send(tokens.map((to) => ({ ...message, to }))).catch((err) => app.log.warn({ err }, 'reminder push failed'));
 };
 setInterval(() => sendDueReminders(db, sendReminder), 15 * 60_000).unref();
-registerIntakeRoutes(app, { config, checkDeps, store });
+registerIntakeRoutes(app, { config, checkDeps, store, db });
 registerListenRoutes(app, { manager, store });
-registerVoiceRoutes(app, { apiKey: config.OPENAI_API_KEY, cacheDir: path.resolve(root, 'data/voice-samples') });
+registerVoiceRoutes(app, {
+  apiKey: config.OPENAI_API_KEY,
+  cacheDir: path.resolve(root, 'data/voice-samples'),
+  // A sample is a few seconds of text-to-speech, made once per voice and language.
+  onMade: (userId, detail) => db.addUsage(userId, 'voice_sample', 0.003, detail),
+});
 registerResearchRoutes(app, {
   researcher: config.OPENAI_API_KEY
     ? new OpenAIResearcher(
@@ -193,6 +198,7 @@ registerResearchRoutes(app, {
       )
     : null,
   perUser: new OtpRateLimit(30),
+  db,
 });
 if (telephony) registerTwilioRoutes(app, { config, manager, telephony });
 

@@ -16,3 +16,18 @@ describe('call cost', () => {
     expect(cost).toEqual({ openai: 0.1672, twilio: 0.042, total: 0.2092 });
   });
 });
+
+describe('usage outside calls', () => {
+  it('prices a reply on the mini realtime model well below the full one', async () => {
+    const { pricesFromEnv, realtimeCost, realtimePricesFor, realtimeUsage, textCost } = await import('../src/usage/cost');
+    const prices = pricesFromEnv({});
+    const u = realtimeUsage({ input_token_details: { text_tokens: 4000, audio_tokens: 500, cached_tokens_details: { text_tokens: 3000 } }, output_token_details: { audio_tokens: 600, text_tokens: 80 } });
+    expect(u).toMatchObject({ textIn: 1000, textInCached: 3000, audioIn: 500, audioOut: 600, textOut: 80, responses: 1 });
+    const full = realtimeCost(u, realtimePricesFor('gpt-realtime-2.1', prices), prices.transcription);
+    const mini = realtimeCost(u, realtimePricesFor('gpt-realtime-mini', prices), prices.transcription);
+    expect(mini).toBeLessThan(full / 2.5);
+    // gpt-5.5 is priced as the large family, gpt-5.4-mini as mini.
+    const t = { input: 20_000, cached: 0, output: 1_000 };
+    expect(textCost('gpt-5.5', t, prices)).toBeGreaterThan(textCost('gpt-5.4-mini', t, prices) * 4);
+  });
+});

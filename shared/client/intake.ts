@@ -2,7 +2,7 @@ import { draftPatchFromArgs, type IntakeContext } from '../intake';
 import { captionAt, defaultCharsPerSecond } from '../captions';
 import { profilePatchFromArgs } from '../profilePatch';
 import type { IntakeCheckResult, IntakeDraft, Me, ResearchResult } from '../types';
-import { checkIntake, research, updateProfile, type Connection } from './api';
+import { checkIntake, reportIntakeUsage, research, updateProfile, type Connection } from './api';
 
 /**
  * The intake conversation's logic, shared by the web and mobile apps: it reads OpenAI Realtime
@@ -414,6 +414,7 @@ export function createIntakeConversation(deps: {
           h.onStatus(idle());
           break;
         case 'conversation.item.input_audio_transcription.completed':
+          if (ev.usage?.input_tokens) void reportIntakeUsage(conn, { transcriptionTokens: ev.usage.input_tokens });
           heard.delete(ev.item_id);
           if (ev.transcript?.trim()) h.onLine({ id: ev.item_id, role: 'user', text: ev.transcript.trim() });
           break;
@@ -449,6 +450,8 @@ export function createIntakeConversation(deps: {
           );
           break;
         case 'response.done':
+          // The session runs between the phone and OpenAI, so only the client sees its usage.
+          if (ev.response?.usage) void reportIntakeUsage(conn, { usage: ev.response.usage });
           void turnDone(ev.response?.output ?? []);
           break;
         case 'error':

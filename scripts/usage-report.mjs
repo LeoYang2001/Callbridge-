@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// Usage and estimated cost per user over a date range, from the call database.
+// Usage and estimated cost per user over a date range, from the call database: calls, plus
+// setting up calls by voice in the app (intake), research lookups and voice samples.
 //   npm run usage                      (yesterday, in America/Chicago)
 //   npm run usage -- 2026-10-01 2026-10-07
 // Calls placed before cost tracking existed are estimated from their length ($0.08 per
@@ -44,4 +45,24 @@ for (const [k, t] of per) {
   console.log(`${who.padEnd(28)} ${String(t.calls).padStart(3)} calls (${t.answered} answered) ${t.minutes.toFixed(1).padStart(6)} min  OpenAI ${mark}$${t.openai.toFixed(2)}  Twilio ${mark}$${t.twilio.toFixed(2)}  per min ${mark}$${t.minutes ? ((t.openai + t.twilio) / t.minutes).toFixed(3) : '—'}`);
   all = { calls: all.calls + t.calls, minutes: all.minutes + t.minutes, openai: all.openai + t.openai, twilio: all.twilio + t.twilio };
 }
-console.log(`\nTotal ${all.calls} calls, ${all.minutes.toFixed(1)} min, $${(all.openai + all.twilio).toFixed(2)} (OpenAI $${all.openai.toFixed(2)}, Twilio $${all.twilio.toFixed(2)}). Calls only: the voice intake, research and sign-in texts are extra.`);
+console.log(`\nCalls: ${all.calls}, ${all.minutes.toFixed(1)} min, $${(all.openai + all.twilio).toFixed(2)} (OpenAI $${all.openai.toFixed(2)}, Twilio $${all.twilio.toFixed(2)}).`);
+
+// Everything else (tracked since the usage table was added; earlier use isn't in it).
+const hasUsage = db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'usage_events'").get();
+let other = 0;
+if (hasUsage) {
+  const kinds = new Map();
+  for (const row of db.prepare('SELECT user_id, at, kind, cost_usd FROM usage_events ORDER BY at').all()) {
+    const d = day(new Date(row.at));
+    if (d < from || d > to) continue;
+    const k = kinds.get(row.kind) ?? { n: 0, usd: 0 };
+    k.n++;
+    k.usd += row.cost_usd;
+    kinds.set(row.kind, k);
+    other += row.cost_usd;
+  }
+  const label = { intake: 'Setting up calls (voice, per reply)', research: 'Research lookups', voice_sample: 'Voice samples' };
+  console.log('');
+  for (const [kind, k] of kinds) console.log(`${(label[kind] ?? kind).padEnd(38)} ${String(k.n).padStart(4)}  $${k.usd.toFixed(2)}`);
+}
+console.log(`\nTotal $${(all.openai + all.twilio + other).toFixed(2)} (estimates at list prices; sign-in texts are extra).`);

@@ -1,3 +1,4 @@
+import { realtimeUsage } from '../../usage/cost';
 import { EventEmitter } from 'node:events';
 import WebSocket from 'ws';
 import type { VoiceAgent, VoiceAgentConfig, VoiceAgentEvents } from './types';
@@ -141,20 +142,7 @@ export class OpenAIRealtimeAgent implements VoiceAgent {
       case 'response.done': {
         this.responseActive = false;
         const u = ev.response?.usage;
-        if (u) {
-          const inD = u.input_token_details ?? {};
-          const cached = inD.cached_tokens_details ?? {};
-          const outD = u.output_token_details ?? {};
-          this.emitter.emit('usage', {
-            audioIn: Math.max(0, (inD.audio_tokens ?? 0) - (cached.audio_tokens ?? 0)),
-            audioInCached: cached.audio_tokens ?? 0,
-            textIn: Math.max(0, (inD.text_tokens ?? 0) - (cached.text_tokens ?? 0)),
-            textInCached: cached.text_tokens ?? 0,
-            audioOut: outD.audio_tokens ?? 0,
-            textOut: outD.text_tokens ?? 0,
-            responses: 1,
-          });
-        }
+        if (u) this.emitter.emit('usage', realtimeUsage(u));
         const status = ev.response?.status;
         if (status && status !== 'completed') this.opts.log?.('ai.response_done', status);
         // A cancelled (interrupted) response may never send transcript.done; flush what we have.
