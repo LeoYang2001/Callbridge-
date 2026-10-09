@@ -238,6 +238,10 @@ export class OpenAIRealtimeAgent implements VoiceAgent {
     this.send({ type: 'conversation.item.truncate', item_id: itemId, content_index: 0, audio_end_ms: Math.max(0, Math.round(audioEndMs)) });
   }
 
+  forget(itemId: string) {
+    this.send({ type: 'conversation.item.delete', item_id: itemId });
+  }
+
   sendToolResult(callId: string, output: unknown, respond: boolean) {
     this.send({
       type: 'conversation.item.create',

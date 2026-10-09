@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeIn, FadeOut, useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import type { UserAnswer } from '@shared/types';
+import { isOnCall, type UserAnswer } from '@shared/types';
 import { answerQuestion } from '@/lib/api';
 import { haptic } from '@/lib/haptics';
 import { useSession } from '@/lib/session';
@@ -91,7 +91,7 @@ export function CallCapsule() {
           <Text style={[type.small, s.white, { flex: 1, fontWeight: '600' }]} numberOfLines={1}>
             {name}
           </Text>
-          <Text style={[type.small, { color: ACCENT, fontVariant: ['tabular-nums'] }]}>{call.status === 'connected' ? clock(seconds) : 'Calling…'}</Text>
+          <Text style={[type.small, { color: ACCENT, fontVariant: ['tabular-nums'] }]}>{isOnCall(call.status) ? clock(seconds) : 'Calling…'}</Text>
           <Icon name="chevron" size={12} color="rgba(255,255,255,0.42)" />
         </Pressable>
       )}

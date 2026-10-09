@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
-import type { CallRecord } from '@shared/types';
+import { LIVE_CALL_STATUSES, type CallRecord } from '@shared/types';
 import { watchCall } from '@/lib/api';
 import { useSession } from '@/lib/session';
 
@@ -8,7 +8,7 @@ import { useSession } from '@/lib/session';
  * every screen. A screen that starts or opens a live call registers it with follow(id).
  */
 
-const LIVE: CallRecord['status'][] = ['preparing', 'dialing', 'connected'];
+const LIVE = LIVE_CALL_STATUSES;
 
 interface ActiveCallApi {
   /** The call being followed (live, or just finished until dismissed). */

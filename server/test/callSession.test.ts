@@ -29,6 +29,10 @@ class FakeAgent implements VoiceAgent {
   truncate(itemId: string, ms: number) {
     this.truncations.push({ itemId, ms });
   }
+  forgotten: string[] = [];
+  forget(itemId: string) {
+    this.forgotten.push(itemId);
+  }
   sendToolResult(callId: string, output: unknown, respond: boolean) {
     this.toolResults.push({ callId, output, respond });
   }
@@ -145,6 +149,15 @@ function setup(opts: { failConnect?: boolean; analyzer?: CallAnalyzer | null; ho
   );
   return { store, agent, telephony, manager };
 }
+
+describe('personal calls', () => {
+  it("don't offer the appointment-slot check (the time in the message is the user's own)", async () => {
+    const { agent, telephony, manager } = setup();
+    manager.startCall(dentistRequest({ category: 'personal_call', counterpartName: 'Tabito' }));
+    await waitFor(() => telephony.placed.length === 1);
+    expect(agent.config?.tools.map((t) => t.name)).toEqual(['request_decision', 'confirm_agreement', 'end_call']);
+  });
+});
 
 describe('live captions', () => {
   it('shows an assistant line a sentence at a time as its audio plays', async () => {
@@ -318,7 +331,24 @@ describe('CallSession (simulated dentist call)', () => {
       c.agent.emit('responseDone');
       c.transport.emit('mark', 'a1');
       expect(c.agent.responses).toBe(c.responses);
-      expect(c.get().events.map((e) => e.type)).toContain('turn.held');
+      // 160 ms is too short to be a word: noise, and gone from the transcript.
+      expect(c.get().events.map((e) => e.type)).toContain('turn.noise');
+      expect(c.get().transcript.find((t) => t.id === 'c2')).toBeUndefined();
+    });
+
+    it('ignores a word "heard" in a burst too short to be one (noise, or our own echo)', async () => {
+      const c = await connected();
+      c.agent.emit('speechStarted');
+      c.advance(5); // 100 ms of sound
+      c.advance(20, SILENT);
+      c.agent.emit('speechStopped');
+      c.agent.emit('utteranceStarted', 'c2', 'counterpart');
+      c.agent.emit('transcript', 'c2', 'counterpart', 'Good');
+      c.agent.emit('responseDone');
+      c.transport.emit('mark', 'a1');
+      expect(c.agent.responses).toBe(c.responses);
+      expect(c.agent.forgotten).toEqual(['c2']);
+      expect(c.get().transcript.some((t) => t.text === 'Good')).toBe(false);
     });
 
     it('answers a greeting said over the assistant, but not "はい" or "嗯"', async () => {

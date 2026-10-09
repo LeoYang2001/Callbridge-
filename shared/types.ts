@@ -118,6 +118,11 @@ export type CallStatus =
   | 'completed'
   | 'failed';
 
+/** On the line: answered, before or after the other party first speaks (in_progress). */
+export const isOnCall = (status: CallStatus) => status === 'connected' || status === 'in_progress';
+/** Not over yet: being set up, ringing, or on the line. */
+export const LIVE_CALL_STATUSES: readonly CallStatus[] = ['preparing', 'dialing', 'connected', 'in_progress'];
+
 export type Speaker = 'assistant' | 'counterpart' | 'system';
 
 export interface TranscriptEntry {

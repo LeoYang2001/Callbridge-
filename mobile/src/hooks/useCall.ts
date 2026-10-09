@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { CallRecord, UserAnswer } from '@shared/types';
+import { LIVE_CALL_STATUSES, type CallRecord, type UserAnswer } from '@shared/types';
 import { answerQuestion, endCall, sendCallMessage, watchCall } from '@/lib/api';
 import { startListening, type Listener } from '@/lib/listen';
 import { useSignedIn } from '@/lib/session';
 
-const LIVE: CallRecord['status'][] = ['preparing', 'dialing', 'connected'];
+const LIVE = LIVE_CALL_STATUSES;
 
 /**
  * One call, live or finished: polls it until it's over, and the user's controls while it's live:

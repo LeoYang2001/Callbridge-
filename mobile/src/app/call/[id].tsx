@@ -2,7 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { displayPhone } from '@shared/phone';
-import type { UserAnswer } from '@shared/types';
+import { isOnCall, type UserAnswer } from '@shared/types';
 import { useActiveCall, useCallSeconds, clock } from '@/call/ActiveCall';
 import { Composer, HoldQuestion, Live, Ringing, TranscriptSheet } from '@/call/LiveViews';
 import { outcomeOf } from '@/call/outcome';
@@ -57,7 +57,7 @@ export default function CallScreen() {
     ? 'loading'
     : call.status === 'preparing' || call.status === 'dialing'
       ? 'ringing'
-      : call.status === 'connected'
+      : isOnCall(call.status)
         ? q && call.request.involvement !== 'handoff'
           ? 'hold'
           : 'live'

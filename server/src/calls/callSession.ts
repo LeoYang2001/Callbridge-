@@ -71,6 +71,12 @@ const BARGE_IN_WATCH_MS = 2500;
 const BARGE_IN_POLL_MS = 50;
 /** A turn with less speech than this waits for its transcript before getting an answer. */
 const MIN_TURN_SPEECH_MS = 160;
+/**
+ * Sound while we talk that's shorter than this is noise: no word is that short. Without it, a
+ * transcriber turning a cough or an echo of our own voice into "Good" got an answer. (A quiet
+ * line measures 0 ms even for real words; those are still trusted.)
+ */
+const MIN_HELD_SPEECH_MS = 250;
 /** Speech just before the model's speech-started event that still belongs to the turn. */
 const TURN_LEAD_IN_MS = 300;
 
@@ -127,8 +133,8 @@ export class CallSession {
   private bargedIn = false;
   private bargeWatch: NodeJS.Timeout | undefined;
   /** How the last finished turn was handled, applied to its transcript when it arrives. */
-  private lastTurn: 'held' | 'quiet' | null = null;
-  private readonly turnByItem = new Map<string, 'held' | 'quiet'>();
+  private lastTurn: 'held' | 'quiet' | 'noise' | null = null;
+  private readonly turnByItem = new Map<string, 'held' | 'quiet' | 'noise'>();
   private readonly cancelledItems = new Set<string>();
   /** Apps listening to the call live (μ-law audio, both sides). */
   private readonly listeners = new Set<(event: ListenEvent) => void>();
@@ -201,7 +207,10 @@ export class CallSession {
       this.agent = agent;
       this.wireAgent(agent);
       const t0 = Date.now();
-      await agent.connect({ instructions, tools: TOOL_DEFINITIONS, transcriptionLanguage: languageCode(r.request.callLanguage) });
+      // A personal call passes on a message; there's no slot to check (the time in it is the
+      // user's own proposal), and offering the tool made the assistant stop to "check" one.
+      const tools = r.request.category === 'personal_call' ? TOOL_DEFINITIONS.filter((t) => t.name !== 'check_appointment_slot') : TOOL_DEFINITIONS;
+      await agent.connect({ instructions, tools, transcriptionLanguage: languageCode(r.request.callLanguage) });
       this.log('ai.connected', `${Date.now() - t0}ms`);
       if (this.finalizing) return;
 
@@ -359,7 +368,12 @@ export class CallSession {
       const voiced = this.gate.voicedMsSince(this.turnSpeechFrom());
       this.lastTurnEndTs = this.latestMediaTs;
       const detail = `${voiced}ms speech · noise floor ${this.gate.noiseFloor}`;
-      if (this.aiSpeaking() && !this.bargedIn) {
+      if (this.aiSpeaking() && !this.bargedIn && voiced > 0 && voiced < MIN_HELD_SPEECH_MS) {
+        // A burst too short to be a word (a cough, a door, our own voice echoing back): ignore
+        // it. None at all is different: a quiet line the gate can't measure, so words count.
+        this.lastTurn = 'noise';
+        this.log('turn.noise', detail);
+      } else if (this.aiSpeaking() && !this.bargedIn) {
         // "Okay", "mm-hm", or noise while we talk: keep going. Real words get answered after.
         this.lastTurn = 'held';
         this.log('turn.held', detail);
@@ -387,6 +401,14 @@ export class CallSession {
     agent.on('transcript', (itemId, speaker, text) => {
       const clean = text.trim();
       const turn = speaker === 'counterpart' ? this.turnByItem.get(itemId) : undefined;
+      if (turn === 'noise') {
+        // Whatever the transcriber made of it, nobody said it: out of the record and the model's memory.
+        this.turnByItem.delete(itemId);
+        this.agent?.forget?.(itemId);
+        this.update((r) => (r.transcript = r.transcript.filter((t) => t.id !== itemId)));
+        if (clean) this.log('turn.noise_dropped', clean.slice(0, 80));
+        return;
+      }
       if (turn) {
         this.turnByItem.delete(itemId);
         if (turn === 'quiet' && hasWords(clean)) {

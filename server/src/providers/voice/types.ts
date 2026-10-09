@@ -37,6 +37,8 @@ export interface VoiceAgent {
   sendAudio(payloadB64: string): void;
   /** Tell the model how much of item `itemId` the listener actually heard before interrupting. */
   truncate(itemId: string, audioEndMs: number): void;
+  /** Removes an item from the conversation (noise transcribed as words, so it can't mislead later turns). */
+  forget?(itemId: string): void;
   /** Return a tool result. `respond` asks the model to speak after it. */
   sendToolResult(callId: string, output: unknown, respond: boolean): void;
   /** Inject a system note and ask the model to respond. */
