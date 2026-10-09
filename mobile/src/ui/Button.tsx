@@ -82,7 +82,7 @@ export function Chip({ title, onPress, variant = 'answer', selected }: { title: 
         pressed && s.pressed,
       ]}
     >
-      <Text style={[variant === 'suggestion' ? type.small : type.callout, variant === 'suggestion' && { color: color.ink }, variant === 'blue' && { color: color.white }]}>{title}</Text>
+      <Text numberOfLines={variant === 'suggestion' ? 1 : undefined} style={[variant === 'suggestion' ? type.small : type.callout, variant === 'suggestion' && { color: color.ink }, variant === 'blue' && { color: color.white }]}>{title}</Text>
     </Pressable>
   );
 }
@@ -112,7 +112,7 @@ const s = StyleSheet.create({
   disabled: { opacity: 0.4 },
   pressed: { opacity: 0.75, transform: [{ scale: 0.98 }] },
   answer: { minHeight: 44, paddingHorizontal: 18, borderRadius: 22, backgroundColor: color.white, borderWidth: 1, borderColor: color.line, alignItems: 'center', justifyContent: 'center' },
-  suggestion: { minHeight: 38, paddingHorizontal: 16, borderRadius: 19, backgroundColor: color.surface, alignItems: 'center', justifyContent: 'center' },
+  suggestion: { minHeight: 38, maxWidth: '100%', paddingHorizontal: 16, borderRadius: 19, backgroundColor: color.surface, alignItems: 'center', justifyContent: 'center' },
   blueChip: { backgroundColor: color.blue, borderColor: color.blue },
   chipOn: { borderWidth: 2, borderColor: color.blue },
 });

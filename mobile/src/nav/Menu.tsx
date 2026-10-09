@@ -71,9 +71,11 @@ function MenuOverlay({ onClose }: { onClose: () => void }) {
 
   return (
     <Animated.View entering={SlideInRight.duration(280)} exiting={SlideOutRight.duration(220)} style={[StyleSheet.absoluteFill, s.overlay]}>
+      {/* A tap anywhere that isn't a menu item closes it; the items take their own taps first. */}
+      <Pressable accessible={false} onPress={onClose} style={StyleSheet.absoluteFill} />
       <EdgeGlow mode="idle" />
-      <View style={{ height: insets.top }} />
-      <View style={s.head}>
+      <View pointerEvents="none" style={{ height: insets.top }} />
+      <View pointerEvents="box-none" style={s.head}>
         <Text style={type.caption}>
           {me?.profile.name || 'You'} · {me?.profile.preferredLanguage.replace(/^Chinese \((.+)\)$/, '$1') ?? ''}
         </Text>
@@ -82,7 +84,7 @@ function MenuOverlay({ onClose }: { onClose: () => void }) {
         </Pressable>
       </View>
 
-      <View style={s.items}>
+      <View pointerEvents="box-none" style={s.items}>
         {ITEMS.map((item, i) => (
           <Animated.View key={item.en} entering={FadeInUp.duration(350).delay(i * 50)}>
             <Pressable accessibilityRole="link" onPress={() => go(item.href)} style={[s.item, i < ITEMS.length - 1 && s.divider]}>
@@ -104,7 +106,7 @@ function MenuOverlay({ onClose }: { onClose: () => void }) {
         </Pressable>
       )}
 
-      <View style={[s.links, { paddingBottom: insets.bottom + 24 }]}>
+      <View pointerEvents="box-none" style={[s.links, { paddingBottom: insets.bottom + 24 }]}>
         <Text style={type.caption} onPress={() => go('/notifications')}>
           Notifications
         </Text>

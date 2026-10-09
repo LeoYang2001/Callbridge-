@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
-import Animated, { FadeIn, FadeInUp, SlideInDown, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { FadeIn, FadeInUp, SlideInDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { nativeLanguageName } from '@shared/languages';
 import type { PlaceResult } from '@shared/types';
@@ -18,6 +18,7 @@ import { haptic } from '@/lib/haptics';
 import { useSignedIn } from '@/lib/session';
 import * as SecureStore from 'expo-secure-store';
 import { useMenu } from '@/nav/Menu';
+import { greetingFor, homeText } from '@/i18n/home';
 import { MenuButton } from '@/nav/MenuButton';
 import { useToast } from '@/ui/Toast';
 import { RequestCard } from '@/talk/RequestCard';
@@ -102,32 +103,19 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
     onReset();
   };
 
-  // One talk button for every view, so a press that starts on Home carries on into Listening.
-  const [homeSpot, setHomeSpot] = useState<number | null>(null);
+  // One talk button, always in the bottom controls (Home included), so it never moves under a
+  // finger and a press that starts on Home carries straight into Listening.
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
-  const bottomCenter = height - Math.max(insets.bottom, 12) - 8 - 20 - 12 - 42;
-  const target = view === 'home' && homeSpot != null ? homeSpot : bottomCenter;
-  // The button never moves under a finger: while held it stays where the press began (and at
-  // that size); it settles into its next place after release.
-  const [pressedAt, setPressedAt] = useState<{ center: number; big: boolean } | null>(null);
+  const center = height - Math.max(insets.bottom, 12) - 8 - 20 - 12 - 42;
   const [typing, setTyping] = useState(false);
-  const center = pressedAt?.center ?? target;
-  const big = pressedAt?.big ?? view === 'home';
   const dock = (
     <TalkDock
       view={view}
       center={center}
-      big={big}
       holding={intake.holding}
-      onPressIn={() => {
-        setPressedAt({ center: target, big: view === 'home' });
-        void intake.pressTalk();
-      }}
-      onRelease={(tooShort) => {
-        setPressedAt(null);
-        void intake.releaseTalk(tooShort);
-      }}
+      onPressIn={() => void intake.pressTalk()}
+      onRelease={(tooShort) => void intake.releaseTalk(tooShort)}
       disabled={intake.status === 'connecting' && !intake.holding}
       onType={() => setTyping(true)}
     />
@@ -150,7 +138,7 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
   );
 
   function renderView() {
-    if (view === 'home') return <Home onSpot={setHomeSpot} onSuggestion={(t) => void intake.choose(t)} />;
+    if (view === 'home') return <Home onSuggestion={(t) => void intake.choose(t)} />;
 
     // Tap the voice pill to mute or unmute the assistant (its words still appear on screen).
     const languagePill =
@@ -218,7 +206,7 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
       const top = insets.top + 60;
       return (
         <Screen top={header} padding={34}>
-          <View style={[s.listening, { top, height: Math.max(120, center - (big ? 100 : 80) - top) }]}>
+          <View style={[s.listening, { top, height: Math.max(120, center - 80 - top) }]}>
             <View style={s.label}>
               <Bars color={color.blue} />
               <Text style={[type.label, { color: color.blue }]}>Listening · release to send</Text>
@@ -284,8 +272,7 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
 
 const EDGE_HINT_KEY = 'callbridge.edgeHint.v1';
 
-function Home({ onSpot, onSuggestion }: { onSpot: (centerY: number) => void; onSuggestion: (text: string) => void }) {
-  const spot = useRef<View>(null);
+function Home({ onSuggestion }: { onSuggestion: (text: string) => void }) {
   const { hint } = useMenu();
   const toast = useToast();
   // Once: show where the menu lives (there's no menu button).
@@ -302,37 +289,30 @@ function Home({ onSpot, onSuggestion }: { onSpot: (centerY: number) => void; onS
     return () => clearTimeout(t);
   }, [hint, toast]);
   const { me } = useSignedIn();
-  const name = me.profile.name;
-  const hour = new Date().getHours();
-  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
-  const contacts = me.profile.contacts.slice(0, 2).map((c) => `Call ${c.relationship ? `my ${c.relationship}` : c.name}`);
-  const suggestions = [...contacts, 'The nearest pharmacy'].slice(0, 3);
+  const t = homeText(me.profile.preferredLanguage);
+  // Recent contacts first, then a nearby place.
+  const recent = [...me.profile.contacts].sort((a, b) => (b.lastCalledAt ?? 0) - (a.lastCalledAt ?? 0)).slice(0, 2);
+  const suggestions = [...recent.map((c) => t.call(c.name)), recent.length < 2 ? t.nearestRestaurant : null, t.nearestPharmacy].filter((x): x is string => Boolean(x)).slice(0, 3);
   const next = me.profile.appointments.filter((a) => a.date >= new Date().toISOString().slice(0, 10)).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))[0];
 
   return (
-    <Screen top={<TopBar right={<MenuButton />} />} padding={30}>
-      <View style={{ gap: 6, marginTop: 8 }}>
-        <Text style={type.sub}>
-          {greeting}
-          {name ? `, ${name}` : ''}
-        </Text>
-        <Text style={type.title}>Who should I call?</Text>
+    <Screen top={<TopBar right={<MenuButton />} />} padding={24} bottom={<View style={{ height: DOCK_HEIGHT }} />}>
+      <View style={{ gap: 6, marginTop: 8, paddingHorizontal: 6 }}>
+        <Text style={type.sub}>{greetingFor(t, me.profile.name)}</Text>
+        <Text style={type.title}>{t.title}</Text>
       </View>
-      <View style={s.center}>
-        {/* The talk button (in the dock) sits over this spot on Home. */}
-        <View
-          ref={spot}
-          style={{ width: 104, height: HOME_BUTTON_BLOCK }}
-          onLayout={() => spot.current?.measureInWindow((_x, y, _w, h) => onSpot(y + h / 2))}
-        />
-        <Text style={[type.caption, { textAlign: 'center', marginTop: 4 }]}>The mic stays off until you hold. Or tap a suggestion.</Text>
-      </View>
+      {next ? (
+        <View style={{ marginTop: 18 }}>
+          <Upcoming date={next.date} time={next.time} title={next.with} detail={next.description} />
+        </View>
+      ) : null}
+      <View style={{ flex: 1 }} />
+      <Text style={[type.caption, { textAlign: 'center', marginBottom: 12 }]}>The mic stays off until you hold. Or tap a suggestion.</Text>
       <View style={s.suggest}>
-        {suggestions.map((t) => (
-          <Chip key={t} variant="suggestion" title={t} onPress={() => onSuggestion(t)} />
+        {suggestions.map((x) => (
+          <Chip key={x} variant="suggestion" title={x} onPress={() => onSuggestion(x)} />
         ))}
       </View>
-      {next ? <Upcoming date={next.date} time={next.time} title={next.with} detail={next.description} /> : <View style={{ height: 12 }} />}
     </Screen>
   );
 }
@@ -393,8 +373,6 @@ function TypeSheet({ placeholder, onSend, onClose }: { placeholder: string; onSe
 
 /** Room the dock takes at the bottom of the conversation views. */
 const DOCK_HEIGHT = 150;
-/** The Home button and its label. */
-const HOME_BUTTON_BLOCK = 104 + 12 + 20;
 
 /**
  * The talk button and its neighbours (speaker, mic state). On Home it sits large over the spot
@@ -404,7 +382,6 @@ const HOME_BUTTON_BLOCK = 104 + 12 + 20;
 function TalkDock({
   view,
   center,
-  big,
   holding,
   onPressIn,
   onRelease,
@@ -414,8 +391,6 @@ function TalkDock({
   view: View_;
   /** Where the button's center sits on screen (window y). */
   center: number;
-  /** Home's large button (also while a press that began on Home is held). */
-  big: boolean;
   holding: boolean;
   onPressIn: () => void;
   onRelease: (tooShort: boolean) => void;
@@ -423,26 +398,17 @@ function TalkDock({
   /** Type an answer instead of saying it. */
   onType: () => void;
 }) {
-  const home = big;
   const hidden = view === 'review' || view === 'research';
-  const y = useSharedValue(center);
-  useEffect(() => {
-    y.value = withTiming(center, { duration: 350 });
-  }, [center, y]);
-  const pos = useAnimatedStyle(() => ({ transform: [{ translateY: y.value - 60 }] }));
-  const sides = useAnimatedStyle(() => ({ opacity: withTiming(home ? 0 : 1, { duration: 250 }) }));
   return (
-    <Animated.View pointerEvents={hidden ? 'none' : 'box-none'} style={[s.dock, pos, { opacity: hidden ? 0 : 1 }]}>
-      <Animated.View style={sides} pointerEvents={home ? 'none' : 'auto'}>
-        <RoundButton label="Type instead" onPress={onType} size={58} bg={color.surface} ring={false}>
-          <Icon name="keyboard" size={20} />
-        </RoundButton>
-      </Animated.View>
-      <HoldToTalk holding={holding} onPressIn={onPressIn} onRelease={onRelease} size={home ? 104 : 84} label="Hold to talk" disabled={disabled} />
-      <Animated.View style={[{ width: 58, alignItems: 'center' }, sides]}>
+    <View pointerEvents={hidden ? 'none' : 'box-none'} style={[s.dock, { transform: [{ translateY: center - 60 }], opacity: hidden ? 0 : 1 }]}>
+      <RoundButton label="Type instead" onPress={onType} size={58} bg={color.surface} ring={false}>
+        <Icon name="keyboard" size={20} />
+      </RoundButton>
+      <HoldToTalk holding={holding} onPressIn={onPressIn} onRelease={onRelease} size={84} label="Hold to talk" disabled={disabled} />
+      <View style={{ width: 58, alignItems: 'center' }}>
         <MicState on={holding} />
-      </Animated.View>
-    </Animated.View>
+      </View>
+    </View>
   );
 }
 

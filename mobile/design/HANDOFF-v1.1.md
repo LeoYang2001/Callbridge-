@@ -27,7 +27,10 @@ menu opens by **swiping in from the right edge** of any screen once signed in.
   - At the open point it turns **brand blue `#2557e8` fading into violet `#b59cff`**, with a crisp
     haptic, meaning "let go to open". That color change is the cue testers asked for.
   - On release it fades out over 0.35 s.
-- **The menu** slides in from the right (280 ms) instead of fading.
+  - It follows the screen's rounded corners (56 pt), bending around the top-right and
+    bottom-right corners like the edge glow, instead of a straight bar.
+- **The menu** slides in from the right (280 ms) instead of fading. A tap anywhere that isn't a
+  menu item closes it, as does ✕.
 - **First run:** on Home, the right-edge cue peeks twice and a toast says "Swipe in from the right
   edge for the menu" (once per install).
 - **VoiceOver:** edge swipes aren't practical with VoiceOver, so the old menu button appears only
