@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Keyboard, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
-import Animated, { Easing, FadeIn, FadeInUp, SlideInDown, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import Animated, { Easing, FadeIn, FadeInUp, FadeOut, SlideInDown, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { sentenceStarts } from '@shared/captions';
 import { nativeLanguageName } from '@shared/languages';
@@ -23,7 +23,7 @@ import { greetingFor, homeText } from '@/i18n/home';
 import { MenuButton } from '@/nav/MenuButton';
 import { useToast } from '@/ui/Toast';
 import { RequestCard } from '@/talk/RequestCard';
-import { Found, Searching, UserBubble } from '@/talk/Research';
+import { Found, Searching } from '@/talk/Research';
 import { Review } from '@/talk/Review';
 import { color, type } from '@/theme/tokens';
 import { Chip, RoundButton } from '@/ui/Button';
@@ -242,6 +242,8 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
     const question = asked || said.slice(lastStart).trim();
     const before = asked ? said.slice(0, said.lastIndexOf(asked) >= 0 ? said.lastIndexOf(asked) : said.length).trim() : said.slice(0, lastStart).trim();
     const heard = lastUser?.partial ? lastUser.text : '';
+    // What they just said, until the assistant starts answering it.
+    const sent = lastUser && !lastUser.partial && intake.lines.lastIndexOf(lastUser) > (lastAssistant ? intake.lines.lastIndexOf(lastAssistant) : -1) ? lastUser : null;
     const showRequest = Boolean(intake.draft.counterpartName || intake.draft.task);
     return (
       <Screen top={header} bottom={controls} padding={0}>
@@ -269,17 +271,32 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
               <Animated.View entering={FadeIn} style={s.heard}>
                 <Text style={type.callout}>{heard}</Text>
               </Animated.View>
+            ) : sent ? (
+              <SentLine key={sent.id} text={sent.text} />
             ) : null}
             {!speaking && intake.choices?.choices.map((c) => <Chip key={c} title={c} onPress={() => void intake.choose(c)} />)}
           </View>
           {intake.ready && !reviewing ? <Chip title="Review the call" variant="blue" onPress={() => setReviewing(true)} /> : null}
           {intake.error ? <Text style={[type.small, { color: color.redText }]}>{intake.error}</Text> : null}
-          {lastUser && !lastUser.partial && !question ? <UserBubble text={lastUser.text} /> : null}
         </ScrollView>
         {showRequest ? <RequestCard draft={intake.draft} need={intake.choices?.topic} /> : null}
       </Screen>
     );
   }
+}
+
+/** What the user just said: shown as heard, then fading back to show it's been sent. */
+function SentLine({ text }: { text: string }) {
+  const sent = useSharedValue(0);
+  useEffect(() => {
+    sent.value = withDelay(450, withTiming(1, { duration: 900, easing: Easing.out(Easing.cubic) }));
+  }, [sent]);
+  const style = useAnimatedStyle(() => ({ opacity: 1 - 0.6 * sent.value, transform: [{ translateY: -6 * sent.value }] }));
+  return (
+    <Animated.View exiting={FadeOut.duration(250)} style={[s.heard, style]}>
+      <Text style={type.callout}>{text}</Text>
+    </Animated.View>
+  );
 }
 
 const EDGE_HINT_KEY = 'callbridge.edgeHint.v1';

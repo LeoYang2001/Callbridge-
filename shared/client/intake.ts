@@ -126,13 +126,14 @@ export function createIntakeConversation(deps: {
   const { conn, ctx, handlers, send } = deps;
   /**
    * Lookups in flight. The assistant says "let me check" in the same turn that starts one; that
-   * sentence finishing must not end the "looking it up" screen while the search still runs.
+   * sentence (starting or finishing) must not interrupt the "looking it up" screen while the
+   * search still runs.
    */
   let searching = 0;
   const h: IntakeHandlers = {
     ...handlers,
     onStatus: (status, detail) =>
-      handlers.onStatus(searching > 0 && (status === 'listening' || status === 'yourTurn' || status === 'thinking') ? 'searching' : status, detail),
+      handlers.onStatus(searching > 0 && (status === 'listening' || status === 'yourTurn' || status === 'thinking' || status === 'speaking') ? 'searching' : status, detail),
   };
   let draft: IntakeDraft = { ...deps.initialDraft };
   const heard = new Map<string, string>();
