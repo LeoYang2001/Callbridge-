@@ -1,7 +1,7 @@
 import { BlurMask, Canvas, DiffRect, Group, LinearGradient, Path, rect, rrect, Skia, SweepGradient, vec } from '@shopify/react-native-skia';
 import { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, useWindowDimensions } from 'react-native';
-import { Easing, useDerivedValue, useReducedMotion, useSharedValue, withRepeat, withSequence, withTiming, type SharedValue } from 'react-native-reanimated';
+import { Easing, useDerivedValue, useReducedMotion, useSharedValue, withRepeat, withTiming, type SharedValue } from 'react-native-reanimated';
 import { radius } from '@/theme/tokens';
 import { GLOW, type Band, type GlowMode, type GlowSpec, type Trace } from './modes';
 
@@ -48,21 +48,7 @@ function GlowLayer({ spec, visible, width, height, holdFraction }: { spec: GlowS
     if (still) return;
     if (spec.rotate) spin.value = withRepeat(withTiming(Math.PI * 2, { duration: spec.rotate * 1000, easing: Easing.linear }), -1, false);
     if (spec.breathe) pulse.value = withRepeat(withTiming(1, { duration: (spec.breathe * 1000) / 2, easing: Easing.inOut(Easing.ease) }), -1, true);
-    if (spec.heartbeat) {
-      // Lub-dub, then a rest: a strong beat, a dip, a softer beat, and a long fade.
-      const ms = spec.heartbeat * 1000;
-      pulse.value = withRepeat(
-        withSequence(
-          withTiming(1, { duration: ms * 0.13, easing: Easing.out(Easing.quad) }),
-          withTiming(0.35, { duration: ms * 0.14, easing: Easing.in(Easing.quad) }),
-          withTiming(0.85, { duration: ms * 0.12, easing: Easing.out(Easing.quad) }),
-          withTiming(0, { duration: ms * 0.61, easing: Easing.inOut(Easing.ease) }),
-        ),
-        -1,
-        false,
-      );
-    }
-  }, [still, spec.rotate, spec.breathe, spec.heartbeat, spin, pulse]);
+  }, [still, spec.rotate, spec.breathe, spin, pulse]);
 
   // The countdown shrinks smoothly between the once-a-second updates.
   useEffect(() => {
@@ -91,7 +77,7 @@ function BandRing({ band, width, height, spin, pulse, still }: { band: Band; wid
   const base = band.opacity ?? 1;
   const opacity = useDerivedValue(() => {
     if (!band.pulse || still) return base;
-    const low = band.pulse === 'ring' ? 0.12 : band.pulse === 'beat' ? 0.2 : 0.6;
+    const low = band.pulse === 'ring' ? 0.12 : 0.6;
     return base * (low + (1 - low) * pulse.value);
   });
   const transform = useDerivedValue(() => [{ rotate: spin.value }]);
