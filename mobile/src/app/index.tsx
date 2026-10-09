@@ -89,7 +89,7 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
           : 'asks';
 
   const glow: GlowMode =
-    view === 'home' ? 'idle' : view === 'listening' || intake.holding ? 'listen' : intake.status === 'searching' ? 'think' : view === 'review' ? 'ready' : intake.status === 'speaking' ? 'speak' : 'idle';
+    view === 'home' ? 'idle' : view === 'listening' || intake.holding ? 'listen' : intake.status === 'searching' ? 'search' : view === 'review' ? 'ready' : intake.status === 'speaking' ? 'speak' : 'idle';
   useGlow(glow);
 
   const cancel = () => {

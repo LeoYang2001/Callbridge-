@@ -135,7 +135,7 @@ const DONE: CallRecord = {
 
 const VIEWS = ['home', 'contact', 'asks', 'searching', 'found', 'review', 'ringing', 'live', 'hold', 'result', 'no answer', 'book', 'me', 'notif'] as const;
 type V = (typeof VIEWS)[number];
-const GLOW: Record<V, GlowMode> = { home: 'idle', asks: 'idle', searching: 'think', found: 'idle', review: 'ready', ringing: 'ring', live: 'hair', hold: 'hold', result: 'done', 'no answer': 'fail', book: 'none', me: 'none', notif: 'none', contact: 'none' };
+const GLOW: Record<V, GlowMode> = { home: 'idle', asks: 'idle', searching: 'search', found: 'idle', review: 'ready', ringing: 'ring', live: 'hair', hold: 'hold', result: 'done', 'no answer': 'fail', book: 'none', me: 'none', notif: 'none', contact: 'none' };
 
 export default function Preview() {
   const params = useLocalSearchParams<{ v?: string }>();

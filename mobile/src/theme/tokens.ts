@@ -105,4 +105,6 @@ export const glowPalette = {
   /** Hold is amber (decision); the prototype used violet here. */
   hold: ['#fff3d1', '#f3c45c', '#d48a00', '#855600'],
   fail: ['#fff3d1', '#f3c45c', '#d48a00', '#855600'],
+  /** Looking something up: magenta into violet, its own color so it reads as "working on it". */
+  search: ['#ffe0f1', '#ff5fb2', '#c13cff', '#5a1a8a'],
 } as const;

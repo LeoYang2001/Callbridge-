@@ -7,7 +7,7 @@ import { glowPalette as P } from '@/theme/tokens';
  * waiting on you or didn't work); tempo = urgency. Specs: mobile/design/README.md.
  */
 
-export type GlowMode = 'none' | 'idle' | 'listen' | 'speak' | 'think' | 'ready' | 'ring' | 'hair' | 'msg' | 'hold' | 'done' | 'fail';
+export type GlowMode = 'none' | 'idle' | 'listen' | 'speak' | 'think' | 'search' | 'ready' | 'ring' | 'hair' | 'msg' | 'hold' | 'done' | 'fail';
 
 /** One ring around the screen edge. */
 export interface Band {
@@ -22,8 +22,8 @@ export interface Band {
   fill?: string;
   /** ...or a vertical gradient: [colors, positions], bottom to top. */
   rise?: { colors: string[]; positions: number[] };
-  /** Opacity pulse: 'breathe' 0.6↔1, 'ring' 0.12↔1. */
-  pulse?: 'breathe' | 'ring';
+  /** Opacity pulse: 'breathe' 0.6↔1, 'ring' 0.12↔1, 'beat' 0.2↔1 on the heartbeat. */
+  pulse?: 'breathe' | 'ring' | 'beat';
 }
 
 /** A stroke traced around the screen whose length is the hold countdown. */
@@ -41,12 +41,15 @@ export interface GlowSpec {
   rotate?: number;
   /** Seconds per opacity pulse. */
   breathe?: number;
+  /** Seconds per heartbeat (two quick beats, then a rest) instead of a smooth breath. */
+  heartbeat?: number;
 }
 
 const aura = [P.assist[1], P.assist[2], P.think[1], P.call[1], P.assist[1]];
 const hairline = [P.call[1], P.call[2], P.assist[1], P.call[1]];
 const ready = [P.assist[1], P.assist[2], P.think[1], P.assist[1]];
 const done = [P.call[0], P.call[1], P.call[2], P.assist[1], P.call[1]];
+const search = [P.search[1], P.search[2], P.think[1], P.search[1]];
 
 const hair: Band[] = [
   { width: 14, blur: 14, colors: hairline, opacity: 0.7 },
@@ -62,6 +65,15 @@ export const GLOW: Record<Exclude<GlowMode, 'none'>, GlowSpec> = {
   },
   speak: { rotate: 5, breathe: 1.3, bands: [{ width: 44, blur: 30, colors: aura, pulse: 'breathe' }, { width: 12, blur: 8, colors: aura }, { width: 3, colors: aura }] },
   think: { breathe: 2.2, bands: [{ width: 30, blur: 26, fill: P.think[1], opacity: 0.55, pulse: 'breathe' }, { width: 2.5, fill: P.think[1], opacity: 0.7, pulse: 'breathe' }] },
+  search: {
+    rotate: 9,
+    heartbeat: 1.05,
+    bands: [
+      { width: 46, blur: 32, colors: search, pulse: 'beat' },
+      { width: 12, blur: 8, colors: search, opacity: 0.85, pulse: 'beat' },
+      { width: 3, colors: search, opacity: 0.9 },
+    ],
+  },
   ready: { rotate: 22, bands: [{ width: 14, blur: 14, colors: ready, opacity: 0.6 }, { width: 3, colors: ready }] },
   ring: { rotate: 16, breathe: 1.5, bands: [{ width: 20, blur: 16, colors: hairline, pulse: 'ring' }, { width: 3, colors: hairline, pulse: 'ring' }] },
   hair: { rotate: 16, bands: hair },

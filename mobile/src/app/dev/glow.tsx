@@ -8,7 +8,7 @@ import { type } from '@/theme/tokens';
 import { Chip, PillButton } from '@/ui/Button';
 import { Screen } from '@/ui/Screen';
 
-const MODES: GlowMode[] = ['idle', 'listen', 'speak', 'think', 'ready', 'ring', 'hair', 'msg', 'hold', 'done', 'fail', 'none'];
+const MODES: GlowMode[] = ['idle', 'listen', 'speak', 'think', 'search', 'ready', 'ring', 'hair', 'msg', 'hold', 'done', 'fail', 'none'];
 
 /** Development only: every edge-glow mode, to compare with the prototype. */
 export default function GlowGallery() {
