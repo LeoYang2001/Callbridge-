@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Keyboard, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import Animated, { Easing, FadeIn, FadeInUp, SlideInDown, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { sentenceStarts } from '@shared/captions';
 import { nativeLanguageName } from '@shared/languages';
 import type { PlaceResult } from '@shared/types';
 import { useActiveCall } from '@/call/ActiveCall';
@@ -233,7 +234,13 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
     // The assistant asks; the user answers by holding the button or tapping a chip.
     const speaking = intake.status === 'speaking';
     const thinking = intake.status === 'thinking' || intake.status === 'connecting';
-    const question = intake.choices?.question || lastAssistant?.text || '';
+    // Captions: the sentence being said (or the question asked) large, what came before it in the
+    // same turn small above it, so a long answer never fills the screen.
+    const said = lastAssistant?.text ?? '';
+    const lastStart = sentenceStarts(said).at(-1) ?? 0;
+    const asked = !speaking && intake.choices?.question ? intake.choices.question : '';
+    const question = asked || said.slice(lastStart).trim();
+    const before = asked ? said.slice(0, said.lastIndexOf(asked) >= 0 ? said.lastIndexOf(asked) : said.length).trim() : said.slice(0, lastStart).trim();
     const heard = lastUser?.partial ? lastUser.text : '';
     const showRequest = Boolean(intake.draft.counterpartName || intake.draft.task);
     return (
@@ -245,8 +252,13 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
               {speaking ? 'Speaking' : thinking ? 'Thinking…' : 'Your turn · hold to answer'}
             </Text>
           </View>
+          {before ? (
+            <Text style={[type.sub, s.before]} numberOfLines={3} ellipsizeMode="head">
+              {before}
+            </Text>
+          ) : null}
           {question ? (
-            <Animated.Text key={question.slice(0, 24)} entering={FadeInUp.duration(350)} style={type.question}>
+            <Animated.Text key={question.slice(0, 24)} entering={FadeInUp.duration(350)} style={[type.question, question.length > 90 && s.longQuestion]}>
               {question}
             </Animated.Text>
           ) : null}
@@ -455,6 +467,8 @@ const s = StyleSheet.create({
   sheet: { backgroundColor: color.white, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 16, paddingTop: 12, shadowColor: '#000', shadowOpacity: 0.12, shadowRadius: 18 },
   typeRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 10, minHeight: 50, borderRadius: 25, backgroundColor: color.surface, paddingHorizontal: 16, paddingVertical: 10 },
   dock: { position: 'absolute', left: 0, right: 0, top: 0, height: 120, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 28 },
+  before: { opacity: 0.8 },
+  longQuestion: { fontSize: 24, lineHeight: 32 },
   asks: { flexGrow: 1, justifyContent: 'center', gap: 14, paddingHorizontal: 34, paddingVertical: 16 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 },
   heard: { borderWidth: 1.5, borderStyle: 'dashed', borderColor: color.blue, borderRadius: 20, paddingHorizontal: 14, paddingVertical: 9, backgroundColor: 'rgba(255,255,255,0.9)' },
