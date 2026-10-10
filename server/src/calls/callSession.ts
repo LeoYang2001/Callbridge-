@@ -78,6 +78,13 @@ const BARGE_IN_POLL_MS = 50;
 const GOODBYE_NUDGE =
   "The call is ending now. Say a brief, warm goodbye in the call language (a thank-you and a goodbye, using their name if you know it). Don't ask anything or add new information; the call hangs up right after.";
 
+/** One or two words (or a few CJK characters): what a burst of noise or an echo comes out as. */
+export function isFewWords(text: string): boolean {
+  const cjk = (text.match(/[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]/g) ?? []).length;
+  if (cjk > 0) return cjk <= 4;
+  return text.split(/\s+/).filter((w) => /\p{L}/u.test(w)).length <= 2;
+}
+
 /** The line already says goodbye (in the languages calls are usually in). */
 export function saidGoodbye(text: string): boolean {
   return /\b(good-?bye|bye|take care|have a (good|great|nice|wonderful|lovely)\b)|再见|拜拜|再會|byebye|adi[oó]s|hasta (luego|pronto)|t[aạ]m bi[eệ]t|안녕히|さようなら|失礼します|au revoir|tchau|at[eé] logo|auf wiedersehen|tsch[uü]ss|arrivederci|до свидания|до побачення|paalam|مع السلامة|अलविदा/i.test(text);
@@ -441,7 +448,11 @@ export class CallSession {
     agent.on('transcript', (itemId, speaker, text) => {
       const clean = text.trim();
       const turn = speaker === 'counterpart' ? this.turnByItem.get(itemId) : undefined;
-      if (turn === 'noise') {
+      if (turn === 'noise' && !isFewWords(clean)) {
+        // A sentence measured short is a quiet line, not noise: treat it as a turn heard over us.
+        this.turnByItem.set(itemId, 'held');
+      }
+      if (this.turnByItem.get(itemId) === 'noise') {
         // Whatever the transcriber made of it, nobody said it: out of the record and the model's memory.
         this.turnByItem.delete(itemId);
         this.agent?.forget?.(itemId);
@@ -449,12 +460,13 @@ export class CallSession {
         if (clean) this.log('turn.noise_dropped', clean.slice(0, 80));
         return;
       }
-      if (turn) {
+      const heldOrQuiet = this.turnByItem.get(itemId);
+      if (heldOrQuiet) {
         this.turnByItem.delete(itemId);
-        if (turn === 'quiet' && hasWords(clean)) {
+        if (heldOrQuiet === 'quiet' && hasWords(clean)) {
           if (this.aiSpeaking()) this.heldText = clean;
           else this.respond();
-        } else if (turn === 'held' && hasWords(clean) && !isBackchannel(clean)) {
+        } else if (heldOrQuiet === 'held' && hasWords(clean) && !isBackchannel(clean)) {
           this.heldText = clean;
           this.answerHeldTurn();
         }

@@ -562,6 +562,21 @@ describe('CallSession (simulated dentist call)', () => {
       expect(c.get().transcript.some((t) => t.text === 'Good')).toBe(false);
     });
 
+    it('keeps a whole sentence even when the line measured it short (a quiet line, not noise)', async () => {
+      const c = await connected();
+      c.agent.emit('speechStarted');
+      c.advance(11); // 220 ms of sound
+      c.advance(20, SILENT);
+      c.agent.emit('speechStopped');
+      c.agent.emit('utteranceStarted', 'c2', 'counterpart');
+      c.agent.emit('transcript', 'c2', 'counterpart', "I don't like you.");
+      expect(c.agent.forgotten).toEqual([]);
+      expect(c.get().transcript.some((t) => t.text === "I don't like you.")).toBe(true);
+      c.agent.emit('responseDone');
+      c.transport.emit('mark', 'a1');
+      expect(c.agent.responses).toBe(c.responses + 1); // answered once the assistant finished
+    });
+
     it('answers a greeting said over the assistant, but not "はい" or "嗯"', async () => {
       for (const [said, answered] of [['こんにちは', true], ['はい', false], ['嗯', false], ['Okay, sure.', false], ['Hello?', true]] as const) {
         const c = await connected();

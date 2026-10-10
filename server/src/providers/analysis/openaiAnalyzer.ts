@@ -93,7 +93,11 @@ export class OpenAIAnalyzer implements CallAnalyzer {
     // The user's own messages from the app (speaker "system") are context the AI acted on.
     const transcript = input.transcript
       .filter((t) => t.text.trim())
-      .map((t) => `${t.speaker === 'assistant' ? 'AI ASSISTANT' : t.speaker === 'system' ? 'USER (via app, not heard by the other party)' : 'OTHER PARTY'}: ${t.text}${t.interrupted ? ' [interrupted]' : ''}`)
+      .map((t) =>
+        t.event
+          ? `[CALL EVENT] ${t.text}`
+          : `${t.speaker === 'assistant' ? 'AI ASSISTANT' : t.speaker === 'system' ? 'USER (via app, not heard by the other party)' : 'OTHER PARTY'}: ${t.text}${t.interrupted ? ' [interrupted]' : ''}`,
+      )
       .join('\n');
 
     const response = await this.client.responses.create({
@@ -102,7 +106,7 @@ export class OpenAIAnalyzer implements CallAnalyzer {
         {
           role: 'system',
           content:
-            `You audit phone calls made by an AI assistant on behalf of a user. Extract facts strictly from the transcript and the policy ledger. Do not infer details that were not said. Dates must be YYYY-MM-DD and times 24h HH:MM; resolve relative dates using the call date provided. Write summaryInUserLanguage, headlineInUserLanguage and nextStepsInUserLanguage in ${input.request.user.preferredLanguage}, and only in ${input.request.user.preferredLanguage}, whatever language the call was in; in them, write times the way people say them in that language (e.g. "7 PM" in English).`,
+            `You audit phone calls made by an AI assistant on behalf of a user. Extract facts strictly from the transcript and the policy ledger. Do not infer details that were not said. Dates must be YYYY-MM-DD and times 24h HH:MM; resolve relative dates using the call date provided. Write summaryInUserLanguage, headlineInUserLanguage and nextStepsInUserLanguage in ${input.request.user.preferredLanguage}, and only in ${input.request.user.preferredLanguage}, whatever language the call was in; in them, write times the way people say them in that language (e.g. "7 PM" in English). [CALL EVENT] lines mark when the user joined the call and talked with the other party themselves (their own words aren't transcribed) or handed it back: then the headline and summary say the user took over and what came of it from the other party's side, rather than counting the assistant's unfinished task as a failure.`,
         },
         {
           role: 'user',
