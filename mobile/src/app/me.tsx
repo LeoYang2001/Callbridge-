@@ -34,7 +34,7 @@ export default function Me() {
   const [error, setError] = useState<string | null>(null);
   const [langQuery, setLangQuery] = useState('');
   const save = async (patch: Record<string, unknown>) => setError(await update(patch));
-  const voice = prefs.voice ?? profile.voice ?? 'marin';
+  const voice = profile.voice === 'cedar' ? 'cedar' : 'marin';
   const toggle = (k: typeof open) => setOpen(open === k ? null : k);
   const { conn } = useSignedIn();
 
@@ -49,7 +49,6 @@ export default function Me() {
   }, [open]);
   const pickVoice = (v: string) => {
     if (v !== voice) {
-      prefs.setVoice(v as 'marin' | 'cedar');
       void save({ voice: v });
     }
     // Repeated taps while it loads don't queue more samples.

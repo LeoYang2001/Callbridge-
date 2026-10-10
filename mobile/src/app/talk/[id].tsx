@@ -45,7 +45,7 @@ export default function TalkItOver() {
 function Conversation({ call, draft }: { call: CallRecord; draft: IntakeDraft }) {
   const { me } = useSignedIn();
   const prefs = usePreferences();
-  const context = useIntakeContext(prefs.voice);
+  const context = useIntakeContext();
   const followUp = useRef({ callId: call.id, draft }).current;
   const intake = useIntake({ context, followUp, pushToTalk: true, keepLines: 40 });
   const { buildRequest, start, submitting, error } = useStartCall();

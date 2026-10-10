@@ -58,6 +58,8 @@ export interface TaskReview {
 
 /** Voices the OpenAI Realtime API offers. `marin` and `cedar` are its most natural ones. */
 export const REALTIME_VOICES = ['marin', 'cedar', 'alloy', 'ash', 'ballad', 'coral', 'echo', 'sage', 'shimmer', 'verse'] as const;
+/** The voices the app offers: OpenAI's most natural-sounding ones. */
+export const NATURAL_VOICES = ['marin', 'cedar'] as const;
 export type RealtimeVoice = (typeof REALTIME_VOICES)[number];
 
 export interface CallRequest {

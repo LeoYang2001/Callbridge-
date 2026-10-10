@@ -2,7 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { requestToDraft } from '@shared/intake';
 import { displayPhone } from '@shared/phone';
-import { REALTIME_VOICES, type IntakeDraft } from '@shared/types';
+import type { IntakeDraft } from '@shared/types';
 import { nextMorning } from '@shared/client/errands';
 import { useAddErrand } from '@/hooks/useErrands';
 import { useIntake } from '@/hooks/useIntake';
@@ -57,8 +57,7 @@ export default function IntakeRoute() {
 }
 
 function Intake({ mode, followUp, seed }: { mode: 'call' | 'profile'; followUp?: { callId: string; draft: IntakeDraft; headline?: string }; seed?: { draft: IntakeDraft; text: string } }) {
-  const prefs = usePreferences();
-  const context = useIntakeContext(prefs.voice);
+  const context = useIntakeContext();
   const intake = useIntake({ context, mode, followUp, seed });
   const { finishOnboarding } = useProfile();
   const [text, setText] = useState('');
@@ -79,13 +78,6 @@ function Intake({ mode, followUp, seed }: { mode: 'call' | 'profile'; followUp?:
             : `Tell me in ${context.userLanguage}: who to call, what you need, and when you're free.`}
       </Body>
       {followUp?.headline ? <Card><Body>{followUp.headline}</Body></Card> : null}
-
-      {!intake.live && (
-        <>
-          <Label>Voice (the assistant and the call)</Label>
-          <Choice options={REALTIME_VOICES} value={context.voice ?? 'marin'} onChange={prefs.setVoice} />
-        </>
-      )}
 
       <Button
         title={!intake.live ? (intake.hasDraft ? 'Tap to keep talking' : 'Tap to talk') : intake.micOn ? `Mic on · ${STATUS_TEXT[intake.status!]}` : 'Mic off'}
@@ -142,7 +134,7 @@ function Intake({ mode, followUp, seed }: { mode: 'call' | 'profile'; followUp?:
 /** What will be called and said, the server's ruling, stay-in-the-loop or hand off, and Start. */
 function Review({ draft, check, canReview, onStarted }: { draft: IntakeDraft; check: ReturnType<typeof useIntake>['check']; canReview: boolean; onStarted: () => void }) {
   const prefs = usePreferences();
-  const context = useIntakeContext(prefs.voice);
+  const context = useIntakeContext();
   const { buildRequest, start, submitting, error } = useStartCall();
   const queue = useAddErrand();
   const [when, setWhen] = useState<(typeof WHEN)[number]>('now');

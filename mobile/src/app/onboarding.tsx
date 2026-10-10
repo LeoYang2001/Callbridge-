@@ -88,7 +88,7 @@ function LanguageStep({ current, error, onPick }: { current: string; error: stri
 
 function Interview({ onBackToLanguage }: { onBackToLanguage: () => void }) {
   const { profile, finishOnboarding } = useProfile();
-  const context = useIntakeContext(null);
+  const context = useIntakeContext();
   const intake = useIntake({ context, mode: 'profile', pushToTalk: true });
   const english = profile.preferredLanguage === 'English';
   useGlow(intake.holding ? 'listen' : intake.status === 'speaking' ? 'speak' : 'idle');

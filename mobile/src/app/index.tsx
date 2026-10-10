@@ -48,7 +48,7 @@ type View_ = 'home' | 'listening' | 'asks' | 'review';
 function Conversation({ contactId, onReset }: { contactId?: string; onReset: () => void }) {
   const { me } = useSignedIn();
   const prefs = usePreferences();
-  const context = useIntakeContext(prefs.voice);
+  const context = useIntakeContext();
   const { callSeed } = usePhoneBook();
   // From the phone book: who to call is filled in and said first, so the assistant only asks what for.
   const [seed] = useState(() => {
