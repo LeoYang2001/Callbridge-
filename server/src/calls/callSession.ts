@@ -74,6 +74,15 @@ const BARGE_IN_WINDOW_MS = 700;
 /** How long after the model notices speech we keep checking whether it's a real interruption. */
 const BARGE_IN_WATCH_MS = 2500;
 const BARGE_IN_POLL_MS = 50;
+/** The assistant ended the call without a goodbye: it gets one more turn for it. */
+const GOODBYE_NUDGE =
+  "The call is ending now. Say a brief, warm goodbye in the call language (a thank-you and a goodbye, using their name if you know it). Don't ask anything or add new information; the call hangs up right after.";
+
+/** The line already says goodbye (in the languages calls are usually in). */
+export function saidGoodbye(text: string): boolean {
+  return /\b(good-?bye|bye|take care|have a (good|great|nice|wonderful|lovely)\b)|再见|拜拜|再會|byebye|adi[oó]s|hasta (luego|pronto)|t[aạ]m bi[eệ]t|안녕히|さようなら|失礼します|au revoir|tchau|at[eé] logo|auf wiedersehen|tsch[uü]ss|arrivederci|до свидания|до побачення|paalam|مع السلامة|अलविदा/i.test(text);
+}
+
 /** Said while the user's phone rings to join the call. */
 const TAKEOVER_NOTICE =
   'The user is joining this call themselves and their phone is ringing now. Tell the other party in one short sentence, in the call language, that they are joining in a moment, then stop talking and wait. You will hear the conversation but must not speak until told the call is handed back to you.';
@@ -164,6 +173,8 @@ export class CallSession {
   private hangupRequested = false;
   private lastTelephonyState: TelephonyCallState | null = null;
   private awaitingResponseDone = false;
+  /** Responses still to finish before hanging up (the one that ended the call, and a goodbye). */
+  private responsesBeforeHangup = 0;
   private hungUp = false;
   private finalizing = false;
   private readonly timers = new Set<NodeJS.Timeout>();
@@ -459,7 +470,8 @@ export class CallSession {
     agent.on('usage', (u) => this.update((r) => (r.metrics.usage = addUsage(r.metrics.usage, u))));
 
     agent.on('responseDone', () => {
-      this.awaitingResponseDone = false;
+      if (this.responsesBeforeHangup > 0) this.responsesBeforeHangup--;
+      this.awaitingResponseDone = this.responsesBeforeHangup > 0;
       this.responding = false;
       this.maybeHangup();
       this.answerHeldTurn();
@@ -819,10 +831,21 @@ export class CallSession {
     if (exec.askUser) this.askUser(exec.askUser);
 
     if (exec.endCall) {
-      this.agent?.sendToolResult(callId, exec.output, false);
+      // No hanging up on someone without a goodbye: if the last thing said wasn't one, the
+      // assistant gets one more short turn for it, and the call ends once that has played.
+      // (Not for voicemail, a wrong number, or when they already hung up.)
+      const lastSaid = [...this.record.transcript].reverse().find((t) => t.speaker === 'assistant' && t.text)?.text ?? '';
+      const needsGoodbye = !['voicemail', 'wrong_number', 'counterpart_hung_up'].includes(exec.endCall.outcome) && !saidGoodbye(lastSaid);
+      if (needsGoodbye) {
+        this.agent?.sendToolResult(callId, { ...(exec.output as object), instructions: GOODBYE_NUDGE }, true);
+        this.log('ai.goodbye_added');
+      } else {
+        this.agent?.sendToolResult(callId, exec.output, false);
+      }
       this.update((r) => (r.endReason = exec.endCall!.outcome));
       this.log('ai.end_call', `${exec.endCall.outcome}: ${exec.endCall.reason}`);
       this.hangupRequested = true;
+      this.responsesBeforeHangup = needsGoodbye ? 2 : 1;
       this.awaitingResponseDone = true;
       // Fallback in case playback marks never arrive.
       this.timer(12_000, () => this.hangup());

@@ -55,6 +55,8 @@ Always start with these two, one at a time:
    For a person, save their name as counterpart_name and who they are to ${ctx.userName} as counterpart_relationship (ask their name if you only know the relationship).
 2. Why: what the call should achieve.
 
+Times and dates: in the request, write them exactly as ${ctx.userName} said them ("4 PM", "tomorrow afternoon"). Never convert to 24-hour time or rephrase them; "4 PM" is not "14:00". Read them back as they said them.
+
 Never ask for something they already told you, even in passing ("call Tabito and tell him…" already gives who, why, and the message); confirm it in your read-back instead.
 
 Then ask a short questionnaire tailored to that kind of call: only what the call assistant will actually need, one question at a time, at most about five. For example:

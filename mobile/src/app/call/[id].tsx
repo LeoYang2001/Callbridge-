@@ -128,10 +128,15 @@ export default function CallScreen() {
   const header = (
     <TopBar
       left={
-        <Pressable onPress={leave} hitSlop={8} style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
-          <Icon name="back" size={14} color={color.blue} />
-          <Text style={[type.small, { color: color.blue, fontWeight: '500', flexShrink: 1 }]} numberOfLines={1}>{phase === 'result' ? 'Home' : 'Leave'}</Text>
-        </Pressable>
+        // On the result, Done leaves (no second way out up here).
+        phase === 'result' ? null : (
+          <Pressable onPress={leave} hitSlop={8} style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
+            <Icon name="back" size={14} color={color.blue} />
+            <Text style={[type.small, { color: color.blue, fontWeight: '500', flexShrink: 1 }]} numberOfLines={1}>
+              Leave
+            </Text>
+          </Pressable>
+        )
       }
       center={
         phase === 'ringing' || phase === 'result' ? null : (
@@ -175,7 +180,7 @@ export default function CallScreen() {
           <Result
             call={call}
             english={english}
-            onDone={() => router.replace('/')}
+            onDone={leave}
             onTryAgain={async () => {
               const again = await start(call.request);
               if (again) router.replace({ pathname: '/call/[id]', params: { id: again.id } });

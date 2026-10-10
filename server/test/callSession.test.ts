@@ -213,6 +213,42 @@ describe('recording', () => {
   });
 });
 
+describe('ending the call', () => {
+  it("adds a goodbye when the assistant hangs up without one, and waits for it to play", async () => {
+    const { agent, telephony, manager } = setup();
+    const created = manager.startCall(dentistRequest());
+    await waitFor(() => telephony.placed.length === 1);
+    manager.handleTelephonyState(created.id, 'answered');
+    const line = new FakeTransport();
+    manager.attachMedia(created.id, (manager as any).sessions.get(created.id).streamToken, line);
+    agent.emit('utteranceStarted', 'a1', 'assistant');
+    agent.emit('audio', 'a1', 'AAAA');
+    agent.emit('transcript', 'a1', 'assistant', "Got it, I'll pass that along and then we can wrap up.");
+    agent.emit('toolCall', 't1', 'end_call', '{"outcome":"objective_completed","reason":"Done"}');
+    // Asked for a goodbye turn instead of hanging up on them.
+    expect(agent.toolResults.at(-1)).toMatchObject({ callId: 't1', respond: true, output: { instructions: expect.stringMatching(/goodbye/) } });
+    agent.emit('responseDone'); // the turn that ended the call
+    line.emit('mark', 'a1');
+    await new Promise((r) => setTimeout(r, 600));
+    expect(telephony.hangups).toEqual([]);
+    // The goodbye plays, then the call ends.
+    agent.emit('utteranceStarted', 'a2', 'assistant');
+    agent.emit('audio', 'a2', 'AAAA');
+    agent.emit('transcript', 'a2', 'assistant', 'Thanks, Leo. Talk soon, bye!');
+    agent.emit('responseDone');
+    await new Promise((r) => setTimeout(r, 600));
+    expect(telephony.hangups).toEqual([]); // not played yet
+    line.emit('mark', 'a2');
+    await waitFor(() => telephony.hangups.length === 1);
+  });
+
+  it('recognizes goodbyes in the common call languages', async () => {
+    const { saidGoodbye } = await import('../src/calls/callSession');
+    for (const said of ['Thanks, goodbye!', 'Have a great day.', '好的，谢谢，再见！', 'Gracias, adiós.', 'Cảm ơn, tạm biệt.', 'では、失礼します。']) expect(saidGoodbye(said), said).toBe(true);
+    for (const said of ["Got it, I'll pass that along and then we can wrap up.", 'Is Thursday okay?']) expect(saidGoodbye(said), said).toBe(false);
+  });
+});
+
 describe('take-over', () => {
   it('rings the user in, relays both ways while the assistant is quiet, and hands back with what was said', async () => {
     const { store, agent, telephony, manager } = setup();
@@ -381,7 +417,9 @@ describe('CallSession (simulated dentist call)', () => {
     expect(agent.responses).toBe(before + 1);
 
     // Goodbye, then end_call. Hangup waits for the response to finish and audio to play out.
+    agent.emit('utteranceStarted', 'a3', 'assistant');
     agent.emit('audio', 'a3', 'AAAA');
+    agent.emit('transcript', 'a3', 'assistant', 'Thanks so much, see you Thursday. Goodbye!');
     agent.emit('toolCall', 't4', 'end_call', '{"outcome":"objective_completed","reason":"Booked"}');
     expect(agent.toolResults.at(-1)).toMatchObject({ callId: 't4', respond: false });
     agent.emit('responseDone');
