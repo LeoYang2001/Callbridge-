@@ -301,17 +301,24 @@ describe('take-over', () => {
     const line = new FakeTransport();
     manager.attachMedia(created.id, (manager as any).sessions.get(created.id).streamToken, line);
 
+    // A join cancelled before the app connects is never mentioned to them.
+    const prompts = agent.prompts.length;
+    manager.startAppJoin(created.id);
+    manager.handBack(created.id);
+    expect(agent.prompts.length).toBe(prompts);
+
     const started = manager.startAppJoin(created.id);
     expect('code' in started).toBe(true);
     const code = (started as { code: string }).code;
     expect(store.get(created.id)!.takeover?.state).toBe('ringing');
-    expect(agent.prompts.at(-1)).toMatch(/joining this call themselves/);
+    expect(agent.prompts.length).toBe(prompts); // not announced on tap
     expect(telephony.userLegs).toEqual([]); // no phone rung
 
     // The webhook only connects the app's leg with the right code, and only once.
     expect(manager.appJoinStream(created.id, 'x'.repeat(code.length), 'CAAPP')).toBeNull();
     const token = manager.appJoinStream(created.id, code, 'CAAPP');
     expect(token).toBeTruthy();
+    expect(agent.prompts.at(-1)).toMatch(/joining this call themselves/); // announced once it's real
     expect(manager.appJoinStream(created.id, code, 'CAAPP')).toBeNull();
 
     const app = new FakeTransport();

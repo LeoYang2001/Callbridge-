@@ -67,7 +67,10 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
   const [reviewing, setReviewing] = useState(true);
   // Who, the number and what for are enough to review, whether or not the assistant finished
   // (it can say "review it on screen" and forget to put the review there).
-  const canReview = Boolean(intake.draft.counterpartName && intake.draft.phoneNumber && (intake.draft.task || intake.draft.taskInUserLanguage));
+  const hasRequest = Boolean(intake.draft.counterpartName && intake.draft.phoneNumber && (intake.draft.task || intake.draft.taskInUserLanguage));
+  // Offered only once the assistant has finished its turn without opening the review: while it's
+  // still talking it's about to (and a button that appears and vanishes is worse than none).
+  const canReview = hasRequest && !intake.ready && intake.status === 'yourTurn';
   const [openedReview, setOpenedReview] = useState(false);
   // Which of the user's lines was last when these results came in: the cards stay up until they
   // answer after them (the assistant may save its top suggestion before they've chosen).
@@ -88,7 +91,7 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
       ? // The first turn, from Home: nothing to answer yet, so the words get the screen. Later
         // turns stay on the conversation, so the question and cards don't vanish mid-answer.
         'listening'
-      : (intake.ready && reviewing) || (openedReview && canReview)
+      : (intake.ready && reviewing) || (openedReview && hasRequest)
           ? 'review'
           : 'asks';
 

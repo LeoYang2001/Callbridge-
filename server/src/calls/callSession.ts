@@ -126,6 +126,8 @@ export class CallSession {
   private userTransport: MediaTransport | null = null;
   /** The user has the floor (joining or on the line): the assistant doesn't speak. */
   private paused = false;
+  /** The other party was told the user is joining (so a cancel needs a word to them). */
+  private announcedTakeover = false;
   private readonly policy: PolicyEngine;
   private agent: VoiceAgent | null = null;
   private transport: MediaTransport | null = null;
@@ -899,6 +901,7 @@ export class CallSession {
     this.log('takeover.ringing');
     // Tell them, while the user's phone rings; then the assistant waits (it finishes that sentence).
     this.prompt(TAKEOVER_NOTICE);
+    this.announcedTakeover = true;
     this.paused = true;
     try {
       const { providerCallId } = await this.deps.telephony.placeUserLeg({
@@ -927,8 +930,8 @@ export class CallSession {
     this.appJoinCode = randomBytes(16).toString('hex');
     this.update((r) => (r.takeover = { state: 'ringing', since: Date.now() }));
     this.log('takeover.app_joining');
-    this.prompt(TAKEOVER_NOTICE);
-    this.paused = true;
+    // Nothing is said to them yet: the app usually connects within a second or two, and if it
+    // doesn't, they never hear that someone was going to join (see appJoinStream).
     // If the app never connects, the assistant carries on.
     this.timer(30_000, () => {
       if (this.record.takeover?.state === 'ringing' && this.appJoinCode) this.endTakeover("You didn't connect, so the assistant is carrying on.");
@@ -942,6 +945,10 @@ export class CallSession {
     if (!expected || !this.record.takeover || code.length !== expected.length || !timingSafeEqual(Buffer.from(code), Buffer.from(expected))) return null;
     this.appJoinCode = null;
     if (legSid) this.userLegId = legSid;
+    // The app's leg is really coming: now tell them, and the assistant waits.
+    this.prompt(TAKEOVER_NOTICE);
+    this.announcedTakeover = true;
+    this.paused = true;
     return this.userStreamToken;
   }
 
@@ -987,10 +994,12 @@ export class CallSession {
     const t = this.record.takeover;
     if (!t || this.finalizing) return;
     if (t.state === 'ringing') {
-      // Cancelled before they picked up: nothing happened; carry on.
+      // Cancelled before they picked up: nothing happened. Only if they were told someone was
+      // joining does the assistant say otherwise; either way it carries on.
+      const announced = this.announcedTakeover;
       this.endTakeover(null);
       this.log('takeover.cancelled');
-      this.prompt(`${this.record.request.user.name || 'The user'} isn't joining after all. Say so in a short sentence if you told them they were, and carry on with the task.`);
+      if (announced) this.prompt(`${this.record.request.user.name || 'The user'} isn't joining after all. Say so in a short sentence and carry on with the task.`);
       return;
     }
     const said = this.record.transcript
@@ -1012,6 +1021,7 @@ export class CallSession {
     const leg = this.userLegId;
     this.userLegId = null;
     this.appJoinCode = null;
+    this.announcedTakeover = false;
     this.userTransport?.close();
     this.userTransport = null;
     this.paused = false;

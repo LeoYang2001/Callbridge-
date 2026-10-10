@@ -102,7 +102,7 @@ export class OpenAIAnalyzer implements CallAnalyzer {
         {
           role: 'system',
           content:
-            'You audit phone calls made by an AI assistant on behalf of a user. Extract facts strictly from the transcript and the policy ledger. Do not infer details that were not said. Dates must be YYYY-MM-DD and times 24h HH:MM; resolve relative dates using the call date provided.',
+            `You audit phone calls made by an AI assistant on behalf of a user. Extract facts strictly from the transcript and the policy ledger. Do not infer details that were not said. Dates must be YYYY-MM-DD and times 24h HH:MM; resolve relative dates using the call date provided. Write summaryInUserLanguage, headlineInUserLanguage and nextStepsInUserLanguage in ${input.request.user.preferredLanguage}, and only in ${input.request.user.preferredLanguage}, whatever language the call was in; in them, write times the way people say them in that language (e.g. "7 PM" in English).`,
         },
         {
           role: 'user',
