@@ -1,4 +1,5 @@
 import { displayPhone } from '../../../shared/phone';
+import { writtenIn } from '../../../shared/languages';
 import type { TelephonyProvider } from '../providers/telephony/types';
 import twilio from 'twilio';
 import { readFile } from 'node:fs/promises';
@@ -234,11 +235,14 @@ export function phoneBookMismatch(request: CallRequest, contacts: { name: string
  * The user's settings that shape how a call is placed (set by the server, never by the client):
  * recording (on unless turned off), and their own verified number as caller ID when they've
  * switched that on. A call to their own number keeps CallBridge's (one can't call oneself).
+ * The task summary shown to the user is dropped if it isn't in their language (the screens then
+ * show the English task).
  */
 export function withUserSettings(request: CallRequest, user: { phone: string; profile: UserProfile }): CallRequest {
   const p = user.profile;
   const ownNumber = Boolean(p.callerIdVerifiedAt) && p.useOwnCallerId !== false && request.to !== user.phone;
-  return { ...request, record: p.recordCalls !== false, callerId: ownNumber ? user.phone : undefined };
+  const summary = request.taskInUserLanguage && writtenIn(request.taskInUserLanguage, p.preferredLanguage) ? request.taskInUserLanguage : undefined;
+  return { ...request, taskInUserLanguage: summary, record: p.recordCalls !== false, callerId: ownNumber ? user.phone : undefined };
 }
 
 /**

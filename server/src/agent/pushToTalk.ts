@@ -19,7 +19,7 @@ export const SHOW_CHOICES_TOOL: ToolDefinition = {
         items: { type: 'string' },
         description: "2 to 4 short likely answers in the user's language, a few words each. They're said back to you as the user's answer.",
       },
-      topic: { type: 'string', description: "A 2-6 word label of what you're asking about, in the user's language (e.g. 是否老患者？)." },
+      topic: { type: 'string', description: "A 2-6 word label of what you're asking about, in the user's language (e.g. 'New patient?' in English, 是否老患者？ in Chinese)." },
     },
     required: ['question', 'choices'],
   },

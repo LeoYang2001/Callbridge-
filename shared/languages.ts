@@ -85,12 +85,45 @@ export const APP_LANGUAGES: { native: string; name: string }[] = [
   { native: 'English', name: 'English' },
 ];
 
-/** The native name for a saved language ("Chinese (Mandarin)" → "中文（普通话）"). */
 /** The app languages matching a search, by English name or in their own script. */
 export function searchLanguages(query: string): typeof APP_LANGUAGES {
   const t = query.trim().toLowerCase();
   return t ? APP_LANGUAGES.filter((l) => l.native.toLowerCase().includes(t) || l.name.toLowerCase().includes(t)) : APP_LANGUAGES;
 }
 
+/** The native name for a saved language ("Chinese (Mandarin)" → "中文（普通话）"). */
 export const nativeLanguageName = (name: string) => APP_LANGUAGES.find((l) => l.name === name)?.native ?? name;
 
+
+const SCRIPTS: Record<string, RegExp> = {
+  latin: /[A-Za-zÀ-ɏḀ-ỿ]/g,
+  han: /[㐀-鿿぀-ヿ]/g, // Chinese, and Japanese with its kana
+  hangul: /[가-힯ᄀ-ᇿ]/g,
+  cyrillic: /[Ѐ-ӿ]/g,
+  arabic: /[؀-ۿݐ-ݿ]/g,
+  devanagari: /[ऀ-ॿ]/g,
+  bengali: /[ঀ-৿]/g,
+  ethiopic: /[ሀ-፿]/g,
+  khmer: /[ក-៿]/g,
+  lao: /[຀-໿]/g,
+  thai: /[฀-๿]/g,
+};
+
+const SCRIPT_OF: Record<string, string> = {
+  zh: 'han', ja: 'han', ko: 'hangul', ru: 'cyrillic', uk: 'cyrillic', ar: 'arabic', ur: 'arabic', fa: 'arabic',
+  hi: 'devanagari', ne: 'devanagari', bn: 'bengali', am: 'ethiopic', km: 'khmer', lo: 'lao', th: 'thai',
+};
+
+/**
+ * Whether `text` is written in the script of `language`: most of its letters are. Names in
+ * another script are fine ("打电话给 Oliver" is Chinese); a Chinese sentence for an English
+ * speaker isn't. Languages the app doesn't know pass.
+ */
+export function writtenIn(text: string, language: string): boolean {
+  const code = languageCode(language) ?? (/hmong/i.test(language) ? 'hmn' : undefined);
+  if (!code) return true;
+  const want = SCRIPT_OF[code] ?? 'latin';
+  const counts = Object.entries(SCRIPTS).map(([name, re]) => [name, (text.match(re) ?? []).length] as const);
+  const top = counts.reduce((a, b) => (b[1] > a[1] ? b : a));
+  return top[1] === 0 || top[0] === want;
+}

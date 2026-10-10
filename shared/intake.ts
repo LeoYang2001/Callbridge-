@@ -1,3 +1,4 @@
+import { writtenIn } from './languages';
 import type { CallRequest, IntakeDraft, RealtimeVoice } from './types';
 
 export interface IntakeContext {
@@ -30,7 +31,7 @@ export function draftToRequest(draft: IntakeDraft, ctx: IntakeContext): CallRequ
     counterpartName: draft.counterpartName?.trim() || undefined,
     counterpartRelationship: draft.counterpartRelationship?.trim() || undefined,
     counterpartAddress: draft.counterpartAddress?.trim() || undefined,
-    taskInUserLanguage: draft.taskInUserLanguage?.trim() || undefined,
+    taskInUserLanguage: draft.taskInUserLanguage?.trim() && writtenIn(draft.taskInUserLanguage, ctx.userLanguage) ? draft.taskInUserLanguage.trim() : undefined,
     user: { name: draft.userName?.trim() || ctx.userName, preferredLanguage: ctx.userLanguage },
     callLanguage: draft.callLanguage?.trim() || 'English',
     timezone: ctx.timezone,

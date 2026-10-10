@@ -1,4 +1,5 @@
 import { draftPatchFromArgs, type IntakeContext } from '../intake';
+import { writtenIn } from '../languages';
 import { captionAt, defaultCharsPerSecond } from '../captions';
 import { profilePatchFromArgs } from '../profilePatch';
 import type { IntakeCheckResult, IntakeDraft, Me, ResearchResult } from '../types';
@@ -231,9 +232,16 @@ export function createIntakeConversation(deps: {
       const keep =
         pinned && patch.phoneNumber !== undefined && digits(patch.phoneNumber) !== digits(pinned.phoneNumber) && (patch.counterpartName ?? draft.counterpartName) === pinned.counterpartName;
       if (keep) delete patch.phoneNumber;
+      // The summary is for the user, so it's in their language, not the call's.
+      const wrongLanguage = patch.taskInUserLanguage !== undefined && !writtenIn(patch.taskInUserLanguage, ctx.userLanguage);
+      if (wrongLanguage) delete patch.taskInUserLanguage;
       draft = { ...draft, ...patch };
       h.onDraft(draft);
-      return keep ? { saved: true, note: `The phone number stays ${pinned!.phoneNumber}, from ${pinned!.counterpartName}'s phone book entry.` } : { saved: true };
+      const notes = [
+        keep ? `The phone number stays ${pinned!.phoneNumber}, from ${pinned!.counterpartName}'s phone book entry.` : '',
+        wrongLanguage ? `task_in_user_language wasn't saved: write it in ${ctx.userLanguage}, the user's language, not the call's.` : '',
+      ].filter(Boolean);
+      return notes.length ? { saved: true, note: notes.join(' ') } : { saved: true };
     }
     if (name === 'check_request') {
       const result = await checkIntake(conn, ctx, draft);

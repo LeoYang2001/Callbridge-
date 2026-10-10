@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { draftPatchFromArgs, draftToRequest, normalizeTime, requestToDraft } from '../../shared/intake';
+import { writtenIn } from '../../shared/languages';
 import { TASK_CATEGORIES, type TaskCategory } from '../../shared/types';
 import { buildFollowUpSection, checkRequest } from '../src/agent/intake';
 import { newCallRecord } from '../src/calls/callSession';
@@ -199,5 +200,25 @@ describe('follow-up after a call', () => {
     expect(back.to).toBe('+14155550123');
     expect(back.constraints.availability).toEqual(record().request.constraints.availability);
     expect(back.counterpartName).toBe('David Clinic');
+  });
+});
+
+describe('writtenIn', () => {
+  it('checks the summary is in the user language, allowing names in another script', () => {
+    expect(writtenIn('打电话给 Oliver，打个招呼并问他最近怎么样。', 'English')).toBe(false);
+    expect(writtenIn('打电话给 Oliver，打个招呼并问他最近怎么样。', 'Chinese (Mandarin)')).toBe(true);
+    expect(writtenIn('Call Oliver to say hi.', 'English')).toBe(true);
+    expect(writtenIn('Call Oliver to say hi.', 'Chinese (Mandarin)')).toBe(false);
+    expect(writtenIn('Llamar a Oliver para saludar.', 'Spanish')).toBe(true);
+    expect(writtenIn('Позвонить Оливеру.', 'Russian')).toBe(true);
+    expect(writtenIn('123', 'Korean')).toBe(true);
+    expect(writtenIn('Call Oliver.', 'Klingon')).toBe(true);
+  });
+
+  it('drops a summary in the wrong language from the request', () => {
+    const ctx = { userName: 'Leo', userLanguage: 'English', timezone: 'America/Chicago', voice: 'marin' as const };
+    const req = draftToRequest({ phoneNumber: '9014553148', task: 'Say hi', taskInUserLanguage: '打个招呼' }, ctx);
+    expect(req.taskInUserLanguage).toBeUndefined();
+    expect(draftToRequest({ phoneNumber: '9014553148', task: 'Say hi', taskInUserLanguage: 'Say hi to Oliver' }, ctx).taskInUserLanguage).toBe('Say hi to Oliver');
   });
 });
