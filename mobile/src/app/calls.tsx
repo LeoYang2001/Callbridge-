@@ -10,6 +10,7 @@ import { summaryTag } from '@/call/outcome';
 import { useGlow } from '@/glow/GlowContext';
 import { useCalls } from '@/hooks/useCalls';
 import { useSignedIn } from '@/lib/session';
+import { EDGE_WIDTH } from '@/nav/EdgeSwipe';
 import { MenuButton } from '@/nav/MenuButton';
 import { color, type } from '@/theme/tokens';
 import { StatusPill } from '@/ui/Text';
@@ -80,7 +81,10 @@ function UpcomingCard({ a }: { a: UpcomingAppointment }) {
   );
 }
 
-/** Swipe a call left to reveal Delete; a long swipe deletes it straight away. */
+/**
+ * Swipe a call left to reveal Delete; a long swipe deletes it straight away. A swipe that starts
+ * at the right edge is the menu's, so the row doesn't take touches there.
+ */
 function SwipeToDelete({ children, onDelete, label }: { children: React.ReactNode; onDelete: () => void; label: string }) {
   const del = () => {
     haptic.commit();
@@ -89,6 +93,7 @@ function SwipeToDelete({ children, onDelete, label }: { children: React.ReactNod
   return (
     <Animated.View exiting={FadeOut.duration(200)} layout={LinearTransition.duration(220)}>
       <ReanimatedSwipeable
+        hitSlop={{ right: -EDGE_WIDTH }}
         friction={1.6}
         rightThreshold={60}
         overshootRight={false}

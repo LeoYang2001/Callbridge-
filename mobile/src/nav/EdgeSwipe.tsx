@@ -17,8 +17,8 @@ import { radius } from '@/theme/tokens';
 
 /** How far to drag (pt) before letting go opens the menu. */
 const OPEN_AT = 90;
-/** The strip along the right edge where the swipe can start. */
-const EDGE_WIDTH = 24;
+/** The strip along the right edge where the swipe can start. Swipeable rows leave it alone. */
+export const EDGE_WIDTH = 24;
 
 export function EdgeSwipe({ enabled, onOpen, progress, children }: { enabled: boolean; onOpen: () => void; progress: SharedValue<number>; children: ReactNode }) {
   const armed = useSharedValue(false);
