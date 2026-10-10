@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import type { IntakeDraft } from '@shared/types';
 import { color, type } from '@/theme/tokens';
 
@@ -17,15 +17,16 @@ export function detailsKnown(d: IntakeDraft): number {
  * The request taking shape while the assistant asks: name, "n of 5 details", what it needs to
  * know. Sits at the top of the conversation, slim, so the middle is free for it.
  */
-export function RequestCard({ draft, need }: { draft: IntakeDraft; need?: string }) {
+export function RequestCard({ draft, need, onPress }: { draft: IntakeDraft; need?: string; onPress?: () => void }) {
   const n = detailsKnown(draft);
   return (
-    <View style={s.card}>
+    <Pressable disabled={!onPress} onPress={onPress} accessibilityRole={onPress ? 'button' : undefined} accessibilityHint={onPress ? 'Opens the review' : undefined} style={({ pressed }) => [s.card, pressed && { opacity: 0.7 }]}>
       <View style={s.row}>
         <Text style={[type.bodyStrong, { fontSize: 15, flex: 1 }]} numberOfLines={1}>
           {draft.counterpartName || 'New call'}
         </Text>
         <Text style={[type.caption, { fontSize: 12 }]}>{n} of 5 details</Text>
+        {onPress ? <Text style={[type.caption, { fontSize: 12, color: color.blue, fontWeight: '600' }]}>Review ›</Text> : null}
       </View>
       <View style={s.segs}>
         {[0, 1, 2, 3, 4].map((i) => (
@@ -39,7 +40,7 @@ export function RequestCard({ draft, need }: { draft: IntakeDraft; need?: string
           {need ? <Text style={{ color: color.violet }}>{need}</Text> : null}
         </Text>
       ) : null}
-    </View>
+    </Pressable>
   );
 }
 

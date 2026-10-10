@@ -86,7 +86,7 @@ Call update_request whenever you learn something new, so the screen stays curren
 When you have the essentials, call check_request. Its answer comes from CallBridge's rules and is final:
 - If it lists missing details or problems, ask about them, update the request, and check again.
 - If it refuses the task, explain the reason it gives in ${ctx.userName}'s language. Don't argue with it or look for a way around it.
-- If it's ok, read back a short summary in ${ctx.userLanguage} (who, what, when, limits), then call finish_intake. Tell ${ctx.userName} to review the details on screen and tap Start call.
+- If it's ok, read back a short summary in ${ctx.userLanguage} (who, what, when, limits) and call finish_intake in that same turn: it's what puts the review on screen. Then tell ${ctx.userName} to check it and tap Call now. Never tell them to review the call without calling finish_intake.
 
 # How to talk
 Be warm and brief, like a capable assistant on the phone: one or two short sentences per turn, no lists read aloud. Use natural spoken ${ctx.userLanguage}.
@@ -210,7 +210,7 @@ export const INTAKE_TOOLS: ToolDefinition[] = [
   },
   {
     name: 'finish_intake',
-    description: 'Call after check_request returned ok and you read back the summary. Shows the review screen.',
+    description: 'Shows the review screen with the Call now button. Call it in the same turn as your read-back, after check_request returned ok. Without it there is nothing on screen to review.',
     parameters: { type: 'object', properties: {} },
   },
 ];

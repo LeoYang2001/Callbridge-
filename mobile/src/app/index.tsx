@@ -65,6 +65,10 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
   const queue = useAddErrand();
   const { follow } = useActiveCall();
   const [reviewing, setReviewing] = useState(true);
+  // Who, the number and what for are enough to review, whether or not the assistant finished
+  // (it can say "review it on screen" and forget to put the review there).
+  const canReview = Boolean(intake.draft.counterpartName && intake.draft.phoneNumber && (intake.draft.task || intake.draft.taskInUserLanguage));
+  const [openedReview, setOpenedReview] = useState(false);
   // Which of the user's lines was last when these results came in: the cards stay up until they
   // answer after them (the assistant may save its top suggestion before they've chosen).
   const [resultsAfter, setResultsAfter] = useState<{ research: unknown; userLine?: string } | null>(null);
@@ -84,7 +88,7 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
       ? // The first turn, from Home: nothing to answer yet, so the words get the screen. Later
         // turns stay on the conversation, so the question and cards don't vanish mid-answer.
         'listening'
-      : intake.ready && reviewing
+      : (intake.ready && reviewing) || (openedReview && canReview)
           ? 'review'
           : 'asks';
 
@@ -157,7 +161,7 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
     const header = (
       <TopBar
         left={
-          <Pressable onPress={() => setReviewing(false)} style={s.pill} hitSlop={6}>
+          <Pressable onPress={() => (setReviewing(false), setOpenedReview(false))} style={s.pill} hitSlop={6}>
             <Text style={[type.caption, { color: color.ink, fontWeight: '500' }]}>Back</Text>
           </Pressable>
         }
@@ -229,7 +233,7 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
     // captions step down to give it room.
     const roomy = !showPlaces;
     return (
-      <Screen top={showRequest ? <RequestCard draft={intake.draft} need={intake.choices?.topic} /> : spacer} bottom={controls} padding={0}>
+      <Screen top={showRequest ? <RequestCard draft={intake.draft} need={intake.choices?.topic} onPress={canReview ? () => (setReviewing(true), setOpenedReview(true)) : undefined} /> : spacer} bottom={controls} padding={0}>
         {/* Two zones, so captions changing as the assistant talks never move what you tap: the
             captions fill the space above and grow upward from its bottom edge, like subtitles;
             the cards and answers sit below and move only when they change themselves. */}
@@ -298,7 +302,7 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
               ))}
             </View>
           ) : null}
-          {intake.ready && !reviewing ? <Chip title="Review the call" variant="blue" onPress={() => setReviewing(true)} /> : null}
+          {(intake.ready || canReview) && !(intake.ready && reviewing) ? <Chip title="Review the call" variant="blue" onPress={() => (setReviewing(true), setOpenedReview(true))} /> : null}
           {intake.error ? <Text style={[type.small, { color: color.redText }]}>{intake.error}</Text> : null}
         </View>
       </Screen>
