@@ -40,7 +40,7 @@ const EnvSchema = z.object({
   OPENAI_API_KEY: optionalString,
   REALTIME_MODEL: z.string().default('gpt-realtime-2.1'),
   /** Setting up a call in the app (simple questions and answers): the cheaper mini model. Phone calls use REALTIME_MODEL. */
-  INTAKE_REALTIME_MODEL: z.string().default('gpt-realtime-mini'),
+  INTAKE_REALTIME_MODEL: z.string().default('gpt-realtime-2.1-mini'),
   REALTIME_VOICE: z.string().default('marin'),
   /** Only sent for reasoning-capable realtime models (gpt-realtime-2*). */
   REALTIME_REASONING_EFFORT: z.enum(['minimal', 'low', 'medium', 'high', 'xhigh']).default('low'),

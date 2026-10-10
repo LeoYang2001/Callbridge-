@@ -32,7 +32,7 @@ export function pricesFromEnv(env: NodeJS.ProcessEnv = process.env): Prices {
       textIn: num(env.PRICE_RT_TEXT_IN, 4),
       textInCached: num(env.PRICE_RT_TEXT_IN_CACHED, 0.4),
       audioOut: num(env.PRICE_RT_AUDIO_OUT, 64),
-      textOut: num(env.PRICE_RT_TEXT_OUT, 16),
+      textOut: num(env.PRICE_RT_TEXT_OUT, 24),
     },
     realtimeMini: {
       audioIn: num(env.PRICE_RT_MINI_AUDIO_IN, 10),
