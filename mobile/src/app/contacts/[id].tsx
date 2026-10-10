@@ -20,6 +20,9 @@ export default function ContactScreen() {
   const c = book.contacts.find((x) => x.id === id);
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const leave = () => (router.canGoBack() ? router.back() : router.replace('/contacts'));
+  // contacts/new: an empty form; saving adds them to the phone book.
+  if (id === 'new') return <EditContact initial={{ name: '', phone: '' }} title="New contact" onDone={leave} />;
   const back = (
     <Pressable onPress={() => (router.canGoBack() ? router.back() : router.replace('/contacts'))} hitSlop={8} style={{ flexDirection: 'row', alignItems: 'center', gap: 2 }}>
       <Icon name="back" size={14} color={color.blue} />

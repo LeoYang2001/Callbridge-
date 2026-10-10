@@ -33,9 +33,20 @@ export default function PhoneBook() {
           <ScreenTitle
             title="Phone book"
             right={
-              <Text style={[type.small, { color: color.blue, fontWeight: '600' }]} onPress={() => router.push('/contacts/import')}>
-                Import
-              </Text>
+              <View style={{ flexDirection: 'row', gap: 18 }}>
+                <Text style={[type.small, { color: color.blue, fontWeight: '600' }]} onPress={() => router.push('/contacts/import')} suppressHighlighting>
+                  Import
+                </Text>
+                <Text
+                  accessibilityRole="button"
+                  accessibilityLabel="Add a contact"
+                  style={[type.small, { color: color.blue, fontWeight: '600' }]}
+                  onPress={() => router.push({ pathname: '/contacts/[id]', params: { id: 'new' } })}
+                  suppressHighlighting
+                >
+                  + Add
+                </Text>
+              </View>
             }
           >
             <View style={s.search}>
