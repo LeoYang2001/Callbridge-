@@ -151,6 +151,28 @@ describe('intake conversation', () => {
     }
   });
 
+  it("keeps a phone-book contact's number even if the model saves a different one", async () => {
+    const drafts: IntakeDraft[] = [];
+    const sent: any[] = [];
+    const c = createIntakeConversation({
+      conn: { serverUrl: 'https://cb.test', sessionToken: 'tok' },
+      ctx: { userName: 'Leo', userLanguage: 'English', timezone: 'America/Chicago' },
+      handlers: { onStatus: () => {}, onLine: () => {}, onDraft: (d) => drafts.push(d), onCheck: () => {}, onReady: () => {} },
+      initialDraft: { counterpartName: 'Leo', phoneNumber: '9014553148' },
+      send: (e) => (sent.push(e), true),
+      isOpen: () => true,
+      locate: async () => null,
+    });
+    c.handle(JSON.stringify({ type: 'response.function_call_arguments.done', name: 'update_request', call_id: 'u1', arguments: '{"counterpart_name":"Leo","phone_number":"5014553148","task":"Ask about the gym"}' }));
+    await vi.waitFor(() => expect(drafts).toHaveLength(1));
+    expect(drafts[0]).toMatchObject({ counterpartName: 'Leo', phoneNumber: '9014553148', task: 'Ask about the gym' });
+    expect(JSON.parse(sent[0].item.output).note).toMatch(/stays 9014553148/);
+    // Choosing someone else does change the number.
+    c.handle(JSON.stringify({ type: 'response.function_call_arguments.done', name: 'update_request', call_id: 'u2', arguments: '{"counterpart_name":"Tabito","phone_number":"5024222655"}' }));
+    await vi.waitFor(() => expect(drafts).toHaveLength(2));
+    expect(drafts[1]).toMatchObject({ counterpartName: 'Tabito', phoneNumber: '5024222655' });
+  });
+
   it('push-to-talk: clears on press, commits and asks for an answer on release', () => {
     const { c, sent } = conversation();
     c.startTurn();

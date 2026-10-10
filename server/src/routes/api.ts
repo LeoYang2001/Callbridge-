@@ -1,3 +1,4 @@
+import { displayPhone } from '../../../shared/phone';
 import type { TelephonyProvider } from '../providers/telephony/types';
 import twilio from 'twilio';
 import { readFile } from 'node:fs/promises';
@@ -39,6 +40,10 @@ export function registerApiRoutes(
     }
     const checked = await validateCallRequest(req.body, checkDeps);
     if ('error' in checked) return reply.code(checked.status).send({ error: checked.error, review: checked.review });
+    // The phone book is the authority on who's who: a name that's in it, with a number that isn't
+    // that person's, is a mistake (an AI once dialed 501 for a 901 number), not a new person.
+    const mismatch = phoneBookMismatch(checked.request, req.user!.profile.contacts);
+    if (mismatch) return reply.code(409).send({ error: mismatch });
     try {
       // Recorded unless the user turned it off; their own number as caller ID if verified and on.
       const record = manager.startCall(withUserSettings(checked.request, req.user!), req.user!.id);
@@ -214,6 +219,15 @@ export function registerApiRoutes(
       if (pending) clearTimeout(pending);
     });
   });
+}
+
+/** A call to a phone-book name at a number that isn't theirs: the message to show, else null. */
+export function phoneBookMismatch(request: CallRequest, contacts: { name: string; phone: string }[]): string | null {
+  const name = request.counterpartName?.trim().toLowerCase();
+  if (!name) return null;
+  const same = contacts.filter((c) => c.name.trim().toLowerCase() === name);
+  if (!same.length || same.some((c) => c.phone === request.to)) return null;
+  return `${request.counterpartName}'s number in your phone book is ${same.map((c) => displayPhone(c.phone)).join(' or ')}, but this call is to ${displayPhone(request.to)}. Check the number before calling.`;
 }
 
 /**

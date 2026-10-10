@@ -141,6 +141,9 @@ export function createIntakeConversation(deps: {
       handlers.onStatus(searches.size > 0 && (status === 'listening' || status === 'yourTurn' || status === 'thinking' || status === 'speaking') ? 'searching' : status, detail),
   };
   let draft: IntakeDraft = { ...deps.initialDraft };
+  /** Started from a phone-book contact: their name and number, which the model may not change. */
+  const pinned = deps.initialDraft?.phoneNumber && deps.initialDraft.counterpartName ? { phoneNumber: deps.initialDraft.phoneNumber, counterpartName: deps.initialDraft.counterpartName } : null;
+  const digits = (p?: string) => (p ?? '').replace(/\D/g, '').replace(/^1(?=\d{10}$)/, '');
   const heard = new Map<string, string>();
   /** Typed before the data channel opened; sent as soon as it does. */
   const pendingTexts: string[] = [];
@@ -222,9 +225,15 @@ export function createIntakeConversation(deps: {
       return { error: 'Arguments were not valid JSON.' };
     }
     if (name === 'update_request') {
-      draft = { ...draft, ...draftPatchFromArgs(args) };
+      const patch = draftPatchFromArgs(args);
+      // Someone picked from the phone book keeps the phone book's number: the model can't change
+      // it (it once saved 501 for a 901 number). Naming a different person unpins it.
+      const keep =
+        pinned && patch.phoneNumber !== undefined && digits(patch.phoneNumber) !== digits(pinned.phoneNumber) && (patch.counterpartName ?? draft.counterpartName) === pinned.counterpartName;
+      if (keep) delete patch.phoneNumber;
+      draft = { ...draft, ...patch };
       h.onDraft(draft);
-      return { saved: true };
+      return keep ? { saved: true, note: `The phone number stays ${pinned!.phoneNumber}, from ${pinned!.counterpartName}'s phone book entry.` } : { saved: true };
     }
     if (name === 'check_request') {
       const result = await checkIntake(conn, ctx, draft);

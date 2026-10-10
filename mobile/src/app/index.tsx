@@ -354,9 +354,11 @@ function Home({ onSuggestion, onContact }: { onSuggestion: (text: string) => voi
   const t = homeText(me.profile.preferredLanguage);
   // Recent contacts first, then a nearby place.
   const recent = [...me.profile.contacts].sort((a, b) => (b.lastCalledAt ?? 0) - (a.lastCalledAt ?? 0)).slice(0, 2);
+  // Two contacts with one name are told apart by their last digits.
+  const sameName = (c: Contact) => me.profile.contacts.filter((x) => x.name === c.name).length > 1;
   // A contact starts with who to call filled in (like the phone book's Call button); a place is asked for.
   const suggestions: { title: string; run: () => void }[] = [
-    ...recent.map((c) => ({ title: t.call(c.name), run: () => onContact(c) })),
+    ...recent.map((c) => ({ title: t.call(sameName(c) ? `${c.name} (·${c.phone.slice(-4)})` : c.name), run: () => onContact(c) })),
     ...[recent.length < 2 ? t.nearestRestaurant : null, t.nearestPharmacy].filter((x): x is string => Boolean(x)).map((x) => ({ title: x, run: () => onSuggestion(x) })),
   ].slice(0, 3);
   const next = me.profile.appointments.filter((a) => a.date >= new Date().toISOString().slice(0, 10)).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))[0];

@@ -104,9 +104,25 @@ describe('phone sign-in', () => {
   });
 });
 
+describe('the phone book is the authority on numbers', () => {
+  it("doesn't add a contact from a call that never connected", () => {
+    const r = newCallRecord('0d3c2b1a-1111-4222-8333-944455556666', dentistRequest({ counterpartName: 'Leo', to: '+15014553148' }));
+    expect(learnFromCall({ ...emptyProfile(), timezone: 'America/Chicago' }, r).contacts).toEqual([]);
+  });
+
+  it('refuses a phone-book name at a number that is not theirs', async () => {
+    const { phoneBookMismatch } = await import('../src/routes/api');
+    const contacts = [{ name: 'Leo', phone: '+19014553148' }, { name: 'Tabito', phone: '+15024222655' }];
+    expect(phoneBookMismatch({ counterpartName: 'Leo', to: '+15014553148' } as never, contacts)).toMatch(/901\)-455-3148.*501\)-455-3148/);
+    expect(phoneBookMismatch({ counterpartName: 'leo', to: '+19014553148' } as never, contacts)).toBeNull();
+    expect(phoneBookMismatch({ counterpartName: 'Smile Dental', to: '+19015550100' } as never, contacts)).toBeNull();
+  });
+});
+
 describe('learning from calls', () => {
   const finished = () => {
     const r = newCallRecord('9f98a5d1-2777-498d-a7e3-e92672d0482c', dentistRequest({ counterpartName: 'Smile Dental', category: 'healthcare_appointment' }));
+    r.metrics.answeredAt = 1;
     r.result = {
       status: 'completed', success: true, objective: 'cleaning', appointment: { date: '2099-10-08', time: '15:30', notes: 'Cleaning' }, commitments: [],
       additionalChargesAuthorized: false, unresolvedQuestions: [], refusedDecisions: [], followUpsForUser: [], summary: '', summaryInUserLanguage: '',

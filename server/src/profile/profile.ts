@@ -136,6 +136,8 @@ export function learnFromCall(profile: UserProfile, record: CallRecord): UserPro
   const name = req.counterpartName?.trim() || displayPhone(req.to);
   const contacts = [...profile.contacts];
   const i = contacts.findIndex((c) => c.phone === req.to);
+  // A call that never connected teaches nothing, and mustn't add a (possibly mistyped) number.
+  if (i < 0 && record.metrics.answeredAt === undefined) return profile;
   const previous: Contact = i >= 0 ? contacts[i]! : { id: randomUUID(), name, phone: req.to, notes: [], callCount: 0 };
   const contact: Contact = {
     ...previous,
