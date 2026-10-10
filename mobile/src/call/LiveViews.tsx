@@ -49,6 +49,9 @@ export function Live({
   onEnd,
   onMessage,
   onTranscript,
+  onTakeOver,
+  onHandBack,
+  takeoverBusy,
 }: {
   call: CallRecord;
   seconds: number;
@@ -59,7 +62,11 @@ export function Live({
   onEnd: () => void;
   onMessage: () => void;
   onTranscript: () => void;
+  onTakeOver: () => void;
+  onHandBack: () => void;
+  takeoverBusy: boolean;
 }) {
+  const takeover = call.takeover;
   const lines = call.transcript.filter((t) => t.speaker !== 'system' && t.text.trim());
   const latest = lines.at(-1);
   const previous = lines.at(-2);
@@ -98,8 +105,9 @@ export function Live({
           Transcript
         </Text>
       </View>
+      <TakeOver state={takeover?.state} onTakeOver={onTakeOver} onHandBack={onHandBack} busy={takeoverBusy} />
       <View style={s.controls}>
-        <Control label={listening ? 'Listening' : 'Listen'} onPress={onListen} active={listening} busy={listenBusy}>
+        <Control label={listening ? 'Listening' : 'Listen'} onPress={onListen} active={listening} busy={listenBusy} disabled={Boolean(takeover)}>
           <Icon name="headphones" size={22} color={listening ? color.white : color.ink} />
         </Control>
         <View style={{ alignItems: 'center', gap: 8 }}>
@@ -113,6 +121,45 @@ export function Live({
         </Control>
       </View>
     </View>
+  );
+}
+
+/**
+ * Take the call yourself: your phone rings, and you talk with them directly while the assistant
+ * listens; hand back when you're done (or just hang up).
+ */
+function TakeOver({ state, onTakeOver, onHandBack, busy }: { state?: 'ringing' | 'live'; onTakeOver: () => void; onHandBack: () => void; busy: boolean }) {
+  if (state === 'live') {
+    return (
+      <View style={[s.takeover, s.takeoverLive]}>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={[type.small, { color: color.greenText, fontWeight: '600' }]}>You're on the call</Text>
+          <Text style={type.caption}>The assistant is listening. Hang up to hand back.</Text>
+        </View>
+        <PillButton title="Hand back" kind="green" height={40} onPress={onHandBack} busy={busy} />
+      </View>
+    );
+  }
+  if (state === 'ringing') {
+    return (
+      <View style={s.takeover}>
+        <ActivityIndicator size="small" color={color.blue} />
+        <Text style={[type.small, { flex: 1, color: color.ink }]}>Calling your phone…</Text>
+        <Text style={[type.small, { color: color.blue, fontWeight: '600' }]} onPress={onHandBack} suppressHighlighting>
+          Cancel
+        </Text>
+      </View>
+    );
+  }
+  return (
+    <Pressable accessibilityRole="button" onPress={() => (haptic.commit(), onTakeOver())} disabled={busy} style={({ pressed }) => [s.takeover, pressed && { opacity: 0.7 }]}>
+      <Icon name="phone" size={18} color={color.blue} />
+      <View style={{ flex: 1, gap: 2 }}>
+        <Text style={[type.small, { color: color.blue, fontWeight: '600' }]}>Take over the call</Text>
+        <Text style={type.caption}>Your phone rings, and you talk to them yourself.</Text>
+      </View>
+      {busy ? <ActivityIndicator size="small" color={color.blue} /> : <Icon name="chevron" size={14} color={color.blue} />}
+    </Pressable>
   );
 }
 
@@ -369,6 +416,8 @@ const s = StyleSheet.create({
   bubble: { maxWidth: '85%', paddingHorizontal: 14, paddingVertical: 10, gap: 3 },
   them: { alignSelf: 'flex-start', backgroundColor: color.surface, borderRadius: 20, borderBottomLeftRadius: 6 },
   ai: { alignSelf: 'flex-end', backgroundColor: color.blue, borderRadius: 20, borderBottomRightRadius: 6 },
+  takeover: { marginHorizontal: 22, marginBottom: 14, minHeight: 58, borderRadius: 20, backgroundColor: color.blueTint, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 10 },
+  takeoverLive: { backgroundColor: color.greenTint },
   themNow: { borderWidth: 2, borderColor: color.blue },
   aiNow: { borderWidth: 2, borderColor: color.ink },
   player: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: color.surface, borderRadius: 20, padding: 12 },

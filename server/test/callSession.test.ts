@@ -90,6 +90,11 @@ class FakeTelephony implements TelephonyProvider {
     this.placed.push(p);
     return { providerCallId: 'CA123' };
   }
+  userLegs: { to: string; streamToken: string }[] = [];
+  async placeUserLeg(p: { to: string; streamToken: string }) {
+    this.userLegs.push(p);
+    return { providerCallId: 'CAUSER' };
+  }
   async hangup(id: string) {
     this.hangups.push(id);
   }
@@ -205,6 +210,66 @@ describe('recording', () => {
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
+  });
+});
+
+describe('take-over', () => {
+  it('rings the user in, relays both ways while the assistant is quiet, and hands back with what was said', async () => {
+    const { store, agent, telephony, manager } = setup();
+    const created = manager.startCall(dentistRequest());
+    await waitFor(() => telephony.placed.length === 1);
+    manager.handleTelephonyState(created.id, 'answered');
+    const line = new FakeTransport();
+    manager.attachMedia(created.id, (manager as any).sessions.get(created.id).streamToken, line);
+    const get = () => store.get(created.id)!;
+
+    // Ring the user: the assistant says they're joining, then waits.
+    expect(await manager.takeOver(created.id, '+19015550100')).toBeNull();
+    expect(telephony.userLegs[0]?.to).toBe('+19015550100');
+    expect(get().takeover?.state).toBe('ringing');
+    expect(agent.prompts.at(-1)).toMatch(/joining this call themselves/);
+    const responses = agent.responses;
+
+    // A wrong token can't join; the right one does.
+    const phone = new FakeTransport();
+    expect(manager.attachUserMedia(created.id, 'nope'.padEnd(48, 'x'), phone)).toBe(false);
+    expect(manager.attachUserMedia(created.id, telephony.userLegs[0]!.streamToken, phone)).toBe(true);
+    expect(get().takeover?.state).toBe('live');
+    expect(line.clears).toBeGreaterThan(0); // the assistant was cut off
+
+    // Their audio reaches the user, the user's reaches them; the assistant doesn't answer.
+    line.emit('audio', 'THEM', 20);
+    phone.emit('audio', 'USER', 0);
+    expect(phone.sent).toContain('THEM');
+    expect(line.sent).toContain('USER');
+    agent.emit('speechStarted');
+    frames(line, 20, 20);
+    agent.emit('speechStopped');
+    agent.emit('utteranceStarted', 'c9', 'counterpart');
+    agent.emit('transcript', 'c9', 'counterpart', 'Sure, Thursday at 3 works.');
+    expect(agent.responses).toBe(responses);
+
+    // Handing back: the user's leg is hung up, and the assistant hears what they said.
+    expect(manager.handBack(created.id)).toBe(true);
+    expect(get().takeover).toBeUndefined();
+    expect(telephony.hangups).toContain('CAUSER');
+    expect(agent.prompts.at(-1)).toMatch(/handed the call back[\s\S]*Sure, Thursday at 3 works\./);
+    expect(get().transcript.filter((t) => t.event).map((t) => t.text)).toEqual(['Leo joined the call.', 'Leo handed the call back.']);
+  });
+
+  it("lets the assistant carry on when the user doesn't pick up", async () => {
+    const { store, agent, telephony, manager } = setup();
+    const created = manager.startCall(dentistRequest());
+    await waitFor(() => telephony.placed.length === 1);
+    manager.handleTelephonyState(created.id, 'answered');
+    manager.attachMedia(created.id, (manager as any).sessions.get(created.id).streamToken, new FakeTransport());
+    await manager.takeOver(created.id, '+19015550100');
+    manager.handleUserLegState(created.id, 'no_answer');
+    expect(store.get(created.id)!.takeover).toBeUndefined();
+    // Not paused any more: a turn gets an answer again.
+    const before = agent.responses;
+    (manager as any).sessions.get(created.id).respond();
+    expect(agent.responses).toBe(before + 1);
   });
 });
 

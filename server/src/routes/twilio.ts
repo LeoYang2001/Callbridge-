@@ -14,14 +14,15 @@ export function registerTwilioRoutes(
     telephony.validateSignature(typeof sig === 'string' ? sig : undefined, `${config.PUBLIC_BASE_URL}${path}`, body ?? {});
 
   /** Call progress webhooks (initiated / ringing / answered / completed). */
-  app.post<{ Querystring: { callId?: string }; Body: Record<string, string> }>('/twilio/status', async (req, reply) => {
+  app.post<{ Querystring: { callId?: string; leg?: string }; Body: Record<string, string> }>('/twilio/status', async (req, reply) => {
     if (!signatureOk(req.url, req.headers['x-twilio-signature'], req.body)) {
       req.log.warn('Rejected Twilio webhook with invalid signature');
       return reply.code(403).send('invalid signature');
     }
     const callId = req.query.callId;
     const state = mapTwilioStatus(req.body?.CallStatus ?? '');
-    if (callId && state) manager.handleTelephonyState(callId, state);
+    // The user's own leg (take-over) has its own progress; the call's is the other party's.
+    if (callId && state) req.query.leg === 'user' ? manager.handleUserLegState(callId, state) : manager.handleTelephonyState(callId, state);
     return reply.code(204).send();
   });
 
@@ -45,8 +46,9 @@ export function registerTwilioRoutes(
     transport
       .waitForStart()
       .then((start) => {
-        const { callId = '', token = '' } = start.customParameters ?? {};
-        if (!manager.attachMedia(callId, token, transport)) {
+        const { callId = '', token = '', leg } = start.customParameters ?? {};
+        const attached = leg === 'user' ? manager.attachUserMedia(callId, token, transport) : manager.attachMedia(callId, token, transport);
+        if (!attached) {
           req.log.warn({ callId }, 'Media stream rejected: unknown call or bad token');
           transport.close();
         }

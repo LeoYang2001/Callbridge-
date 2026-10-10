@@ -158,6 +158,38 @@ export class CallManager {
     return true;
   }
 
+  /** Take-over: ring the user into their call. Returns an error to show, or null. */
+  async takeOver(callId: string, userPhone: string): Promise<{ status: number; error: string } | null> {
+    const session = this.sessions.get(callId);
+    if (!session) return { status: 404, error: 'That call is not in progress.' };
+    const error = await session.takeOver(userPhone);
+    return error ? { status: 409, error } : null;
+  }
+
+  /** Take-over: the user hands the call back to the assistant. */
+  handBack(callId: string): boolean {
+    const session = this.sessions.get(callId);
+    if (!session) return false;
+    session.handBack('user');
+    return true;
+  }
+
+  /** The user's own leg answered: attach its media (checked against its own token). */
+  attachUserMedia(callId: string, token: string, transport: MediaTransport): boolean {
+    const session = this.sessions.get(callId);
+    if (!session) return false;
+    const a = Buffer.from(token);
+    const b = Buffer.from(session.userStreamToken);
+    if (a.length !== b.length || !timingSafeEqual(a, b)) return false;
+    session.attachUserMedia(transport);
+    return true;
+  }
+
+  /** Progress of the user's own leg (ringing, no answer, hung up). */
+  handleUserLegState(callId: string, state: TelephonyCallState) {
+    this.sessions.get(callId)?.handleUserLegState(state);
+  }
+
   /** Stream token for a live call (used to serve its TwiML by URL). */
   streamTokenFor(callId: string): string | null {
     return this.sessions.get(callId)?.streamToken ?? null;

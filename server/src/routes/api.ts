@@ -67,6 +67,21 @@ export function registerApiRoutes(
     return { ok: true };
   });
 
+  /** Take-over: ring the user's phone into the call; the assistant goes quiet once they answer. */
+  app.post<{ Params: { id: string } }>('/api/calls/:id/takeover', async (req, reply) => {
+    if (!ownCall(req, req.params.id)) return reply.code(404).send({ error: 'Not found' });
+    const failed = await manager.takeOver(req.params.id, req.user!.phone);
+    if (failed) return reply.code(failed.status).send({ error: failed.error });
+    return reply.code(202).send({ ok: true });
+  });
+
+  /** Take-over: hand the call back to the assistant (also happens when the user hangs up). */
+  app.post<{ Params: { id: string } }>('/api/calls/:id/handback', async (req, reply) => {
+    if (!ownCall(req, req.params.id)) return reply.code(404).send({ error: 'Not found' });
+    if (!manager.handBack(req.params.id)) return reply.code(404).send({ error: 'That call is not in progress.' });
+    return { ok: true };
+  });
+
   app.post<{ Params: { id: string } }>('/api/calls/:id/hangup', async (req, reply) => {
     if (!ownCall(req, req.params.id)) return reply.code(404).send({ error: 'Not found' });
     if (!manager.endCall(req.params.id)) return reply.code(404).send({ error: 'That call is not in progress.' });

@@ -7,6 +7,7 @@ import { useActiveCall, useCallSeconds, clock } from '@/call/ActiveCall';
 import { Composer, HoldQuestion, Live, Ringing, TranscriptSheet } from '@/call/LiveViews';
 import { outcomeOf } from '@/call/outcome';
 import { Result } from '@/call/Result';
+import { useToast } from '@/ui/Toast';
 import { useGlow } from '@/glow/GlowContext';
 import type { GlowMode } from '@/glow/modes';
 import { useCall, useListen } from '@/hooks/useCall';
@@ -65,11 +66,25 @@ export default function CallScreen() {
           ? 'wrapping'
           : 'result';
 
+  // Take-over: one request at a time; the call record says where it stands.
+  const [takeoverBusy, setTakeoverBusy] = useState(false);
+  const toast = useToast();
+  const takeoverAct = async (fn: () => Promise<string | null>) => {
+    setTakeoverBusy(true);
+    const err = await fn();
+    setTakeoverBusy(false);
+    if (err) toast(err);
+  };
+  // On the phone yourself: the app stops playing the call (your phone would pick it up).
+  useEffect(() => {
+    if (call?.takeover && listen.active) void listen.toggle();
+  }, [call?.takeover, listen]);
+
   // Hear the call as soon as it connects (a setting in Me), unless the user stopped it here.
   const prefs = usePreferences();
   const autoListened = useRef(false);
   useEffect(() => {
-    if (!prefs.listenLive || autoListened.current || listen.active) return;
+    if (!prefs.listenLive || autoListened.current || listen.active || call?.takeover) return;
     if (phase === 'live' || phase === 'hold') {
       autoListened.current = true;
       void listen.toggle();
@@ -148,6 +163,9 @@ export default function CallScreen() {
             onEnd={() => void c.hangUp()}
             onMessage={() => setComposer(true)}
             onTranscript={() => setTranscript(true)}
+            onTakeOver={() => void takeoverAct(c.takeOver)}
+            onHandBack={() => void takeoverAct(c.handBack)}
+            takeoverBusy={takeoverBusy}
           />
         )}
         {phase === 'hold' && q && (

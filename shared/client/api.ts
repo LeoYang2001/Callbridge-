@@ -199,3 +199,8 @@ export async function callRecording(s: Connection, id: string): Promise<ArrayBuf
 /** Forwards a conversation's OpenAI usage to the server for the usage report (best effort). */
 export const reportIntakeUsage = (s: Connection, body: { usage?: unknown; transcriptionTokens?: number }) =>
   postJson<{ ok: boolean }>(s, '/api/usage/intake', body).catch(() => undefined);
+
+/** Take-over: ring the user's own phone into the call. */
+export const takeOverCall = (s: Connection, id: string) => postJson<{ ok: boolean }>(s, `/api/calls/${encodeURIComponent(id)}/takeover`, {});
+/** Take-over: hand the call back to the assistant. */
+export const handBackCall = (s: Connection, id: string) => postJson<{ ok: boolean }>(s, `/api/calls/${encodeURIComponent(id)}/handback`, {});

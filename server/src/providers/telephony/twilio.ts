@@ -5,6 +5,7 @@ import type {
   MediaTransport,
   MediaTransportEvents,
   PlaceCallParams,
+  PlaceUserLegParams,
   TelephonyCallState,
   TelephonyProvider,
 } from './types';
@@ -103,6 +104,31 @@ export class TwilioTelephony implements TelephonyProvider {
     throw new Error(
       `${(lastError as Error)?.message ?? 'Twilio rejected the call'}. Twilio's Limited trial blocks this call; upgrade the account to Full access in the Twilio console.`,
     );
+  }
+
+  /**
+   * Rings the user's phone into their call: a short line, then their audio streams to the same
+   * media endpoint (marked as the user's leg), and the server relays it to the other party.
+   */
+  async placeUserLeg(p: PlaceUserLegParams) {
+    const wsUrl = `${this.opts.publicBaseUrl.replace(/^http/, 'ws')}/twilio/media`;
+    const twiml =
+      `<Response><Say>Connecting you to your call.</Say><Connect><Stream url="${escapeXml(wsUrl)}">` +
+      `<Parameter name="callId" value="${escapeXml(p.callId)}"/>` +
+      `<Parameter name="token" value="${escapeXml(p.streamToken)}"/>` +
+      `<Parameter name="leg" value="user"/>` +
+      `</Stream></Connect></Response>`;
+    const call = await this.client.calls.create({
+      to: p.to,
+      from: this.opts.fromNumber,
+      twiml,
+      timeout: 25,
+      timeLimit: p.maxDurationSeconds,
+      statusCallback: `${TwilioTelephony.statusCallbackUrl(this.opts.publicBaseUrl, p.callId)}&leg=user`,
+      statusCallbackMethod: 'POST',
+      statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
+    });
+    return { providerCallId: call.sid };
   }
 
   async getCallState(providerCallId: string) {

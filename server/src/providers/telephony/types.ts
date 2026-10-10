@@ -14,9 +14,20 @@ export interface PlaceCallParams {
   maxDurationSeconds: number;
 }
 
+/** Ringing the user into their own call (take-over): their phone joins as a second media stream. */
+export interface PlaceUserLegParams {
+  callId: string;
+  /** The user's phone. */
+  to: string;
+  /** Opaque secret the user's media stream must present. */
+  streamToken: string;
+  maxDurationSeconds: number;
+}
+
 export interface TelephonyProvider {
   readonly name: string;
   placeCall(params: PlaceCallParams): Promise<{ providerCallId: string }>;
+  placeUserLeg?(params: PlaceUserLegParams): Promise<{ providerCallId: string }>;
   hangup(providerCallId: string): Promise<void>;
   /** Current call state, polled as a fallback when status callbacks are delayed or disabled. */
   getCallState?(providerCallId: string): Promise<TelephonyCallState | null>;

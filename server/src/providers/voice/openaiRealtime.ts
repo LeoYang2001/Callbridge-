@@ -239,11 +239,15 @@ export class OpenAIRealtimeAgent implements VoiceAgent {
   }
 
   prompt(systemText: string) {
+    this.note(systemText);
+    this.createResponse();
+  }
+
+  note(systemText: string) {
     this.send({
       type: 'conversation.item.create',
       item: { type: 'message', role: 'system', content: [{ type: 'input_text', text: systemText }] },
     });
-    this.createResponse();
   }
 
   respond() {

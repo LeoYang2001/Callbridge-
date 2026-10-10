@@ -74,6 +74,10 @@ const BARGE_IN_WINDOW_MS = 700;
 /** How long after the model notices speech we keep checking whether it's a real interruption. */
 const BARGE_IN_WATCH_MS = 2500;
 const BARGE_IN_POLL_MS = 50;
+/** Said while the user's phone rings to join the call. */
+const TAKEOVER_NOTICE =
+  'The user is joining this call themselves and their phone is ringing now. Tell the other party in one short sentence, in the call language, that they are joining in a moment, then stop talking and wait. You will hear the conversation but must not speak until told the call is handed back to you.';
+
 /** A turn with less speech than this waits for its transcript before getting an answer. */
 const MIN_TURN_SPEECH_MS = 160;
 /**
@@ -107,6 +111,12 @@ const b64Bytes = (b64: string) => Math.floor((b64.length * 3) / 4) - (b64.endsWi
  */
 export class CallSession {
   readonly streamToken = randomBytes(24).toString('hex');
+  /** Take-over: the user's own phone leg, its stream token, and its media stream once answered. */
+  readonly userStreamToken = randomBytes(24).toString('hex');
+  private userLegId: string | null = null;
+  private userTransport: MediaTransport | null = null;
+  /** The user has the floor (joining or on the line): the assistant doesn't speak. */
+  private paused = false;
   private readonly policy: PolicyEngine;
   private agent: VoiceAgent | null = null;
   private transport: MediaTransport | null = null;
@@ -299,6 +309,7 @@ export class CallSession {
     transport.on('audio', (payload, ts) => {
       this.latestMediaTs = ts;
       this.recorder?.them(payload, ts);
+      this.userTransport?.sendAudio(payload);
       this.gate.observe(payload, ts);
       this.emitListen({ t: 'them', a: payload });
       this.agent?.sendAudio(payload);
@@ -323,7 +334,7 @@ export class CallSession {
       if (!this.counterpartSpoke && !this.finalizing) {
         this.log('ai.intro_nudge');
         this.responding = true;
-        this.agent?.prompt(INTRO_NUDGE);
+        this.prompt(INTRO_NUDGE);
       }
     });
   }
@@ -474,7 +485,7 @@ export class CallSession {
   }
 
   private respond() {
-    if (this.finalizing || this.hangupRequested) return;
+    if (this.finalizing || this.hangupRequested || this.paused) return;
     this.heldText = null;
     this.responding = true;
     this.agent?.respond();
@@ -611,7 +622,7 @@ export class CallSession {
       if (!this.aiSpeaking() && !this.turnActive) {
         this.log('user.hold_checkin');
         this.responding = true;
-        this.agent?.prompt(
+        this.prompt(
           `You're still waiting for ${this.record.request.user.name}'s answer. In one short sentence, thank them for holding and say it'll be just a moment longer. Vary the wording; don't decide anything. (This is an automatic note, not from the other party.)`,
         );
       }
@@ -630,7 +641,7 @@ export class CallSession {
     this.log('user.message', text);
     if (this.finalizing) return;
     this.responding = true;
-    this.agent?.prompt(
+    this.prompt(
       `Message from ${name}, typed in their app during this call: "${text}". Act on it when it fits the conversation (for example, pass it on or change what you ask for), within all your rules. If it would mean agreeing to something outside the limits, call request_decision so ${name} can approve it. (This message is from ${name}'s app, not from the other party.)`,
     );
   }
@@ -675,7 +686,7 @@ export class CallSession {
       note = `${name} approved ${about}. Thank them for holding and continue; call confirm_agreement before confirming anything.`;
     }
     this.responding = true;
-    this.agent?.prompt(`${note} (This message is from ${name}'s app, not from the other party.)`);
+    this.prompt(`${note} (This message is from ${name}'s app, not from the other party.)`);
     return null;
   }
 
@@ -691,7 +702,7 @@ export class CallSession {
     if (this.finalizing) return;
     const name = this.record.request.user.name;
     this.responding = true;
-    this.agent?.prompt(
+    this.prompt(
       `${name} didn't answer in time about "${q.question}". Thank them for holding, say you couldn't reach ${name} just now and that ${name} will follow up about it, and continue without agreeing to it.`,
     );
   }
@@ -840,6 +851,127 @@ export class CallSession {
     this.timer(5_000, () => void this.finalize());
   }
 
+  /** Tells the assistant something; while the user has the floor it's noted, with no reply. */
+  private prompt(text: string) {
+    if (this.paused) this.agent?.note?.(text);
+    else {
+      this.responding = true;
+      this.agent?.prompt(text);
+    }
+  }
+
+  // ───────────────────────────── take-over ─────────────────────────────
+
+  /**
+   * The user joins the call themselves: their phone rings, and once they answer, their voice is
+   * relayed to the other party (and theirs to them) while the assistant stays quiet. It keeps
+   * hearing the other party, and picks up again when the user hands back. Returns an error
+   * message, or null once their phone is ringing.
+   */
+  async takeOver(userPhone: string): Promise<string | null> {
+    if (this.finalizing || !this.transport) return "The call isn't connected yet.";
+    if (this.record.takeover) return "You're already joining this call.";
+    if (!this.deps.telephony.placeUserLeg) return "Joining calls isn't available with this phone provider.";
+    this.update((r) => (r.takeover = { state: 'ringing', since: Date.now() }));
+    this.log('takeover.ringing');
+    // Tell them, while the user's phone rings; then the assistant waits (it finishes that sentence).
+    this.prompt(TAKEOVER_NOTICE);
+    this.paused = true;
+    try {
+      const { providerCallId } = await this.deps.telephony.placeUserLeg({
+        callId: this.id,
+        to: userPhone,
+        streamToken: this.userStreamToken,
+        maxDurationSeconds: this.deps.maxCallSeconds,
+      });
+      this.userLegId = providerCallId;
+      return null;
+    } catch (err) {
+      this.log('takeover.error', (err as Error).message);
+      this.endTakeover(`Couldn't ring your phone: ${(err as Error).message}`);
+      return "Couldn't ring your phone. Try again.";
+    }
+  }
+
+  /** The user answered: from now on their voice goes to the other party, and the assistant is quiet. */
+  attachUserMedia(transport: MediaTransport) {
+    if (this.finalizing || !this.record.takeover) {
+      transport.close();
+      return;
+    }
+    this.userTransport = transport;
+    this.paused = true;
+    // Stop the assistant mid-sentence if it's still talking.
+    this.agent?.cancelResponse();
+    this.transport?.clearAudio();
+    this.recorder?.cut(this.latestMediaTs);
+    this.unplayed.clear();
+    this.currentItemId = null;
+    this.update((r) => (r.takeover = { state: 'live', since: Date.now() }));
+    this.event(`${this.record.request.user.name || 'You'} joined the call.`);
+    this.log('takeover.live');
+    transport.on('audio', (payload) => {
+      this.transport?.sendAudio(payload);
+      this.recorder?.ai(payload, this.latestMediaTs);
+    });
+    transport.on('stop', () => this.handBack('hung_up'));
+  }
+
+  /** The user's leg didn't connect (no answer, busy) or ended. */
+  handleUserLegState(state: TelephonyCallState) {
+    if (!this.record.takeover) return;
+    if (state === 'completed') this.handBack('hung_up');
+    else if (state === 'busy' || state === 'no_answer' || state === 'failed' || state === 'canceled') {
+      this.log('takeover.not_answered', state);
+      this.endTakeover("You didn't pick up, so the assistant is carrying on.");
+    }
+  }
+
+  /**
+   * The user hands the call back (in the app, or by hanging up their phone): the assistant hears
+   * what the other party said meanwhile and carries on.
+   */
+  handBack(why: 'user' | 'hung_up') {
+    const t = this.record.takeover;
+    if (!t || this.finalizing) return;
+    if (t.state === 'ringing') {
+      // Cancelled before they picked up: nothing happened; carry on.
+      this.endTakeover(null);
+      this.log('takeover.cancelled');
+      this.prompt(`${this.record.request.user.name || 'The user'} isn't joining after all. Say so in a short sentence if you told them they were, and carry on with the task.`);
+      return;
+    }
+    const said = this.record.transcript
+      .filter((l) => l.speaker === 'counterpart' && l.at >= t.since && l.text)
+      .map((l) => `- ${l.text}`)
+      .join('\n');
+    this.endTakeover(null);
+    this.event(`${this.record.request.user.name || 'You'} handed the call back.`);
+    this.log('takeover.handed_back', why);
+    const name = this.record.request.user.name || 'The user';
+    this.prompt(
+      `${name} talked with them directly and has handed the call back to you. ${said ? `What they said meanwhile:\n${said}\n` : 'They said nothing you could hear meanwhile. '}` +
+        `${name}'s own words weren't transcribed. Pick up naturally: say in a sentence that you're back, confirm where things stand with them if it's unclear, and carry on with the task. Don't introduce yourself again.`,
+    );
+  }
+
+  /** Ends the take-over: the user's leg is hung up and the assistant may speak again. */
+  private endTakeover(note: string | null) {
+    const leg = this.userLegId;
+    this.userLegId = null;
+    this.userTransport?.close();
+    this.userTransport = null;
+    this.paused = false;
+    this.update((r) => delete r.takeover);
+    if (leg) this.deps.telephony.hangup(leg).catch((err) => this.log('takeover.hangup_error', (err as Error).message));
+    if (note) this.event(note);
+  }
+
+  /** A line in the transcript about the call itself, not said by anyone. */
+  private event(text: string) {
+    this.update((r) => r.transcript.push({ id: `event-${Date.now()}-${r.transcript.length}`, speaker: 'system', text, at: Date.now(), event: true }));
+  }
+
   /** The user tapped End call in the app. */
   endByUser() {
     if (this.finalizing) return;
@@ -938,6 +1070,7 @@ export class CallSession {
   }
 
   private closeConnections() {
+    if (this.record.takeover) this.endTakeover(null);
     this.agent?.close();
     this.transport?.close();
   }

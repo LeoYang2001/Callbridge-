@@ -43,6 +43,8 @@ export interface VoiceAgent {
   sendToolResult(callId: string, output: unknown, respond: boolean): void;
   /** Inject a system note and ask the model to respond. */
   prompt(systemText: string): void;
+  /** Inject a system note without asking for a reply (the user has the floor). */
+  note?(systemText: string): void;
   /**
    * Ask the model to answer now. The call session decides when a turn deserves an answer (the
    * model doesn't respond or stop on its own), so noise and "mm-hm" don't trigger replies.

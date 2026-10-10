@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { LIVE_CALL_STATUSES, type CallRecord, type UserAnswer } from '@shared/types';
-import { answerQuestion, endCall, sendCallMessage, watchCall } from '@/lib/api';
+import { answerQuestion, endCall, handBackCall, sendCallMessage, takeOverCall, watchCall } from '@/lib/api';
 import { startListening, type Listener } from '@/lib/listen';
 import { useSignedIn } from '@/lib/session';
 
@@ -50,6 +50,9 @@ export function useCall(id: string) {
     answer: (questionId: string, answer: UserAnswer) => act(() => answerQuestion(conn, id, questionId, answer)),
     message: (text: string) => act(() => sendCallMessage(conn, id, text)),
     hangUp: () => act(() => endCall(conn, id)),
+    /** Rings the user's phone into the call; the assistant goes quiet once they answer. */
+    takeOver: () => act(() => takeOverCall(conn, id)),
+    handBack: () => act(() => handBackCall(conn, id)),
   };
 }
 

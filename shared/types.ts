@@ -141,6 +141,8 @@ export interface TranscriptEntry {
   translation?: string;
   /** Where the line starts in the call's recording (ms), when it was recorded. */
   audioMs?: number;
+  /** Something that happened on the call ("Leo took over"), not something anyone said. */
+  event?: boolean;
 }
 
 export type DecisionOutcome =
@@ -265,6 +267,8 @@ export interface CallLogEvent {
 
 export interface CallRecord {
   id: string;
+  /** The user is joining (their phone is ringing) or talking on the call themselves; the assistant is quiet. */
+  takeover?: { state: 'ringing' | 'live'; since: number };
   /** The call's recording, when it was recorded (fetched from /api/calls/:id/recording). */
   recording?: { durationMs: number };
   /** The signed-in user who placed the call. */
