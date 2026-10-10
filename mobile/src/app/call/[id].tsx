@@ -204,6 +204,7 @@ export default function CallScreen() {
             onMessage={() => setComposer(true)}
             onTranscript={() => setTranscript(true)}
             join={{
+              ownNumber: call.request.to === me.phone,
               inApp: canJoinInApp(),
               viaApp: joinedViaApp,
               muted,

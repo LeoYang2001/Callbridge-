@@ -125,6 +125,8 @@ export function Live({
  * directly while the assistant listens, and hand back when you're done.
  */
 export interface JoinControls {
+  /** The call is to the user's own number: they're already on it, so joining is off. */
+  ownNumber?: boolean;
   /** This build can join in the app (else only ringing the phone). */
   inApp: boolean;
   /** Joined (or joining) through the app, so Mute applies. */
@@ -162,6 +164,14 @@ function TakeOver({ state, join }: { state?: 'ringing' | 'live'; join: JoinContr
         <Text style={[type.small, { color: color.blue, fontWeight: '600' }]} onPress={join.onHandBack} suppressHighlighting>
           Cancel
         </Text>
+      </View>
+    );
+  }
+  if (join.ownNumber) {
+    return (
+      <View style={s.takeover}>
+        <Icon name="phone" size={18} color={color.tertiary} />
+        <Text style={[type.caption, { flex: 1 }]}>This call is to your own number, so you're already on it.</Text>
       </View>
     );
   }

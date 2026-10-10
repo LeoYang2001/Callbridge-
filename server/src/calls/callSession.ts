@@ -83,6 +83,9 @@ export function saidGoodbye(text: string): boolean {
   return /\b(good-?bye|bye|take care|have a (good|great|nice|wonderful|lovely)\b)|再见|拜拜|再會|byebye|adi[oó]s|hasta (luego|pronto)|t[aạ]m bi[eệ]t|안녕히|さようなら|失礼します|au revoir|tchau|at[eé] logo|auf wiedersehen|tsch[uü]ss|arrivederci|до свидания|до побачення|paalam|مع السلامة|अलविदा/i.test(text);
 }
 
+/** Joining a call to your own number: you're already on it (and two legs to one phone echo endlessly). */
+const SELF_CALL = "This call is to your own number, so you're already on it. To try joining, call someone else.";
+
 /** Said while the user's phone rings to join the call. */
 const TAKEOVER_NOTICE =
   'The user is joining this call themselves and their phone is ringing now. Tell the other party in one short sentence, in the call language, that they are joining in a moment, then stop talking and wait. You will hear the conversation but must not speak until told the call is handed back to you.';
@@ -895,6 +898,7 @@ export class CallSession {
    */
   async takeOver(userPhone: string): Promise<string | null> {
     if (this.finalizing || !this.transport) return "The call isn't connected yet.";
+    if (userPhone === this.record.request.to) return SELF_CALL;
     if (this.record.takeover) return "You're already joining this call.";
     if (!this.deps.telephony.placeUserLeg) return "Joining calls isn't available with this phone provider.";
     this.update((r) => (r.takeover = { state: 'ringing', since: Date.now() }));
@@ -924,8 +928,9 @@ export class CallSession {
    * the app connects to the call itself, presenting this one-time code to our webhook.
    */
   private appJoinCode: string | null = null;
-  startAppJoin(): { code: string } | { error: string } {
+  startAppJoin(userPhone?: string): { code: string } | { error: string } {
     if (this.finalizing || !this.transport) return { error: "The call isn't connected yet." };
+    if (userPhone && userPhone === this.record.request.to) return { error: SELF_CALL };
     if (this.record.takeover) return { error: "You're already joining this call." };
     this.appJoinCode = randomBytes(16).toString('hex');
     this.update((r) => (r.takeover = { state: 'ringing', since: Date.now() }));

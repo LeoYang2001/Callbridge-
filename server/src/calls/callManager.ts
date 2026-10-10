@@ -167,10 +167,10 @@ export class CallManager {
   }
 
   /** In-app joining: start the take-over and get the one-time code the app's voice leg presents. */
-  startAppJoin(callId: string): { code: string } | { status: number; error: string } {
+  startAppJoin(callId: string, userPhone?: string): { code: string } | { status: number; error: string } {
     const session = this.sessions.get(callId);
     if (!session) return { status: 404, error: 'That call is not in progress.' };
-    const r = session.startAppJoin();
+    const r = session.startAppJoin(userPhone);
     return 'error' in r ? { status: 409, error: r.error } : r;
   }
 

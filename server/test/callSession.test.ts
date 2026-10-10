@@ -330,6 +330,19 @@ describe('take-over', () => {
     expect(telephony.hangups).toContain('CAAPP');
   });
 
+  it("won't join a call to the user's own number (they're already on it; two legs would echo)", async () => {
+    const { store, telephony, manager } = setup();
+    const created = manager.startCall(dentistRequest());
+    await waitFor(() => telephony.placed.length === 1);
+    manager.handleTelephonyState(created.id, 'answered');
+    manager.attachMedia(created.id, (manager as any).sessions.get(created.id).streamToken, new FakeTransport());
+    const own = store.get(created.id)!.request.to;
+    expect(await manager.takeOver(created.id, own)).toMatchObject({ error: expect.stringMatching(/your own number/) });
+    expect(manager.startAppJoin(created.id, own)).toMatchObject({ error: expect.stringMatching(/your own number/) });
+    expect(telephony.userLegs).toEqual([]);
+    expect(store.get(created.id)!.takeover).toBeUndefined();
+  });
+
   it("lets the assistant carry on when the user doesn't pick up", async () => {
     const { store, agent, telephony, manager } = setup();
     const created = manager.startCall(dentistRequest());

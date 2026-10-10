@@ -86,7 +86,7 @@ export function registerApiRoutes(
     if (!TWILIO_ACCOUNT_SID || !TWILIO_API_KEY_SID || !TWILIO_API_KEY_SECRET || !TWILIO_TWIML_APP_SID) {
       return reply.code(503).send({ error: "Joining from the app isn't set up on the server." });
     }
-    const started = manager.startAppJoin(req.params.id);
+    const started = manager.startAppJoin(req.params.id, req.user!.phone);
     if ('error' in started) return reply.code(started.status).send({ error: started.error });
     const token = new twilio.jwt.AccessToken(TWILIO_ACCOUNT_SID, TWILIO_API_KEY_SID, TWILIO_API_KEY_SECRET, { identity: req.user!.id, ttl: 600 });
     token.addGrant(new twilio.jwt.AccessToken.VoiceGrant({ outgoingApplicationSid: TWILIO_TWIML_APP_SID, incomingAllow: false }));
