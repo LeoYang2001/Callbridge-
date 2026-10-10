@@ -1,8 +1,10 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Alert, Keyboard, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { APP_LANGUAGES } from '@shared/languages';
 import { displayPhone, formatUsPhone, usNationalDigits } from '@shared/phone';
 import { useGlow } from '@/glow/GlowContext';
+import { haptic } from '@/lib/haptics';
 import { usePhoneBook, type ContactInput } from '@/hooks/usePhoneBook';
 import { color, type } from '@/theme/tokens';
 import { Avatar } from '@/ui/Avatar';
@@ -139,11 +141,51 @@ export function EditContact({ initial, id, onDone, title }: { initial: ContactIn
       <Field label="Name" value={input.name} onChange={(name) => set({ name })} />
       <Field label="Phone (+1)" value={formatUsPhone(input.phone)} onChange={(t) => set({ phone: usNationalDigits(t) })} keyboard="phone-pad" />
       <Field label="Who they are to you" value={input.relationship ?? ''} onChange={(relationship) => set({ relationship })} placeholder="mom, girlfriend, dentist…" />
-      <Field label="Call them in" value={input.language ?? ''} onChange={(language) => set({ language })} placeholder="English" />
+      <LanguagePicker label="Call them in" value={input.language} onChange={(language) => set({ language })} />
       <Field label="Address (tells same-name places apart)" value={input.address ?? ''} onChange={(address) => set({ address })} />
       {error ? <Text style={[type.small, { color: color.redText }]}>{error}</Text> : null}
       <PillButton title="Save" onPress={() => void save()} busy={busy} disabled={!input.name.trim() || input.phone.length !== 10} />
     </Screen>
+  );
+}
+
+/** Picks the call language from the languages the assistant speaks (no typing, no typos). */
+function LanguagePicker({ label, value, onChange }: { label: string; value?: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const current = APP_LANGUAGES.find((l) => l.name === value);
+  return (
+    <View style={{ gap: 6 }}>
+      <Text style={[type.caption, { fontWeight: '600' }]}>{label}</Text>
+      <Pressable accessibilityRole="button" accessibilityLabel={`${label}: ${value || 'not set'}`} onPress={() => (haptic.select(), Keyboard.dismiss(), setOpen(!open))} style={s.picker}>
+        <Text style={[type.callout, { flex: 1, color: value ? color.ink : color.tertiary }]} numberOfLines={1}>
+          {current ? (current.native === current.name ? current.name : `${current.native} · ${current.name}`) : value || 'Choose a language'}
+        </Text>
+        <View style={{ transform: [{ rotate: open ? '-90deg' : '90deg' }] }}>
+          <Icon name="chevron" size={13} color={color.secondary} />
+        </View>
+      </Pressable>
+      {open ? (
+        <ScrollView style={s.list} nestedScrollEnabled keyboardShouldPersistTaps="handled">
+          {APP_LANGUAGES.map((l) => (
+            <Pressable
+              key={l.name}
+              onPress={() => {
+                haptic.select();
+                onChange(l.name);
+                setOpen(false);
+              }}
+              style={({ pressed }) => [s.option, pressed && { backgroundColor: color.surface }]}
+            >
+              <Text style={[type.callout, { flex: 1 }]} numberOfLines={1}>
+                {l.native}
+                {l.native !== l.name ? <Text style={{ color: color.secondary }}>{`  ${l.name}`}</Text> : null}
+              </Text>
+              {l.name === value ? <Icon name="check" size={18} color={color.blue} /> : null}
+            </Pressable>
+          ))}
+        </ScrollView>
+      ) : null}
+    </View>
   );
 }
 
@@ -162,3 +204,9 @@ function Field({ label, value, onChange, placeholder, keyboard }: { label: strin
     </View>
   );
 }
+
+const s = StyleSheet.create({
+  picker: { height: 50, borderRadius: 16, backgroundColor: color.surface, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  list: { maxHeight: 300, borderRadius: 16, borderWidth: 1, borderColor: color.line, backgroundColor: color.white },
+  option: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 46, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: color.divider },
+});
