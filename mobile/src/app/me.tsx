@@ -2,8 +2,8 @@ import * as Application from 'expo-application';
 import { router } from 'expo-router';
 import { versionLabel } from '@/lib/updates';
 import { useEffect, useState } from 'react';
-import { Alert, Text, View } from 'react-native';
-import { APP_LANGUAGES, nativeLanguageName } from '@shared/languages';
+import { Alert, Text, TextInput, View } from 'react-native';
+import { nativeLanguageName, searchLanguages } from '@shared/languages';
 import { displayPhone } from '@shared/phone';
 import { useGlow } from '@/glow/GlowContext';
 import { usePreferences } from '@/hooks/usePreferences';
@@ -16,6 +16,7 @@ import { Avatar } from '@/ui/Avatar';
 import { Logo } from '@/ui/Logo';
 import { CallerIdRow } from '@/me/CallerId';
 import { Chip } from '@/ui/Button';
+import { Icon } from '@/ui/Icon';
 import { Group, Row, SectionLabel } from '@/ui/Rows';
 import { Segmented } from '@/ui/Segmented';
 import { Toggle } from '@/ui/Toggle';
@@ -31,6 +32,7 @@ export default function Me() {
   const prefs = usePreferences();
   const [open, setOpen] = useState<'language' | 'voice' | 'charges' | 'hold' | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [langQuery, setLangQuery] = useState('');
   const save = async (patch: Record<string, unknown>) => setError(await update(patch));
   const voice = prefs.voice ?? profile.voice ?? 'marin';
   const toggle = (k: typeof open) => setOpen(open === k ? null : k);
@@ -68,7 +70,17 @@ export default function Me() {
       <Group>
         <Row label="I speak" value={nativeLanguageName(profile.preferredLanguage)} onPress={() => toggle('language')} />
         {open === 'language' && (
-          <Chips options={APP_LANGUAGES.map((l) => l.name)} label={(n) => nativeLanguageName(n)} value={profile.preferredLanguage} onPick={(preferredLanguage) => void save({ preferredLanguage })} />
+          <>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, height: 42, borderRadius: 14, backgroundColor: color.surface, paddingHorizontal: 14, marginBottom: 10 }}>
+              <Icon name="search" size={16} color={color.secondary} />
+              <TextInput value={langQuery} onChangeText={setLangQuery} placeholder="Search · 搜索 · Buscar" placeholderTextColor={color.tertiary} style={[type.callout, { flex: 1 }]} autoCorrect={false} autoCapitalize="none" clearButtonMode="while-editing" />
+            </View>
+            {searchLanguages(langQuery).length ? (
+              <Chips options={searchLanguages(langQuery).map((l) => l.name)} label={(n) => nativeLanguageName(n)} value={profile.preferredLanguage} onPick={(preferredLanguage) => (setLangQuery(''), void save({ preferredLanguage }))} />
+            ) : (
+              <Text style={[type.small, { marginBottom: 10 }]}>No match. Try the name in English or its own script.</Text>
+            )}
+          </>
         )}
         <Row label="Assistant voice" value={cap(voice)} onPress={() => toggle('voice')} />
         {open === 'voice' && (

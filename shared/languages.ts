@@ -86,5 +86,11 @@ export const APP_LANGUAGES: { native: string; name: string }[] = [
 ];
 
 /** The native name for a saved language ("Chinese (Mandarin)" → "中文（普通话）"). */
+/** The app languages matching a search, by English name or in their own script. */
+export function searchLanguages(query: string): typeof APP_LANGUAGES {
+  const t = query.trim().toLowerCase();
+  return t ? APP_LANGUAGES.filter((l) => l.native.toLowerCase().includes(t) || l.name.toLowerCase().includes(t)) : APP_LANGUAGES;
+}
+
 export const nativeLanguageName = (name: string) => APP_LANGUAGES.find((l) => l.name === name)?.native ?? name;
 

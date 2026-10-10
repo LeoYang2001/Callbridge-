@@ -1,7 +1,7 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Keyboard, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { APP_LANGUAGES } from '@shared/languages';
+import { APP_LANGUAGES, searchLanguages } from '@shared/languages';
 import { displayPhone, formatUsPhone, usNationalDigits } from '@shared/phone';
 import { useGlow } from '@/glow/GlowContext';
 import { haptic } from '@/lib/haptics';
@@ -152,11 +152,13 @@ export function EditContact({ initial, id, onDone, title }: { initial: ContactIn
 /** Picks the call language from the languages the assistant speaks (no typing, no typos). */
 function LanguagePicker({ label, value, onChange }: { label: string; value?: string; onChange: (v: string) => void }) {
   const [open, setOpen] = useState(false);
+  const [q, setQ] = useState('');
   const current = APP_LANGUAGES.find((l) => l.name === value);
+  const list = searchLanguages(q);
   return (
     <View style={{ gap: 6 }}>
       <Text style={[type.caption, { fontWeight: '600' }]}>{label}</Text>
-      <Pressable accessibilityRole="button" accessibilityLabel={`${label}: ${value || 'not set'}`} onPress={() => (haptic.select(), Keyboard.dismiss(), setOpen(!open))} style={s.picker}>
+      <Pressable accessibilityRole="button" accessibilityLabel={`${label}: ${value || 'not set'}`} onPress={() => (haptic.select(), Keyboard.dismiss(), setQ(''), setOpen(!open))} style={s.picker}>
         <Text style={[type.callout, { flex: 1, color: value ? color.ink : color.tertiary }]} numberOfLines={1}>
           {current ? (current.native === current.name ? current.name : `${current.native} · ${current.name}`) : value || 'Choose a language'}
         </Text>
@@ -165,25 +167,33 @@ function LanguagePicker({ label, value, onChange }: { label: string; value?: str
         </View>
       </Pressable>
       {open ? (
-        <ScrollView style={s.list} nestedScrollEnabled keyboardShouldPersistTaps="handled">
-          {APP_LANGUAGES.map((l) => (
-            <Pressable
-              key={l.name}
-              onPress={() => {
-                haptic.select();
-                onChange(l.name);
-                setOpen(false);
-              }}
-              style={({ pressed }) => [s.option, pressed && { backgroundColor: color.surface }]}
-            >
-              <Text style={[type.callout, { flex: 1 }]} numberOfLines={1}>
-                {l.native}
-                {l.native !== l.name ? <Text style={{ color: color.secondary }}>{`  ${l.name}`}</Text> : null}
-              </Text>
-              {l.name === value ? <Icon name="check" size={18} color={color.blue} /> : null}
-            </Pressable>
-          ))}
-        </ScrollView>
+        <View style={s.list}>
+          <View style={s.search}>
+            <Icon name="search" size={16} color={color.secondary} />
+            <TextInput value={q} onChangeText={setQ} placeholder="Search · 搜索 · Buscar" placeholderTextColor={color.tertiary} style={[type.callout, { flex: 1 }]} autoCorrect={false} autoCapitalize="none" clearButtonMode="while-editing" />
+          </View>
+          <ScrollView style={{ maxHeight: 280 }} nestedScrollEnabled keyboardShouldPersistTaps="handled">
+            {list.length === 0 ? <Text style={[type.small, { textAlign: 'center', paddingVertical: 18 }]}>No match. Try the name in English or its own script.</Text> : null}
+            {list.map((l) => (
+              <Pressable
+                key={l.name}
+                onPress={() => {
+                  haptic.select();
+                  onChange(l.name);
+                  Keyboard.dismiss();
+                  setOpen(false);
+                }}
+                style={({ pressed }) => [s.option, pressed && { backgroundColor: color.surface }]}
+              >
+                <Text style={[type.callout, { flex: 1 }]} numberOfLines={1}>
+                  {l.native}
+                  {l.native !== l.name ? <Text style={{ color: color.secondary }}>{`  ${l.name}`}</Text> : null}
+                </Text>
+                {l.name === value ? <Icon name="check" size={18} color={color.blue} /> : null}
+              </Pressable>
+            ))}
+          </ScrollView>
+        </View>
       ) : null}
     </View>
   );
@@ -207,6 +217,7 @@ function Field({ label, value, onChange, placeholder, keyboard }: { label: strin
 
 const s = StyleSheet.create({
   picker: { height: 50, borderRadius: 16, backgroundColor: color.surface, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 10 },
-  list: { maxHeight: 300, borderRadius: 16, borderWidth: 1, borderColor: color.line, backgroundColor: color.white },
+  search: { flexDirection: 'row', alignItems: 'center', gap: 8, height: 46, paddingHorizontal: 14, borderBottomWidth: 1, borderBottomColor: color.line },
+  list: { overflow: 'hidden', borderRadius: 16, borderWidth: 1, borderColor: color.line, backgroundColor: color.white },
   option: { flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 46, paddingHorizontal: 16, borderBottomWidth: 1, borderBottomColor: color.divider },
 });

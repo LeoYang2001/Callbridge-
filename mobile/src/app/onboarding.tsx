@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated, { FadeIn, FadeInUp } from 'react-native-reanimated';
-import { APP_LANGUAGES, nativeLanguageName } from '@shared/languages';
+import { nativeLanguageName, searchLanguages } from '@shared/languages';
 import { useGlow } from '@/glow/GlowContext';
 import { useIntake } from '@/hooks/useIntake';
 import { useIntakeContext } from '@/hooks/useIntakeContext';
@@ -54,10 +54,7 @@ function Header({ step, language }: { step: number; language?: string }) {
 function LanguageStep({ current, error, onPick }: { current: string; error: string | null; onPick: (name: string) => void }) {
   useGlow('none');
   const [q, setQ] = useState('');
-  const list = useMemo(() => {
-    const t = q.trim().toLowerCase();
-    return t ? APP_LANGUAGES.filter((l) => l.native.toLowerCase().includes(t) || l.name.toLowerCase().includes(t)) : APP_LANGUAGES;
-  }, [q]);
+  const list = useMemo(() => searchLanguages(q), [q]);
   return (
     <Screen top={<Header step={0} />} padding={22}>
       <View style={{ paddingHorizontal: 12, paddingTop: 14, gap: 6 }}>
