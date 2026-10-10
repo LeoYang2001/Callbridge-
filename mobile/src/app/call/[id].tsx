@@ -91,6 +91,7 @@ export default function CallScreen() {
         void c.handBack();
       });
     } catch (e) {
+      console.warn('[appJoin] join failed:', (e as Error).message, (e as { code?: unknown }).code ?? '');
       setJoinedViaApp(false);
       toast((e as Error).message);
       void c.handBack();

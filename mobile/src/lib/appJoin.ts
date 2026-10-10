@@ -1,3 +1,4 @@
+import * as Device from 'expo-device';
 import { NativeModules } from 'react-native';
 import { joinCallToken } from '@shared/client/api';
 import type { Connection } from './api';
@@ -11,27 +12,31 @@ import type { Connection } from './api';
 
 type VoiceCall = { disconnect: () => Promise<void>; mute: (on: boolean) => Promise<boolean>; on: (event: string, fn: (...args: any[]) => void) => void };
 
-/** This build includes the Twilio Voice SDK. */
-export const canJoinInApp = () => NativeModules.TwilioVoiceReactNative != null;
+/**
+ * This build includes the Twilio Voice SDK, on a real phone: calls go through CallKit, which the
+ * iOS simulator doesn't have (the SDK loads there, but every call is cancelled at once).
+ */
+export const canJoinInApp = () => NativeModules.TwilioVoiceReactNative != null && Device.isDevice;
 
 let voice: { connect: (token: string, opts: object) => Promise<VoiceCall> } | null = null;
 let current: VoiceCall | null = null;
 
 /** Connects; `onEnded` hears when the app's leg ends (with an error message if it failed). */
 export async function joinFromApp(conn: Connection, callId: string, label: string, onEnded: (error?: string) => void): Promise<void> {
-  if (!canJoinInApp()) throw new Error('Joining from the app needs the latest version of CallBridge.');
+  if (!canJoinInApp()) throw new Error(Device.isDevice ? 'Joining from the app needs the latest version of CallBridge.' : "Joining from the app needs a real iPhone (the simulator can't place calls).");
   const { token, code } = await joinCallToken(conn, callId);
   const sdk = require('@twilio/voice-react-native-sdk') as typeof import('@twilio/voice-react-native-sdk');
   voice ??= new sdk.Voice() as unknown as typeof voice;
   const call = await voice!.connect(token, { params: { callId, code }, contactHandle: label });
   current = call;
   const ended = (error?: string) => {
+    if (error) console.warn('[appJoin] call ended with error:', error);
     if (current !== call) return;
     current = null;
     onEnded(error);
   };
-  call.on(sdk.Call.Event.Disconnected, (err?: { message?: string }) => ended(err?.message));
-  call.on(sdk.Call.Event.ConnectFailure, (err?: { message?: string }) => ended(err?.message ?? "Couldn't connect."));
+  call.on(sdk.Call.Event.Disconnected, (err?: { message?: string; code?: number }) => ended(err ? `${err.message} (${err.code})` : undefined));
+  call.on(sdk.Call.Event.ConnectFailure, (err?: { message?: string; code?: number }) => ended(err ? `${err.message} (${err.code})` : "Couldn't connect."));
 }
 
 /** Leaves the call (hands it back). */
