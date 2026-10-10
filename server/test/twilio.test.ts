@@ -58,3 +58,24 @@ describe('TwilioTelephony call setup fallbacks', () => {
     expect(await t.getCallState('CA9')).toBe('ringing');
   });
 });
+
+describe('calling from the user’s own number', () => {
+  it('shows their verified number as caller ID when the call asks for it', async () => {
+    const { client, seen } = fakeClient(() => false);
+    const t = new TwilioTelephony(opts, client);
+    await t.placeCall({ ...params, from: '+19015550123' });
+    await t.placeCall(params);
+    expect(seen.map((o) => o.from)).toEqual(['+19015550123', '+15555550100']);
+  });
+
+  it('uses it only once verified and switched on, and never to call themselves', async () => {
+    const { withUserSettings } = await import('../src/routes/api');
+    const request = { to: '+14155550123' } as never;
+    const user = (profile: Record<string, unknown>) => ({ phone: '+19015550123', profile: profile as never });
+    expect(withUserSettings(request, user({ callerIdVerifiedAt: 1 })).callerId).toBe('+19015550123');
+    expect(withUserSettings(request, user({ callerIdVerifiedAt: 1, useOwnCallerId: false })).callerId).toBeUndefined();
+    expect(withUserSettings(request, user({ useOwnCallerId: true })).callerId).toBeUndefined(); // not verified
+    expect(withUserSettings({ to: '+19015550123' } as never, user({ callerIdVerifiedAt: 1 })).callerId).toBeUndefined();
+    expect(withUserSettings(request, user({})).record).toBe(true);
+  });
+});

@@ -74,6 +74,8 @@ export interface CallRequest {
   holdSeconds?: number;
   /** Set by the server from the user's setting (UserProfile.recordCalls), not by clients. */
   record?: boolean;
+  /** Caller ID to show: the user's own verified number (set by the server), else CallBridge's. */
+  callerId?: string;
   /** Who is being called, e.g. "Smile Dental" or "Maria". */
   counterpartName?: string;
   /** Who they are to the user, e.g. "girlfriend" (saved in the phone book). */
@@ -402,6 +404,10 @@ export interface UserProfile {
    * states require everyone's consent).
    */
   recordCalls?: boolean;
+  /** Calls show the user's own number (once verified with the phone company, see callerIdVerifiedAt). */
+  useOwnCallerId?: boolean;
+  /** When the user's number was verified as a caller ID (set by the server only). */
+  callerIdVerifiedAt?: number;
   /** Extra charges the assistant may accept without asking, in USD (default 0: ask first). */
   maxChargeUsd?: number;
   /** Unset fields mean on. */

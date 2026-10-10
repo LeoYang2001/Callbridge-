@@ -38,6 +38,7 @@ export const ProfilePatchSchema = z
     voice: z.enum(REALTIME_VOICES),
     holdSeconds: z.number().int().min(10).max(120),
     recordCalls: z.boolean(),
+    useOwnCallerId: z.boolean(),
     usualAvailability: z.array(Window).max(10),
     shareable: z.array(z.object({ label: text(60).min(1), value: text(300).min(1), off: z.boolean().optional() })).max(20),
     maxChargeUsd: z.number().int().min(0).max(1000),

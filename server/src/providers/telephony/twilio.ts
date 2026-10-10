@@ -68,7 +68,7 @@ export class TwilioTelephony implements TelephonyProvider {
    * still tracked if status callbacks end up disabled.
    */
   private attempts(p: PlaceCallParams): { label: string; options: CallCreateOptions }[] {
-    const base = { to: p.to, from: this.opts.fromNumber };
+    const base = { to: p.to, from: p.from ?? this.opts.fromNumber };
     const twiml = TwilioTelephony.streamTwiml(this.opts.publicBaseUrl, p.callId, p.streamToken);
     const url = TwilioTelephony.twimlUrl(this.opts.publicBaseUrl, p.callId);
     const callbacks = {
@@ -135,6 +135,20 @@ export class TwilioTelephony implements TelephonyProvider {
       statusCallbackEvent: ['initiated', 'ringing', 'answered', 'completed'],
     });
     return { providerCallId: call.sid };
+  }
+
+  /**
+   * Verifies a user's own number as a caller ID: Twilio calls it, and the user types the code
+   * shown in the app on the keypad. After that, calls may show their number.
+   */
+  async startCallerIdVerification(phone: string, label: string) {
+    const v = await this.client.validationRequests.create({ phoneNumber: phone, friendlyName: label.slice(0, 64) });
+    return { validationCode: String(v.validationCode) };
+  }
+
+  async isVerifiedCallerId(phone: string) {
+    const ids = await this.client.outgoingCallerIds.list({ phoneNumber: phone, limit: 1 });
+    return ids.some((i) => i.phoneNumber === phone);
   }
 
   async getCallState(providerCallId: string) {

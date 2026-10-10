@@ -1,9 +1,10 @@
+import type { TelephonyProvider } from '../providers/telephony/types';
 import twilio from 'twilio';
 import { readFile } from 'node:fs/promises';
 import { recordingPath, removeRecording } from '../calls/recordings';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import type { CallRecord, CallRequest, CallSummary, PublicConfig, TaskReview } from '../../../shared/types';
+import type { CallRecord, CallRequest, CallSummary, PublicConfig, TaskReview, UserProfile } from '../../../shared/types';
 import { checkRequest, type CheckDeps } from '../agent/intake';
 import { CallRejectedError, type CallManager } from '../calls/callManager';
 import { CallRequestSchema } from '../calls/requestSchema';
@@ -13,9 +14,9 @@ import type { Database } from '../db/database';
 
 export function registerApiRoutes(
   app: FastifyInstance,
-  deps: { config: AppConfig; manager: CallManager; store: CallStore; checkDeps: CheckDeps; db: Database; recordingsDir?: string | null },
+  deps: { config: AppConfig; manager: CallManager; store: CallStore; checkDeps: CheckDeps; db: Database; recordingsDir?: string | null; telephony?: TelephonyProvider | null },
 ) {
-  const { config, manager, store, checkDeps, db, recordingsDir } = deps;
+  const { config, manager, store, checkDeps, db, recordingsDir, telephony } = deps;
   /** A call the signed-in user placed; other users' calls look like they don't exist. */
   const ownCall = (req: FastifyRequest, id: string) => {
     const r = store.getOrLoad(id);
@@ -39,8 +40,8 @@ export function registerApiRoutes(
     const checked = await validateCallRequest(req.body, checkDeps);
     if ('error' in checked) return reply.code(checked.status).send({ error: checked.error, review: checked.review });
     try {
-      // Recorded unless the user turned it off (UserProfile.recordCalls).
-      const record = manager.startCall({ ...checked.request, record: req.user!.profile.recordCalls !== false }, req.user!.id);
+      // Recorded unless the user turned it off; their own number as caller ID if verified and on.
+      const record = manager.startCall(withUserSettings(checked.request, req.user!), req.user!.id);
       return reply.code(201).send(record);
     } catch (err) {
       if (err instanceof CallRejectedError) return reply.code(err.statusCode).send({ error: err.message });
@@ -127,6 +128,39 @@ export function registerApiRoutes(
     return manager.liveView(r);
   });
 
+  /**
+   * Calls from the user's own number: verifying it starts with Twilio calling them, and the code
+   * shown in the app goes on the keypad. GET checks (and records) whether it's verified.
+   */
+  app.post('/api/me/caller-id', async (req, reply) => {
+    if (!telephony?.startCallerIdVerification || !telephony.isVerifiedCallerId) return reply.code(503).send({ error: "Calling from your own number isn't available." });
+    const user = req.user!;
+    if (await telephony.isVerifiedCallerId(user.phone)) return markVerified(user);
+    try {
+      const { validationCode } = await telephony.startCallerIdVerification(user.phone, `CallBridge · ${user.profile.name || user.phone}`);
+      return { verified: false, validationCode };
+    } catch (err) {
+      req.log.warn({ err: (err as Error).message }, 'caller id verification failed');
+      return reply.code(502).send({ error: "Couldn't start the verification call. Try again in a minute." });
+    }
+  });
+
+  app.get('/api/me/caller-id', async (req, reply) => {
+    if (!telephony?.isVerifiedCallerId) return reply.code(503).send({ error: "Calling from your own number isn't available." });
+    const user = req.user!;
+    if (await telephony.isVerifiedCallerId(user.phone)) return markVerified(user);
+    return { verified: false, enabled: false };
+  });
+
+  /** Verified: remembered on the profile (server-set), and switched on the first time. */
+  const markVerified = (user: NonNullable<FastifyRequest['user']>) => {
+    if (!user.profile.callerIdVerifiedAt) {
+      user.profile = { ...user.profile, callerIdVerifiedAt: Date.now(), useOwnCallerId: user.profile.useOwnCallerId ?? true };
+      db.saveProfile(user.id, user.profile);
+    }
+    return { verified: true, enabled: user.profile.useOwnCallerId !== false };
+  };
+
   /** Deletes a finished call from the user's history (swiped away in the app). */
   app.delete<{ Params: { id: string } }>('/api/calls/:id', async (req, reply) => {
     const r = ownCall(req, req.params.id);
@@ -180,6 +214,17 @@ export function registerApiRoutes(
       if (pending) clearTimeout(pending);
     });
   });
+}
+
+/**
+ * The user's settings that shape how a call is placed (set by the server, never by the client):
+ * recording (on unless turned off), and their own verified number as caller ID when they've
+ * switched that on. A call to their own number keeps CallBridge's (one can't call oneself).
+ */
+export function withUserSettings(request: CallRequest, user: { phone: string; profile: UserProfile }): CallRequest {
+  const p = user.profile;
+  const ownNumber = Boolean(p.callerIdVerifiedAt) && p.useOwnCallerId !== false && request.to !== user.phone;
+  return { ...request, record: p.recordCalls !== false, callerId: ownNumber ? user.phone : undefined };
 }
 
 /**

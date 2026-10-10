@@ -9,6 +9,8 @@
 export interface PlaceCallParams {
   callId: string;
   to: string;
+  /** Caller ID to show (a verified number of the user's); default the provider's own number. */
+  from?: string;
   /** Opaque secret the media stream must present to attach to this call. */
   streamToken: string;
   maxDurationSeconds: number;
@@ -28,6 +30,9 @@ export interface TelephonyProvider {
   readonly name: string;
   placeCall(params: PlaceCallParams): Promise<{ providerCallId: string }>;
   placeUserLeg?(params: PlaceUserLegParams): Promise<{ providerCallId: string }>;
+  /** Verified caller IDs: start verifying a number (the provider calls it with a code), and check one. */
+  startCallerIdVerification?(phone: string, label: string): Promise<{ validationCode: string }>;
+  isVerifiedCallerId?(phone: string): Promise<boolean>;
   hangup(providerCallId: string): Promise<void>;
   /** Current call state, polled as a fallback when status callbacks are delayed or disabled. */
   getCallState?(providerCallId: string): Promise<TelephonyCallState | null>;

@@ -207,3 +207,8 @@ export const handBackCall = (s: Connection, id: string) => postJson<{ ok: boolea
 
 /** Join from the app: a short-lived Twilio Voice token and the call's one-time join code. */
 export const joinCallToken = (s: Connection, id: string) => postJson<{ token: string; callId: string; code: string }>(s, `/api/calls/${encodeURIComponent(id)}/join`, {});
+
+/** Calling from your own number: start verifying it (Twilio calls you; type the code shown). */
+export const startCallerId = (s: Connection) => postJson<{ verified: boolean; enabled?: boolean; validationCode?: string }>(s, '/api/me/caller-id', {});
+/** Whether your number is verified as a caller ID yet (and switched on). */
+export const callerIdStatus = (s: Connection) => request<{ verified: boolean; enabled: boolean }>(s, '/api/me/caller-id');

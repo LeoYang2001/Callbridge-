@@ -22,7 +22,7 @@ import { ErrandQueue } from './errands/errandQueue';
 import { sendDueReminders } from './reminders/reminders';
 import { registerErrandRoutes } from './routes/errands';
 import { ExpoPush, finishedNotification, questionNotification, type PushMessage } from './push/push';
-import { registerApiRoutes } from './routes/api';
+import { registerApiRoutes, withUserSettings } from './routes/api';
 import { registerAuthRoutes } from './routes/auth';
 import { GooglePlaces } from './places/places';
 import { OpenAIResearcher } from './research/researcher';
@@ -62,8 +62,11 @@ await app.register(cors, {
 const db = new Database(path.resolve(root, config.DATABASE_FILE));
 /** Call recordings (replayed with the transcript in the app). */
 const recordingsDir = path.join(root, 'data', 'recordings');
-/** Records the call if its user records calls (on unless they turned it off). */
-const withRecording = (request: CallRequest, userId: string): CallRequest => ({ ...request, record: db.userById(userId)?.profile.recordCalls !== false });
+/** Recording and caller ID from the user's settings (errands are started here, not by a request). */
+const withRecording = (request: CallRequest, userId: string): CallRequest => {
+  const user = db.userById(userId);
+  return user ? withUserSettings(request, user) : { ...request, record: true };
+};
 const PUBLIC_API = new Set(['/api/health', '/api/config', '/api/auth/start', '/api/auth/verify']);
 app.addHook('onRequest', async (req: FastifyRequest, reply) => {
   if (req.method === 'OPTIONS' || !req.url.startsWith('/api/') || PUBLIC_API.has(req.url.split('?')[0]!)) return;
@@ -159,7 +162,7 @@ const checkDeps = {
   classifier: config.OPENAI_API_KEY ? new OpenAITaskClassifier(config.OPENAI_API_KEY, config.ANALYSIS_MODEL) : null,
   allowedDestinations: config.allowedDestinations,
 };
-registerApiRoutes(app, { config, manager, store, checkDeps, db, recordingsDir });
+registerApiRoutes(app, { config, manager, store, checkDeps, db, recordingsDir, telephony });
 
 // Errands: calls the server places later, on its own, while the user does something else.
 const errands = new ErrandQueue({

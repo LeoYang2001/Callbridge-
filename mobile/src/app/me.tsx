@@ -14,6 +14,7 @@ import { MenuButton } from '@/nav/MenuButton';
 import { color, type } from '@/theme/tokens';
 import { Avatar } from '@/ui/Avatar';
 import { Logo } from '@/ui/Logo';
+import { CallerIdRow } from '@/me/CallerId';
 import { Chip } from '@/ui/Button';
 import { Group, Row, SectionLabel } from '@/ui/Rows';
 import { Segmented } from '@/ui/Segmented';
@@ -84,6 +85,7 @@ export default function Me() {
         />
         <Row label="Extra charges" value={profile.maxChargeUsd ? `Up to $${profile.maxChargeUsd}` : 'Ask me first'} onPress={() => toggle('charges')} />
         {open === 'charges' && <Chips options={CHARGES.map(String)} label={(n) => (n === '0' ? 'Ask me first' : `Up to $${n}`)} value={String(profile.maxChargeUsd ?? 0)} onPick={(n) => void save({ maxChargeUsd: Number(n) })} />}
+        <CallerIdRow onChange={(patch: Record<string, unknown>) => void save(patch)} />
         <Row
           label="Record calls"
           sub="Replay a call with its transcript afterwards. Testing: the other party isn't told yet."

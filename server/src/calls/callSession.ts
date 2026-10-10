@@ -258,6 +258,7 @@ export class CallSession {
       const { providerCallId } = await this.deps.telephony.placeCall({
         callId: this.id,
         to: r.request.to,
+        ...(r.request.callerId ? { from: r.request.callerId } : {}),
         streamToken: this.streamToken,
         maxDurationSeconds: this.deps.maxCallSeconds,
       });
