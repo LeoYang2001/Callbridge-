@@ -4,7 +4,7 @@ import { ActivityIndicator, Keyboard, Platform, Pressable, ScrollView, StyleShee
 import Animated, { Easing, FadeIn, FadeOut, SlideInDown, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { captionText, sentenceStarts } from '@shared/captions';
-import type { PlaceResult } from '@shared/types';
+import type { Contact, PlaceResult } from '@shared/types';
 import { useActiveCall } from '@/call/ActiveCall';
 import { useGlow } from '@/glow/GlowContext';
 import type { GlowMode } from '@/glow/modes';
@@ -157,7 +157,7 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
   );
 
   function renderView() {
-    if (view === 'home') return <Home onSuggestion={(t) => void intake.choose(t)} />;
+    if (view === 'home') return <Home onSuggestion={(t) => void intake.choose(t)} onContact={(c) => void intake.startWith(callSeed(c))} />;
 
     // While conversing there's no top bar (more room for the conversation; End is in the dock).
     // Review keeps one: Back to the conversation, and that it's ready.
@@ -334,7 +334,7 @@ const SEARCH_INK = glowPalette.search[2];
 
 const EDGE_HINT_KEY = 'callbridge.edgeHint.v1';
 
-function Home({ onSuggestion }: { onSuggestion: (text: string) => void }) {
+function Home({ onSuggestion, onContact }: { onSuggestion: (text: string) => void; onContact: (c: Contact) => void }) {
   const { hint } = useMenu();
   const toast = useToast();
   // Once: show where the menu lives (there's no menu button).
@@ -354,7 +354,11 @@ function Home({ onSuggestion }: { onSuggestion: (text: string) => void }) {
   const t = homeText(me.profile.preferredLanguage);
   // Recent contacts first, then a nearby place.
   const recent = [...me.profile.contacts].sort((a, b) => (b.lastCalledAt ?? 0) - (a.lastCalledAt ?? 0)).slice(0, 2);
-  const suggestions = [...recent.map((c) => t.call(c.name)), recent.length < 2 ? t.nearestRestaurant : null, t.nearestPharmacy].filter((x): x is string => Boolean(x)).slice(0, 3);
+  // A contact starts with who to call filled in (like the phone book's Call button); a place is asked for.
+  const suggestions: { title: string; run: () => void }[] = [
+    ...recent.map((c) => ({ title: t.call(c.name), run: () => onContact(c) })),
+    ...[recent.length < 2 ? t.nearestRestaurant : null, t.nearestPharmacy].filter((x): x is string => Boolean(x)).map((x) => ({ title: x, run: () => onSuggestion(x) })),
+  ].slice(0, 3);
   const next = me.profile.appointments.filter((a) => a.date >= new Date().toISOString().slice(0, 10)).sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))[0];
 
   return (
@@ -372,7 +376,7 @@ function Home({ onSuggestion }: { onSuggestion: (text: string) => void }) {
       <Text style={[type.caption, { textAlign: 'center', marginBottom: 12 }]}>The mic stays off until you hold. Or tap a suggestion.</Text>
       <View style={s.suggest}>
         {suggestions.map((x) => (
-          <Chip key={x} variant="suggestion" title={x} onPress={() => onSuggestion(x)} />
+          <Chip key={x.title} variant="suggestion" title={x.title} onPress={x.run} />
         ))}
       </View>
     </Screen>

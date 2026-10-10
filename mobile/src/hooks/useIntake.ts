@@ -49,9 +49,10 @@ export function useIntake({ context, mode = 'call', followUp, seed, keepLines = 
 
   /** first: the user's opening message, or 'user' when they're already holding the talk button. */
   const connect = useCallback(
-    async (withMic: boolean, first?: { text: string } | 'user') => {
+    async (withMic: boolean, first?: { text: string } | 'user', draft?: IntakeDraft) => {
       setError(null);
       setReady(false);
+      if (draft) setDraft(draft);
       try {
         const session = await startIntake(
           conn,
@@ -81,7 +82,7 @@ export function useIntake({ context, mode = 'call', followUp, seed, keepLines = 
             mic: withMic,
             mode,
             followUpOf: followUp?.callId,
-            initialDraft: followUp?.draft ?? seed?.draft,
+            initialDraft: draft ?? followUp?.draft ?? seed?.draft,
             pushToTalk,
             // From the phone book: say who to call first (once), so the assistant only asks what for.
             firstText: typeof first === 'object' ? first.text : seed && !seededRef.current ? seed.text : undefined,
@@ -202,6 +203,15 @@ export function useIntake({ context, mode = 'call', followUp, seed, keepLines = 
     [showHeard],
   );
 
+  /** Starts with someone from the phone book: who to call is filled in and said first. */
+  const startWith = useCallback(
+    async (s: { text: string; draft: IntakeDraft }) => {
+      if (live) sessionRef.current?.sendText(s.text);
+      else await connect(false, { text: s.text }, s.draft);
+    },
+    [live, connect],
+  );
+
   /** Taps an answer chip: sent as the user's answer. */
   const choose = useCallback(
     async (answer: string) => {
@@ -247,6 +257,7 @@ export function useIntake({ context, mode = 'call', followUp, seed, keepLines = 
     pressTalk,
     releaseTalk,
     choose,
+    startWith,
     stopSearch,
     toggleMic,
     say,
