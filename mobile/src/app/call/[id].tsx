@@ -12,6 +12,7 @@ import { canJoinInApp, inAppJoinActive, joinFromApp, leaveAppJoin, muteAppJoin }
 import { useGlow } from '@/glow/GlowContext';
 import type { GlowMode } from '@/glow/modes';
 import { useCall, useListen } from '@/hooks/useCall';
+import { useRingback } from '@/lib/ringback';
 import { usePreferences } from '@/hooks/usePreferences';
 import { useStartCall } from '@/hooks/useStartCall';
 import { haptic } from '@/lib/haptics';
@@ -66,6 +67,9 @@ export default function CallScreen() {
         : call.status === 'analyzing'
           ? 'wrapping'
           : 'result';
+
+  // The ring while it dials, like any phone call.
+  useRingback(call?.status === 'dialing');
 
   // Take-over: one request at a time; the call record says where it stands.
   const [takeoverBusy, setTakeoverBusy] = useState(false);
