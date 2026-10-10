@@ -12,8 +12,8 @@ describe('call cost', () => {
     r.metrics.answeredAt = 0;
     r.metrics.endedAt = 125_000; // 2:05 → 3 started minutes
     const cost = callCost(r, pricesFromEnv({}));
-    // 1000×32 + 4000×0.4 + 5000×4 + 20000×0.4 + 1500×64 + 300×16 + 800×6 = 167,200 per 1M → $0.1672
-    expect(cost).toEqual({ openai: 0.1672, twilio: 0.042, total: 0.2092 });
+    // 1000×32 + 4000×0.4 + 5000×4 + 20000×0.4 + 1500×64 + 300×24 + 800×6 = 169,600 per 1M → $0.1696
+    expect(cost).toEqual({ openai: 0.1696, twilio: 0.042, total: 0.2116 });
   });
 });
 
