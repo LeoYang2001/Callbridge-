@@ -17,3 +17,14 @@ describe('captions', () => {
     expect(captionAt(text, 999)).toBe(text.length);
   });
 });
+
+describe('caption text', () => {
+  it('shows read-back numbers as digits and joins line breaks', async () => {
+    const { captionText } = await import('../../shared/captions');
+    expect(captionText('The number is nine zero one, four five five, three one four eight. Right?')).toBe('The number is (901) 455-3148. Right?');
+    expect(captionText('号码是九零一四五五三一四八，对吗？')).toBe('号码是(901) 455-3148，对吗？');
+    expect(captionText('So the message is:\n\nsee you at one.')).toBe('So the message is: see you at one.');
+    // Ordinary words and short numbers are left alone.
+    expect(captionText('I have one or two questions at four.')).toBe('I have one or two questions at four.');
+  });
+});

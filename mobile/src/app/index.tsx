@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { ActivityIndicator, Keyboard, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import Animated, { Easing, FadeIn, FadeOut, SlideInDown, useAnimatedStyle, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { sentenceStarts } from '@shared/captions';
+import { captionText, sentenceStarts } from '@shared/captions';
 import type { PlaceResult } from '@shared/types';
 import { useActiveCall } from '@/call/ActiveCall';
 import { useGlow } from '@/glow/GlowContext';
@@ -223,9 +223,9 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
     const searching = intake.status === 'searching';
     // Captions: the sentence being said (or the question asked) large, what came before it in the
     // same turn small above it, so a long answer never fills the screen.
-    const said = lastAssistant?.text ?? '';
+    const said = captionText(lastAssistant?.text ?? '');
     const lastStart = sentenceStarts(said).at(-1) ?? 0;
-    const asked = !speaking && intake.choices?.question ? intake.choices.question : '';
+    const asked = !speaking && intake.choices?.question ? captionText(intake.choices.question) : '';
     const question = asked || said.slice(lastStart).trim();
     const before = asked ? said.slice(0, said.lastIndexOf(asked) >= 0 ? said.lastIndexOf(asked) : said.length).trim() : said.slice(0, lastStart).trim();
     const heard = lastUser?.partial ? lastUser.text : '';
@@ -260,15 +260,13 @@ function Conversation({ contactId, onReset }: { contactId?: string; onReset: () 
             </Text>
           ) : null}
           {question ? (
-            // A long sentence shrinks to fit rather than growing taller; smaller still when cards
-            // (or anything else) share the screen.
             <Animated.Text
               key={question.slice(0, 24)}
               entering={FadeIn.duration(250)}
-              style={[type.question, !roomy && s.questionSmall]}
-              numberOfLines={roomy ? 4 : 3}
-              adjustsFontSizeToFit
-              minimumFontScale={0.7}
+              // Two sizes only: large for a short line with the room for it, small otherwise.
+              style={[type.question, (!roomy || question.length > 70) && s.questionSmall]}
+              numberOfLines={roomy ? 5 : 3}
+              ellipsizeMode="head"
             >
               {question}
             </Animated.Text>

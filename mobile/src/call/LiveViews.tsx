@@ -7,6 +7,7 @@ import type { CallRecord, TranscriptEntry, UserQuestion } from '@shared/types';
 import { color, font, type } from '@/theme/tokens';
 import { Chip, PillButton, RoundButton } from '@/ui/Button';
 import { Icon } from '@/ui/Icon';
+import { captionText } from '@shared/captions';
 import { clock } from './ActiveCall';
 import { haptic } from '@/lib/haptics';
 import { loadRecording, type RecordingPlayer } from '@/lib/recording';
@@ -77,7 +78,7 @@ export function Live({
       <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 30, gap: 10 }}>
         {previous ? (
           <Text style={[type.small, { color: color.tertiary }]} numberOfLines={2}>
-            {previous.translation ?? previous.text}
+            {captionText(previous.translation ?? previous.text)}
           </Text>
         ) : null}
         {latest ? (
@@ -85,8 +86,8 @@ export function Live({
             <Text style={[type.label, { color: latest.speaker === 'counterpart' ? color.greenText : color.blue }]}>
               {latest.speaker === 'counterpart' ? 'Them' : `AI for ${userName || 'you'}`}
             </Text>
-            <Text style={type.quote}>“{latest.translation ?? latest.text}”</Text>
-            {latest.translation && latest.translation !== latest.text ? <Text style={[type.sub, { fontSize: 15 }]}>{latest.text}</Text> : null}
+            <Text style={type.quote}>“{captionText(latest.translation ?? latest.text)}”</Text>
+            {latest.translation && latest.translation !== latest.text ? <Text style={[type.sub, { fontSize: 15 }]}>{captionText(latest.text)}</Text> : null}
           </Animated.View>
         ) : (
           <Text style={type.sub}>Connected · {clock(seconds)}</Text>
@@ -347,7 +348,7 @@ export function TranscriptSheet({ lines, them, onClose, recording }: { lines: Tr
               style={[s.bubble, theirs ? s.them : s.ai, active === t.id && (theirs ? s.themNow : s.aiNow), player.started && active !== t.id && { opacity: 0.55 }]}
             >
               <Text style={[type.caption, { color: theirs ? color.secondary : 'rgba(255,255,255,0.75)' }]}>{theirs ? them : 'Assistant'}</Text>
-              <Text style={[type.callout, { color: theirs ? color.ink : color.white }]}>{t.translation ?? t.text}</Text>
+              <Text style={[type.callout, { color: theirs ? color.ink : color.white }]}>{captionText(t.translation ?? t.text)}</Text>
               {t.translation && t.translation !== t.text ? <Text style={[type.caption, { color: theirs ? color.secondary : 'rgba(255,255,255,0.75)' }]}>{t.text}</Text> : null}
             </Pressable>
           );
