@@ -49,9 +49,7 @@ export function Live({
   onEnd,
   onMessage,
   onTranscript,
-  onTakeOver,
-  onHandBack,
-  takeoverBusy,
+  join,
 }: {
   call: CallRecord;
   seconds: number;
@@ -62,9 +60,7 @@ export function Live({
   onEnd: () => void;
   onMessage: () => void;
   onTranscript: () => void;
-  onTakeOver: () => void;
-  onHandBack: () => void;
-  takeoverBusy: boolean;
+  join: JoinControls;
 }) {
   const takeover = call.takeover;
   const lines = call.transcript.filter((t) => t.speaker !== 'system' && t.text.trim());
@@ -105,7 +101,7 @@ export function Live({
           Transcript
         </Text>
       </View>
-      <TakeOver state={takeover?.state} onTakeOver={onTakeOver} onHandBack={onHandBack} busy={takeoverBusy} />
+      <TakeOver state={takeover?.state} join={join} />
       <View style={s.controls}>
         <Control label={listening ? 'Listening' : 'Listen'} onPress={onListen} active={listening} busy={listenBusy} disabled={Boolean(takeover)}>
           <Icon name="headphones" size={22} color={listening ? color.white : color.ink} />
@@ -125,18 +121,36 @@ export function Live({
 }
 
 /**
- * Take the call yourself: your phone rings, and you talk with them directly while the assistant
- * listens; hand back when you're done (or just hang up).
+ * Take the call yourself: join right here in the app (or have your phone rung), talk with them
+ * directly while the assistant listens, and hand back when you're done.
  */
-function TakeOver({ state, onTakeOver, onHandBack, busy }: { state?: 'ringing' | 'live'; onTakeOver: () => void; onHandBack: () => void; busy: boolean }) {
+export interface JoinControls {
+  /** This build can join in the app (else only ringing the phone). */
+  inApp: boolean;
+  /** Joined (or joining) through the app, so Mute applies. */
+  viaApp: boolean;
+  muted: boolean;
+  busy: boolean;
+  onJoinApp: () => void;
+  onRingPhone: () => void;
+  onHandBack: () => void;
+  onMute: () => void;
+}
+
+function TakeOver({ state, join }: { state?: 'ringing' | 'live'; join: JoinControls }) {
   if (state === 'live') {
     return (
       <View style={[s.takeover, s.takeoverLive]}>
         <View style={{ flex: 1, gap: 2 }}>
           <Text style={[type.small, { color: color.greenText, fontWeight: '600' }]}>You're on the call</Text>
-          <Text style={type.caption}>The assistant is listening. Hang up to hand back.</Text>
+          <Text style={type.caption}>The assistant is listening.</Text>
         </View>
-        <PillButton title="Hand back" kind="green" height={40} onPress={onHandBack} busy={busy} />
+        {join.viaApp ? (
+          <Pressable accessibilityRole="button" accessibilityLabel={join.muted ? 'Unmute' : 'Mute'} onPress={() => (haptic.select(), join.onMute())} style={[s.mute, join.muted && s.muteOn]}>
+            <Icon name="mic" size={16} color={join.muted ? color.white : color.ink} />
+          </Pressable>
+        ) : null}
+        <PillButton title="Hand back" kind="green" height={40} onPress={join.onHandBack} busy={join.busy} />
       </View>
     );
   }
@@ -144,22 +158,34 @@ function TakeOver({ state, onTakeOver, onHandBack, busy }: { state?: 'ringing' |
     return (
       <View style={s.takeover}>
         <ActivityIndicator size="small" color={color.blue} />
-        <Text style={[type.small, { flex: 1, color: color.ink }]}>Calling your phone…</Text>
-        <Text style={[type.small, { color: color.blue, fontWeight: '600' }]} onPress={onHandBack} suppressHighlighting>
+        <Text style={[type.small, { flex: 1, color: color.ink }]}>{join.viaApp ? 'Joining the call…' : 'Calling your phone…'}</Text>
+        <Text style={[type.small, { color: color.blue, fontWeight: '600' }]} onPress={join.onHandBack} suppressHighlighting>
           Cancel
         </Text>
       </View>
     );
   }
   return (
-    <Pressable accessibilityRole="button" onPress={() => (haptic.commit(), onTakeOver())} disabled={busy} style={({ pressed }) => [s.takeover, pressed && { opacity: 0.7 }]}>
-      <Icon name="phone" size={18} color={color.blue} />
-      <View style={{ flex: 1, gap: 2 }}>
-        <Text style={[type.small, { color: color.blue, fontWeight: '600' }]}>Take over the call</Text>
-        <Text style={type.caption}>Your phone rings, and you talk to them yourself.</Text>
-      </View>
-      {busy ? <ActivityIndicator size="small" color={color.blue} /> : <Icon name="chevron" size={14} color={color.blue} />}
-    </Pressable>
+    <View style={s.takeover}>
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => (haptic.commit(), join.inApp ? join.onJoinApp() : join.onRingPhone())}
+        disabled={join.busy}
+        style={({ pressed }) => [{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 }, pressed && { opacity: 0.7 }]}
+      >
+        <Icon name="phone" size={18} color={color.blue} />
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={[type.small, { color: color.blue, fontWeight: '600' }]}>Join the call</Text>
+          <Text style={type.caption}>{join.inApp ? 'Talk to them yourself, right here in the app.' : 'Your phone rings, and you talk to them yourself.'}</Text>
+        </View>
+        {join.busy ? <ActivityIndicator size="small" color={color.blue} /> : null}
+      </Pressable>
+      {join.inApp && !join.busy ? (
+        <Text style={[type.caption, { color: color.blue }]} onPress={join.onRingPhone} suppressHighlighting>
+          or ring{'\n'}my phone
+        </Text>
+      ) : null}
+    </View>
   );
 }
 
@@ -418,6 +444,8 @@ const s = StyleSheet.create({
   ai: { alignSelf: 'flex-end', backgroundColor: color.blue, borderRadius: 20, borderBottomRightRadius: 6 },
   takeover: { marginHorizontal: 22, marginBottom: 14, minHeight: 58, borderRadius: 20, backgroundColor: color.blueTint, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 10 },
   takeoverLive: { backgroundColor: color.greenTint },
+  mute: { width: 40, height: 40, borderRadius: 20, backgroundColor: color.white, alignItems: 'center', justifyContent: 'center' },
+  muteOn: { backgroundColor: color.ink },
   themNow: { borderWidth: 2, borderColor: color.blue },
   aiNow: { borderWidth: 2, borderColor: color.ink },
   player: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: color.surface, borderRadius: 20, padding: 12 },

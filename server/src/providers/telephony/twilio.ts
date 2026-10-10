@@ -106,18 +106,24 @@ export class TwilioTelephony implements TelephonyProvider {
     );
   }
 
+  /** TwiML that streams the user's own leg (their phone, or the app) to the media endpoint. */
+  static userStreamTwiml(publicBaseUrl: string, callId: string, streamToken: string, greeting?: string) {
+    const wsUrl = `${publicBaseUrl.replace(/^http/, 'ws')}/twilio/media`;
+    return (
+      `<Response>${greeting ? `<Say>${escapeXml(greeting)}</Say>` : ''}<Connect><Stream url="${escapeXml(wsUrl)}">` +
+      `<Parameter name="callId" value="${escapeXml(callId)}"/>` +
+      `<Parameter name="token" value="${escapeXml(streamToken)}"/>` +
+      `<Parameter name="leg" value="user"/>` +
+      `</Stream></Connect></Response>`
+    );
+  }
+
   /**
    * Rings the user's phone into their call: a short line, then their audio streams to the same
    * media endpoint (marked as the user's leg), and the server relays it to the other party.
    */
   async placeUserLeg(p: PlaceUserLegParams) {
-    const wsUrl = `${this.opts.publicBaseUrl.replace(/^http/, 'ws')}/twilio/media`;
-    const twiml =
-      `<Response><Say>Connecting you to your call.</Say><Connect><Stream url="${escapeXml(wsUrl)}">` +
-      `<Parameter name="callId" value="${escapeXml(p.callId)}"/>` +
-      `<Parameter name="token" value="${escapeXml(p.streamToken)}"/>` +
-      `<Parameter name="leg" value="user"/>` +
-      `</Stream></Connect></Response>`;
+    const twiml = TwilioTelephony.userStreamTwiml(this.opts.publicBaseUrl, p.callId, p.streamToken, 'Connecting you to your call.');
     const call = await this.client.calls.create({
       to: p.to,
       from: this.opts.fromNumber,

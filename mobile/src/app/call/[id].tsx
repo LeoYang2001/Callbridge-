@@ -8,6 +8,7 @@ import { Composer, HoldQuestion, Live, Ringing, TranscriptSheet } from '@/call/L
 import { outcomeOf } from '@/call/outcome';
 import { Result } from '@/call/Result';
 import { useToast } from '@/ui/Toast';
+import { canJoinInApp, inAppJoinActive, joinFromApp, leaveAppJoin, muteAppJoin } from '@/lib/appJoin';
 import { useGlow } from '@/glow/GlowContext';
 import type { GlowMode } from '@/glow/modes';
 import { useCall, useListen } from '@/hooks/useCall';
@@ -26,7 +27,7 @@ import { Screen, TopBar } from '@/ui/Screen';
  */
 export default function CallScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { me } = useSignedIn();
+  const { me, conn } = useSignedIn();
   const c = useCall(id);
   const listen = useListen(id);
   const { follow } = useActiveCall();
@@ -75,6 +76,39 @@ export default function CallScreen() {
     setTakeoverBusy(false);
     if (err) toast(err);
   };
+  // Joining in the app: the app's own voice leg, put on the call by the server.
+  const [joinedViaApp, setJoinedViaApp] = useState(false);
+  const [muted, setMuted] = useState(false);
+  const joinInApp = async () => {
+    setTakeoverBusy(true);
+    setJoinedViaApp(true);
+    setMuted(false);
+    try {
+      await joinFromApp(conn, id, call?.request.counterpartName || 'CallBridge call', (err) => {
+        setJoinedViaApp(false);
+        if (err) toast(err);
+        // The app's leg ended (they hung up in the call screen, or it dropped): hand back.
+        void c.handBack();
+      });
+    } catch (e) {
+      setJoinedViaApp(false);
+      toast((e as Error).message);
+      void c.handBack();
+    } finally {
+      setTakeoverBusy(false);
+    }
+  };
+  const handBack = async () => {
+    if (joinedViaApp) await leaveAppJoin();
+    setJoinedViaApp(false);
+    await takeoverAct(c.handBack);
+  };
+  // Leaving the screen or the call ending while joined in the app: hang up the app's leg.
+  useEffect(() => () => void leaveAppJoin(), []);
+  useEffect(() => {
+    if (call && !c.live && inAppJoinActive()) void leaveAppJoin();
+  }, [call, c.live]);
+
   // On the phone yourself: the app stops playing the call (your phone would pick it up).
   useEffect(() => {
     if (call?.takeover && listen.active) void listen.toggle();
@@ -168,9 +202,19 @@ export default function CallScreen() {
             onEnd={() => void c.hangUp()}
             onMessage={() => setComposer(true)}
             onTranscript={() => setTranscript(true)}
-            onTakeOver={() => void takeoverAct(c.takeOver)}
-            onHandBack={() => void takeoverAct(c.handBack)}
-            takeoverBusy={takeoverBusy}
+            join={{
+              inApp: canJoinInApp(),
+              viaApp: joinedViaApp,
+              muted,
+              busy: takeoverBusy,
+              onJoinApp: () => void joinInApp(),
+              onRingPhone: () => void takeoverAct(c.takeOver),
+              onHandBack: () => void handBack(),
+              onMute: () => {
+                void muteAppJoin(!muted);
+                setMuted(!muted);
+              },
+            }}
           />
         )}
         {phase === 'hold' && q && (

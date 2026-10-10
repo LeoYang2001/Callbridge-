@@ -1,3 +1,4 @@
+import twilio from 'twilio';
 import { readFile } from 'node:fs/promises';
 import { recordingPath, removeRecording } from '../calls/recordings';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
@@ -73,6 +74,23 @@ export function registerApiRoutes(
     const failed = await manager.takeOver(req.params.id, req.user!.phone);
     if (failed) return reply.code(failed.status).send({ error: failed.error });
     return reply.code(202).send({ ok: true });
+  });
+
+  /**
+   * Join from the app: starts the take-over and returns a short-lived Twilio Voice token (the app
+   * dials our TwiML App with it) and the one-time code its leg presents to /twilio/client-voice.
+   */
+  app.post<{ Params: { id: string } }>('/api/calls/:id/join', async (req, reply) => {
+    if (!ownCall(req, req.params.id)) return reply.code(404).send({ error: 'Not found' });
+    const { TWILIO_ACCOUNT_SID, TWILIO_API_KEY_SID, TWILIO_API_KEY_SECRET, TWILIO_TWIML_APP_SID } = config;
+    if (!TWILIO_ACCOUNT_SID || !TWILIO_API_KEY_SID || !TWILIO_API_KEY_SECRET || !TWILIO_TWIML_APP_SID) {
+      return reply.code(503).send({ error: "Joining from the app isn't set up on the server." });
+    }
+    const started = manager.startAppJoin(req.params.id);
+    if ('error' in started) return reply.code(started.status).send({ error: started.error });
+    const token = new twilio.jwt.AccessToken(TWILIO_ACCOUNT_SID, TWILIO_API_KEY_SID, TWILIO_API_KEY_SECRET, { identity: req.user!.id, ttl: 600 });
+    token.addGrant(new twilio.jwt.AccessToken.VoiceGrant({ outgoingApplicationSid: TWILIO_TWIML_APP_SID, incomingAllow: false }));
+    return { token: token.toJwt(), callId: req.params.id, code: started.code };
   });
 
   /** Take-over: hand the call back to the assistant (also happens when the user hangs up). */

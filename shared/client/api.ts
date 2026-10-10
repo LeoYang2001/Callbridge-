@@ -204,3 +204,6 @@ export const reportIntakeUsage = (s: Connection, body: { usage?: unknown; transc
 export const takeOverCall = (s: Connection, id: string) => postJson<{ ok: boolean }>(s, `/api/calls/${encodeURIComponent(id)}/takeover`, {});
 /** Take-over: hand the call back to the assistant. */
 export const handBackCall = (s: Connection, id: string) => postJson<{ ok: boolean }>(s, `/api/calls/${encodeURIComponent(id)}/handback`, {});
+
+/** Join from the app: a short-lived Twilio Voice token and the call's one-time join code. */
+export const joinCallToken = (s: Connection, id: string) => postJson<{ token: string; callId: string; code: string }>(s, `/api/calls/${encodeURIComponent(id)}/join`, {});

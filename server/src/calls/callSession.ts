@@ -1,4 +1,4 @@
-import { randomBytes, randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import type { CallRecord, CallResult, CallStatus, Speaker, UserAnswer, UserQuestion } from '../../../shared/types';
 import { buildInstructions, INTRO_NUDGE } from '../agent/prompt';
@@ -916,6 +916,35 @@ export class CallSession {
     }
   }
 
+  /**
+   * Joining from the app (Twilio Voice SDK) instead of ringing their phone: same take-over, but
+   * the app connects to the call itself, presenting this one-time code to our webhook.
+   */
+  private appJoinCode: string | null = null;
+  startAppJoin(): { code: string } | { error: string } {
+    if (this.finalizing || !this.transport) return { error: "The call isn't connected yet." };
+    if (this.record.takeover) return { error: "You're already joining this call." };
+    this.appJoinCode = randomBytes(16).toString('hex');
+    this.update((r) => (r.takeover = { state: 'ringing', since: Date.now() }));
+    this.log('takeover.app_joining');
+    this.prompt(TAKEOVER_NOTICE);
+    this.paused = true;
+    // If the app never connects, the assistant carries on.
+    this.timer(30_000, () => {
+      if (this.record.takeover?.state === 'ringing' && this.appJoinCode) this.endTakeover("You didn't connect, so the assistant is carrying on.");
+    });
+    return { code: this.appJoinCode };
+  }
+
+  /** The app's voice leg reached our webhook: the stream token to connect it, if its code is right. */
+  appJoinStream(code: string, legSid: string | undefined): string | null {
+    const expected = this.appJoinCode;
+    if (!expected || !this.record.takeover || code.length !== expected.length || !timingSafeEqual(Buffer.from(code), Buffer.from(expected))) return null;
+    this.appJoinCode = null;
+    if (legSid) this.userLegId = legSid;
+    return this.userStreamToken;
+  }
+
   /** The user answered: from now on their voice goes to the other party, and the assistant is quiet. */
   attachUserMedia(transport: MediaTransport) {
     if (this.finalizing || !this.record.takeover) {
@@ -982,6 +1011,7 @@ export class CallSession {
   private endTakeover(note: string | null) {
     const leg = this.userLegId;
     this.userLegId = null;
+    this.appJoinCode = null;
     this.userTransport?.close();
     this.userTransport = null;
     this.paused = false;

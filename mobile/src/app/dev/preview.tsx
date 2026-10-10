@@ -169,7 +169,7 @@ function Static({ v }: { v: Exclude<V, 'home' | 'book' | 'me' | 'notif' | 'conta
     return (
       <Screen padding={0} bottom={<View style={{ height: 70 }} />}>
         {v === 'ringing' && <Ringing call={{ ...CALL, status: 'dialing' }} onCancel={() => {}} />}
-        {v === 'live' && <Live call={CALL} seconds={83} userName="伟" listening={false} listenBusy={false} onListen={() => {}} onEnd={() => {}} onMessage={() => {}} onTranscript={() => {}} onTakeOver={() => {}} onHandBack={() => {}} takeoverBusy={false} />}
+        {v === 'live' && <Live call={CALL} seconds={83} userName="伟" listening={false} listenBusy={false} onListen={() => {}} onEnd={() => {}} onMessage={() => {}} onTranscript={() => {}} join={{ inApp: true, viaApp: false, muted: false, busy: false, onJoinApp: () => {}, onRingPhone: () => {}, onHandBack: () => {}, onMute: () => {} }} />}
         {v === 'hold' && <HoldQuestion q={CALL.questions![0]!} limitUsd={0} remaining={28} english={false} onAnswer={() => {}} busy={false} error={null} />}
         {v === 'result' && <Result call={DONE} english={false} onDone={() => {}} onTryAgain={() => {}} onTalk={() => {}} onTranscript={() => {}} retrying={false} />}
         {v === 'no answer' && <Result call={noAnswer} english={false} onDone={() => {}} onTryAgain={() => {}} onTalk={() => {}} onTranscript={() => {}} retrying={false} />}

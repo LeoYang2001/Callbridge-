@@ -40,6 +40,21 @@ export function registerTwilioRoutes(
     return reply.type('text/xml').send(twiml);
   });
 
+  /**
+   * The TwiML App's voice URL: the app (Twilio Voice SDK) joining a call. Its leg is connected
+   * as the user's leg of that call, if it presents the call's one-time join code.
+   */
+  app.post<{ Body: Record<string, string> }>('/twilio/client-voice', async (req, reply) => {
+    if (!signatureOk(req.url, req.headers['x-twilio-signature'], req.body)) {
+      req.log.warn('Rejected Twilio client-voice request with invalid signature');
+      return reply.code(403).send('invalid signature');
+    }
+    const callId = req.body?.callId ?? '';
+    const token = manager.appJoinStream(callId, req.body?.code ?? '', req.body?.CallSid);
+    const twiml = token ? TwilioTelephony.userStreamTwiml(config.PUBLIC_BASE_URL!, callId, token) : '<Response><Say>This call has ended.</Say><Hangup/></Response>';
+    return reply.type('text/xml').send(twiml);
+  });
+
   /** Bidirectional media stream opened by <Connect><Stream>. */
   app.get('/twilio/media', { websocket: true }, (socket, req) => {
     const transport = new TwilioMediaTransport(socket);

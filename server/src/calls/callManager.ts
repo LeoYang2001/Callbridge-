@@ -166,6 +166,19 @@ export class CallManager {
     return error ? { status: 409, error } : null;
   }
 
+  /** In-app joining: start the take-over and get the one-time code the app's voice leg presents. */
+  startAppJoin(callId: string): { code: string } | { status: number; error: string } {
+    const session = this.sessions.get(callId);
+    if (!session) return { status: 404, error: 'That call is not in progress.' };
+    const r = session.startAppJoin();
+    return 'error' in r ? { status: 409, error: r.error } : r;
+  }
+
+  /** In-app joining: the stream token for the app's voice leg, if its code is right. */
+  appJoinStream(callId: string, code: string, legSid?: string): string | null {
+    return this.sessions.get(callId)?.appJoinStream(code, legSid) ?? null;
+  }
+
   /** Take-over: the user hands the call back to the assistant. */
   handBack(callId: string): boolean {
     const session = this.sessions.get(callId);

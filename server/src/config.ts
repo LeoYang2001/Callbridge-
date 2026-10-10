@@ -58,6 +58,10 @@ const EnvSchema = z.object({
   RESEARCH_MODEL_THOROUGH: z.string().default('gpt-5.5'),
   /** Optional: gives the research agent verified Google Maps listings as a tool. */
   GOOGLE_PLACES_API_KEY: optionalString,
+  /** In-app joining (Twilio Voice SDK): an API key and the TwiML App whose voice URL is /twilio/client-voice. */
+  TWILIO_API_KEY_SID: optionalString,
+  TWILIO_API_KEY_SECRET: optionalString,
+  TWILIO_TWIML_APP_SID: optionalString,
   /** SQLite file for users, sessions, profiles, and call history. */
   DATABASE_FILE: z.string().default('data/callbridge.db'),
   /**

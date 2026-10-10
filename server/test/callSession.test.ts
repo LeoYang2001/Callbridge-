@@ -293,6 +293,36 @@ describe('take-over', () => {
     expect(get().transcript.filter((t) => t.event).map((t) => t.text)).toEqual(['Leo joined the call.', 'Leo handed the call back.']);
   });
 
+  it('joins from the app with a one-time code, then relays like the phone bridge', async () => {
+    const { store, agent, telephony, manager } = setup();
+    const created = manager.startCall(dentistRequest());
+    await waitFor(() => telephony.placed.length === 1);
+    manager.handleTelephonyState(created.id, 'answered');
+    const line = new FakeTransport();
+    manager.attachMedia(created.id, (manager as any).sessions.get(created.id).streamToken, line);
+
+    const started = manager.startAppJoin(created.id);
+    expect('code' in started).toBe(true);
+    const code = (started as { code: string }).code;
+    expect(store.get(created.id)!.takeover?.state).toBe('ringing');
+    expect(agent.prompts.at(-1)).toMatch(/joining this call themselves/);
+    expect(telephony.userLegs).toEqual([]); // no phone rung
+
+    // The webhook only connects the app's leg with the right code, and only once.
+    expect(manager.appJoinStream(created.id, 'x'.repeat(code.length), 'CAAPP')).toBeNull();
+    const token = manager.appJoinStream(created.id, code, 'CAAPP');
+    expect(token).toBeTruthy();
+    expect(manager.appJoinStream(created.id, code, 'CAAPP')).toBeNull();
+
+    const app = new FakeTransport();
+    expect(manager.attachUserMedia(created.id, token!, app)).toBe(true);
+    app.emit('audio', 'USER', 0);
+    expect(line.sent).toContain('USER');
+    // Handing back hangs up the app's leg.
+    manager.handBack(created.id);
+    expect(telephony.hangups).toContain('CAAPP');
+  });
+
   it("lets the assistant carry on when the user doesn't pick up", async () => {
     const { store, agent, telephony, manager } = setup();
     const created = manager.startCall(dentistRequest());
