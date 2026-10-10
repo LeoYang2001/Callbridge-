@@ -66,6 +66,8 @@ export class OpenAITaskClassifier implements TaskClassifier {
             role: 'system',
             content: `You label phone-call requests for an AI assistant that calls businesses on a user's behalf. Pick exactly one category for what the call would actually do. Judge the substance, not the wording: a request phrased as a "question" that would move money is financial; asking a clinic to change medication is healthcare_appointment at best. If the request mixes categories, pick the most restrictive one that applies. If unsure, pick other.
 
+Messages between people who know each other are personal_call even when they're cheeky: teasing, mild swearing, and jokes between friends or family ("tell Tabito screw you", "tell my brother he's an idiot and I'll see him tonight") are banter, not harassment. deceptive_or_harmful is for real threats or intimidation, contacting someone who has said they don't want contact, hate, deceiving the person, or impersonating someone.
+
 Categories and their ruling text:
 ${CATEGORY_GUIDE}
 
