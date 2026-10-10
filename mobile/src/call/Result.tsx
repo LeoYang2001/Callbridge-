@@ -86,6 +86,8 @@ export function Result({
           <PillButton title="Talk it over" kind="white" height={50} onPress={onTalk} style={{ flex: 1 }} />
           <PillButton title="Transcript" kind="white" height={50} onPress={onTranscript} style={{ flex: 1 }} />
         </View>
+        {/* Always a way out: Done is the main button only on a plain good result. */}
+        {o.good && !r?.appointment ? null : <PillButton title="Done" kind="ghost" height={44} onPress={onDone} />}
       </View>
     </View>
   );
