@@ -6,13 +6,13 @@ import { haptic } from '@/lib/haptics';
 import { useSignedIn } from '@/lib/session';
 import { color, font, type } from '@/theme/tokens';
 import { Row } from '@/ui/Rows';
-import { Toggle } from '@/ui/Toggle';
+import { Segmented } from '@/ui/Segmented';
 import { useToast } from '@/ui/Toast';
 
 /**
- * Calls from your own number (so friends recognize it), once it's verified: Twilio calls you and
- * you type the code shown here on the keypad. The server records the verification; the switch
- * here only turns it on and off.
+ * Which number calls show: yours (so friends recognize it) or CallBridge's. Yours needs a one-time
+ * verification: picking it starts one, Twilio calls you and you type the code shown here on the
+ * keypad. The server records the verification; the choice here only switches between the two.
  */
 export function CallerIdRow({ onChange }: { onChange: (patch: Record<string, unknown>) => void }) {
   const { conn, me, setMe } = useSignedIn();
@@ -22,6 +22,10 @@ export function CallerIdRow({ onChange }: { onChange: (patch: Record<string, unk
   const polling = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
   const verified = Boolean(me.profile.callerIdVerifiedAt);
   const enabled = verified && me.profile.useOwnCallerId !== false;
+
+  // The choice moves at the tap; the saved profile catches up a moment later.
+  const [picked, setPicked] = useState<'mine' | 'callbridge' | null>(null);
+  useEffect(() => setPicked(null), [enabled]);
 
   useEffect(() => () => clearInterval(polling.current), []);
 
@@ -62,23 +66,41 @@ export function CallerIdRow({ onChange }: { onChange: (patch: Record<string, unk
     }
   };
 
-  if (verified) {
-    return (
-      <Row
-        label="Call from my number"
-        sub={enabled ? `Calls show ${displayPhone(me.phone)}, so friends know it's you` : "Calls show CallBridge's number"}
-        right={<Toggle label="Call from my number" value={enabled} onChange={(useOwnCallerId) => onChange({ useOwnCallerId })} />}
-      />
-    );
-  }
+  const shown = picked ?? (enabled ? 'mine' : 'callbridge');
+  const pick = (v: 'mine' | 'callbridge') => {
+    if (v === 'callbridge') {
+      setPicked(v);
+      if (enabled) onChange({ useOwnCallerId: false });
+    } else if (verified) {
+      setPicked(v);
+      if (!enabled) onChange({ useOwnCallerId: true });
+    } else if (!busy) void verify();
+  };
+
   return (
     <>
       <Row
-        label="Call from my number"
-        sub="Friends see your number instead of a stranger's"
-        value={busy ? undefined : 'Set up'}
-        onPress={busy ? undefined : () => void verify()}
+        label="Calls show"
+        sub={
+          busy
+            ? 'Verifying your number…'
+            : shown === 'mine'
+              ? `Your number, ${displayPhone(me.phone)}, so friends know it's you`
+              : verified
+                ? "CallBridge's number. Friends may not pick up a stranger's call."
+                : "CallBridge's number. Pick My number to verify yours once."
+        }
         right={busy ? <ActivityIndicator size="small" color={color.blue} /> : undefined}
+        below={
+          <Segmented
+            options={[
+              { value: 'mine', label: 'My number' },
+              { value: 'callbridge', label: "CallBridge's" },
+            ]}
+            value={shown}
+            onChange={pick}
+          />
+        }
       />
       {code ? (
         <View style={s.code}>
