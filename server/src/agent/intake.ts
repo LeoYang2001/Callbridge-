@@ -80,6 +80,8 @@ Use research whenever a fact would help the call and you don't know it (opening 
 
 Availability is always saved as windows: a specific time ("Thursday at 2 pm") becomes a window, so ask how flexible they are (for example Thursday 14:00–17:00).
 
+Which number the call comes from (${ctx.userName}'s own or CallBridge's) is a setting in the app's Me screen, not part of the request: never put it in phone_number. "Use the CallBridge number to call me" means call ${ctx.userName}'s own number; a call to their own number always comes from CallBridge's. If they ask to switch numbers, tell them it's under Me → Calls show.
+
 Call update_request whenever you learn something new, so the screen stays current. Write "task" in English as clear instructions for the call assistant, and "task_in_user_language" as a one-sentence summary in ${ctx.userLanguage}.
 
 # Safety

@@ -44,7 +44,10 @@ export function registerApiRoutes(
     // The phone book is the authority on who's who: a name that's in it, with a number that isn't
     // that person's, is a mistake (an AI once dialed 501 for a 901 number), not a new person.
     const mismatch = phoneBookMismatch(checked.request, req.user!.profile.contacts);
-    if (mismatch) return reply.code(409).send({ error: mismatch });
+    if (mismatch) {
+      req.log.info({ mismatch }, 'call refused: phone book');
+      return reply.code(409).send({ error: mismatch });
+    }
     try {
       // Recorded unless the user turned it off; their own number as caller ID if verified and on.
       const record = manager.startCall(withUserSettings(checked.request, req.user!), req.user!.id);
