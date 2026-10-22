@@ -20,7 +20,8 @@ import { addUsage, callCost, pricesFromEnv, type Prices } from '../usage/cost';
 export interface CallSessionDeps {
   store: CallStore;
   telephony: TelephonyProvider;
-  createAgent: (voice?: string) => VoiceAgent;
+  /** The voice the user picked, and the language the call is in (for a per-language voice). */
+  createAgent: (voice?: string, language?: string) => VoiceAgent;
   /** Live transcript translation into the user's language; null disables it. */
   translator?: Translator | null;
   analyzer: CallAnalyzer | null;
@@ -243,7 +244,7 @@ export class CallSession {
       const instructions = buildInstructions(r.request, { today: localToday(r.request.timezone) });
 
       // Connect the voice model before dialing so it is ready the instant the call is answered.
-      const agent = this.deps.createAgent(r.request.voice);
+      const agent = this.deps.createAgent(r.request.voice, r.request.callLanguage);
       this.agent = agent;
       this.wireAgent(agent);
       const t0 = Date.now();

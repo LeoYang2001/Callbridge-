@@ -15,6 +15,8 @@ import { OpenAIAnalyzer } from './providers/analysis/openaiAnalyzer';
 import { OpenAITranslator } from './providers/translation/openaiTranslator';
 import { TwilioTelephony } from './providers/telephony/twilio';
 import { OpenAIRealtimeAgent } from './providers/voice/openaiRealtime';
+import { ElevenLabsSpeaker, elevenLabsLanguageCode, voiceLanguageKey } from './providers/voice/elevenlabsSpeaker';
+import { languageCode } from '../../shared/languages';
 import { LogOtp, OtpRateLimit, TwilioVerifyOtp } from './auth/otp';
 import { Database } from './db/database';
 import { learnFromCall } from './profile/profile';
@@ -121,12 +123,25 @@ const notify = (userId: string | undefined, message: Omit<PushMessage, 'to'>) =>
     .catch((err) => app.log.warn({ err }, 'push failed'));
 };
 
+/** The ElevenLabs voice for a call in `language`, if that engine is on and has one for it. */
+function callSpeaker(language: string): ElevenLabsSpeaker | undefined {
+  if (config.VOICE_ENGINE !== 'elevenlabs' || !config.ELEVENLABS_API_KEY) return undefined;
+  const key = voiceLanguageKey(language, languageCode(language));
+  const voiceId = (key && config.elevenLabsVoices[key]) || config.ELEVENLABS_VOICE;
+  if (!voiceId) {
+    app.log.warn({ language }, 'no ElevenLabs voice for this language; using the OpenAI voice');
+    return undefined;
+  }
+  return new ElevenLabsSpeaker({ apiKey: config.ELEVENLABS_API_KEY, voiceId, model: config.ELEVENLABS_MODEL, languageCode: elevenLabsLanguageCode(key) });
+}
+
 const manager = new CallManager(
   store,
   () => ({
     telephony: telephony!,
-    createAgent: (voice) =>
+    createAgent: (voice, language) =>
       new OpenAIRealtimeAgent({
+        speaker: language ? callSpeaker(language) : undefined,
         apiKey: config.OPENAI_API_KEY!,
         model: config.REALTIME_MODEL,
         voice: voice ?? config.REALTIME_VOICE,
