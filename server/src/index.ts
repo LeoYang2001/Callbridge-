@@ -32,6 +32,10 @@ import { registerResearchRoutes } from './routes/research';
 import { registerListenRoutes } from './routes/listen';
 import { registerIntakeRoutes } from './routes/intake';
 import { registerTwilioRoutes } from './routes/twilio';
+import { registerTranslatedCallRoutes } from './routes/translatedCalls';
+import { TranslatedCallManager } from './calls/translatedCallManager';
+import { LiveTranslation } from './providers/translation/liveTranslation';
+import { speakForPhone } from './providers/translation/announce';
 import { registerVoiceRoutes } from './routes/voices';
 
 const config = loadConfig();
@@ -218,7 +222,20 @@ registerResearchRoutes(app, {
   perUser: new OtpRateLimit(30),
   db,
 });
-if (telephony) registerTwilioRoutes(app, { config, manager, telephony });
+// Translated calls: the user talks to them directly; captions and an optional AI interpreter.
+const translatedCalls = new TranslatedCallManager(
+  () => ({
+    telephony: telephony!,
+    createTranslation: (targetLanguage) =>
+      new LiveTranslation({ apiKey: config.OPENAI_API_KEY!, model: config.TRANSLATE_MODEL, targetLanguage, transcriptionModel: config.TRANSCRIPTION_MODEL }),
+    speak: (text) => speakForPhone({ apiKey: config.OPENAI_API_KEY!, model: config.ANNOUNCE_TTS_MODEL, voice: config.REALTIME_VOICE }, text),
+    maxCallSeconds: config.MAX_CALL_SECONDS,
+    log: (callId, type, detail) => app.log.info({ callId, event: type, detail }, type),
+  }),
+  { allowedDestinations: config.allowedDestinations, maxCallsPerHour: config.MAX_CALLS_PER_HOUR },
+);
+registerTranslatedCallRoutes(app, { config, manager: translatedCalls });
+if (telephony) registerTwilioRoutes(app, { config, manager, translated: translatedCalls, telephony });
 
 const webDist = path.join(root, 'web', 'dist');
 if (existsSync(webDist)) {

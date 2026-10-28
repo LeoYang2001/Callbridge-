@@ -336,6 +336,58 @@ export interface PublicConfig {
   defaultVoice: string;
 }
 
+// ── translated calls ─────────────────────────────────────────────────────────
+
+/**
+ * A call the user makes themselves, with live translation: captions on their screen, and an AI
+ * interpreter that joins (when both sides agree) and speaks each side's words in the other's
+ * language. The AI never talks for the user.
+ */
+export interface TranslatedCallRequest {
+  /** E.164. */
+  to: string;
+  /** Who they're calling, for the screen. */
+  contactName?: string;
+  /** The other side's language. */
+  theirLanguage: string;
+  /** How the user is on the call: the app (Twilio Voice SDK) or their phone rings first. */
+  join: 'app' | 'phone';
+  /** Captions from the start (they can be turned on and off during the call). */
+  captions?: boolean;
+}
+
+export type TranslatedCallStatus = 'connecting_you' | 'dialing' | 'live' | 'ended' | 'failed';
+
+/** What one person said, with its translation; both grow while they talk. */
+export interface CaptionLine {
+  id: string;
+  speaker: 'you' | 'them';
+  original: string;
+  translation: string;
+  at: number;
+  /** Both texts are complete. */
+  final: boolean;
+}
+
+export interface TranslatedCallRecord {
+  id: string;
+  userId?: string;
+  request: TranslatedCallRequest;
+  /** The user's language (from their profile). */
+  userLanguage: string;
+  status: TranslatedCallStatus;
+  createdAt: number;
+  answeredAt?: number;
+  endedAt?: number;
+  failureReason?: string;
+  captions: boolean;
+  /** The AI interpreter speaking into the call. */
+  interpreter: 'off' | 'joining' | 'on';
+  /** Something the user should know (a translation direction failed, the interpreter can't speak a language). */
+  notice?: string;
+  lines: CaptionLine[];
+}
+
 // ── accounts and profiles ─────────────────────────────────────────────────────
 
 /** Someone the user has called; built up automatically from calls. */

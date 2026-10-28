@@ -60,6 +60,10 @@ const EnvSchema = z.object({
   REALTIME_TURN_DETECTION: z.enum(['semantic_vad', 'server_vad']).default('semantic_vad'),
   TRANSCRIPTION_MODEL: z.string().default('gpt-4o-transcribe'),
   ANALYSIS_MODEL: z.string().default('gpt-5.4-mini'),
+  /** Translated calls: live speech-to-speech translation, both directions. */
+  TRANSLATE_MODEL: z.string().default('gpt-realtime-translate'),
+  /** The interpreter's spoken "I've joined" notice, made with text-to-speech. */
+  ANNOUNCE_TTS_MODEL: z.string().default('gpt-4o-mini-tts'),
   /** Translates the live transcript into the user's language, one line at a time. */
   TRANSLATION_MODEL: z.string().default('gpt-5.4-mini'),
 
