@@ -3,7 +3,7 @@ import { Image, type ImageStyle, type StyleProp } from 'react-native';
 /**
  * The CallBridge mark (two speech bubbles). color: blue and green, for headers; blue: one-color,
  * for small or quiet places (footers); white: on blue or dark surfaces; pale: frosted, for
- * watermarks. Originals are in design/logo.
+ * watermarks.
  */
 
 const SOURCES = {

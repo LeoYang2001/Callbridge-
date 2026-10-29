@@ -4,7 +4,7 @@ import { glowPalette as P } from '@/theme/tokens';
  * The edge-glow system: light around the inner edge of the screen whose type, color and tempo
  * say what's happening. Aura = the assistant is talking with you; hairline = a phone line is
  * involved; color = who's involved (blue assistant, green the other party / success, amber
- * waiting on you or didn't work); tempo = urgency. Specs: mobile/design/README.md.
+ * waiting on you or didn't work); tempo = urgency.
  */
 
 export type GlowMode = 'none' | 'idle' | 'listen' | 'speak' | 'think' | 'search' | 'ready' | 'ring' | 'hair' | 'msg' | 'hold' | 'done' | 'fail';

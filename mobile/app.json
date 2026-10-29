@@ -13,8 +13,7 @@
       "supportsTablet": false,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSSpeechRecognitionUsageDescription": "CallBridge shows your words as you speak, so you can see exactly what the assistant will get.",
-        "NSMicrophoneUsageDescription": "CallBridge uses the microphone while you hold the talk button, and when you join a call yourself.",
+        "NSMicrophoneUsageDescription": "CallBridge uses the microphone for your calls when you call from the app.",
         "NSPhotoLibraryUsageDescription": "CallBridge doesn't use your photos. This is required by a system library the app includes."
       },
       "bitcode": false
@@ -30,21 +29,14 @@
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "android.permission.ACCESS_NETWORK_STATE",
-        "android.permission.CAMERA",
         "android.permission.INTERNET",
         "android.permission.MODIFY_AUDIO_SETTINGS",
         "android.permission.RECORD_AUDIO",
-        "android.permission.SYSTEM_ALERT_WINDOW",
         "android.permission.WAKE_LOCK",
         "android.permission.BLUETOOTH",
         "android.permission.FOREGROUND_SERVICE",
-        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
         "android.permission.READ_CONTACTS",
-        "android.permission.WRITE_CONTACTS",
-        "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION",
-        "android.permission.READ_CALENDAR",
-        "android.permission.WRITE_CALENDAR"
+        "android.permission.WRITE_CONTACTS"
       ]
     },
     "plugins": [
@@ -58,49 +50,9 @@
         }
       ],
       [
-        "@config-plugins/react-native-webrtc",
-        {
-          "microphonePermission": "CallBridge uses the microphone so you can tell the assistant who to call and what to say.",
-          "cameraPermission": "CallBridge doesn't use the camera."
-        }
-      ],
-      [
-        "react-native-audio-api",
-        {
-          "iosBackgroundMode": true,
-          "iosMicrophonePermission": "CallBridge uses the microphone so you can tell the assistant who to call and what to say."
-        }
-      ],
-      [
         "expo-contacts",
         {
           "contactsPermission": "CallBridge lets you pick someone from your contacts to call. It only reads the person you pick."
-        }
-      ],
-      [
-        "expo-location",
-        {
-          "locationWhenInUsePermission": "CallBridge uses your location to find businesses near you when you ask for the nearest one."
-        }
-      ],
-      [
-        "expo-notifications",
-        {
-          "defaultChannel": "calls"
-        }
-      ],
-      [
-        "expo-calendar",
-        {
-          "writeOnlyAccess": true,
-          "writeOnlyCalendarPermission": "CallBridge adds appointments it booked for you to your calendar. It never reads your calendar."
-        }
-      ],
-      [
-        "expo-speech-recognition",
-        {
-          "microphonePermission": "CallBridge uses the microphone while you hold the talk button.",
-          "speechRecognitionPermission": "CallBridge shows your words as you speak, so you can see exactly what the assistant will get."
         }
       ],
       "expo-secure-store",
@@ -108,7 +60,7 @@
       [
         "@twilio/voice-react-native-sdk",
         {
-          "microphoneUsageDescription": "CallBridge uses the microphone to hear what you say to the assistant, and when you join a call yourself."
+          "microphoneUsageDescription": "CallBridge uses the microphone for your calls when you call from the app."
         }
       ]
     ],

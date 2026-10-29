@@ -2,7 +2,7 @@ import { Platform, type TextStyle } from 'react-native';
 
 /**
  * Design tokens. Identity (2026-10 redesign): indigo is the user, teal the person they call; see
- * the canvas "CallBridge translator redesign". Originally from the designer's handoff (mobile/design/README.md). Reference frame 390×844
+ * the canvas "CallBridge translator redesign". Reference frame 390×844
  * pt. The "hold" state is amber everywhere (in-app and on the Dynamic Island), by decision.
  */
 
