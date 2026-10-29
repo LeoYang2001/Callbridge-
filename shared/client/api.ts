@@ -10,6 +10,8 @@ import type {
   IntakeSession,
   Me,
   PublicConfig,
+  TranslatedCallRecord,
+  TranslatedCallRequest,
   ResearchResult,
   UserAnswer,
 } from '../types';
@@ -165,6 +167,39 @@ export function watchCall(
     stopped = true;
     clearTimeout(next);
     unsubscribe?.();
+  };
+}
+
+// ── translated calls: the user talks; captions and an optional AI interpreter ──
+export const startTranslatedCall = (s: Connection, req: TranslatedCallRequest) =>
+  postJson<{ record: TranslatedCallRecord; join?: { token: string; callId: string; code: string } }>(s, '/api/translated-calls', req);
+export const getTranslatedCall = (s: Connection, id: string) => request<TranslatedCallRecord>(s, `/api/translated-calls/${id}`);
+export const setCaptions = (s: Connection, id: string, on: boolean) => postJson<{ ok: boolean }>(s, `/api/translated-calls/${id}/captions`, { on });
+export const setInterpreter = (s: Connection, id: string, on: boolean) => postJson<{ ok: boolean }>(s, `/api/translated-calls/${id}/interpreter`, { on });
+export const hangUpTranslatedCall = (s: Connection, id: string) => postJson<{ ok: boolean }>(s, `/api/translated-calls/${id}/hangup`, {});
+
+/** Polls a translated call until it ends; captions change quickly, so it polls more often than assistant calls. */
+export function watchTranslatedCall(s: Connection, id: string, onUpdate: (r: TranslatedCallRecord) => void, onError: (msg: string) => void) {
+  let stopped = false;
+  let failures = 0;
+  let next: ReturnType<typeof setTimeout> | undefined;
+  const tick = async () => {
+    if (stopped) return;
+    try {
+      const r = await request<TranslatedCallRecord>(s, `/api/translated-calls/${id}`, { signal: timeoutSignal(POLL_TIMEOUT_MS) });
+      failures = 0;
+      if (stopped) return;
+      onUpdate(r);
+      if (r.status === 'ended' || r.status === 'failed') return;
+    } catch (e) {
+      if (++failures === 5) onError((e as Error).message);
+    }
+    if (!stopped) next = setTimeout(tick, failures ? 3000 : 600);
+  };
+  void tick();
+  return () => {
+    stopped = true;
+    clearTimeout(next);
   };
 }
 

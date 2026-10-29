@@ -1,6 +1,7 @@
 import { realtimeUsage } from '../../usage/cost';
 import { EventEmitter } from 'node:events';
 import WebSocket from 'ws';
+import type { ElevenLabsSpeaker } from './elevenlabsSpeaker';
 import type { VoiceAgent, VoiceAgentConfig, VoiceAgentEvents } from './types';
 
 export interface OpenAIRealtimeOptions {
@@ -10,6 +11,11 @@ export interface OpenAIRealtimeOptions {
   transcriptionModel: string;
   turnDetection: 'semantic_vad' | 'server_vad';
   reasoningEffort: 'minimal' | 'low' | 'medium' | 'high' | 'xhigh';
+  /**
+   * Speaks the model's replies with another voice (a native speaker per call language). The
+   * model then answers in text, and `voice` is unused.
+   */
+  speaker?: ElevenLabsSpeaker;
   /** Optional logger for protocol-level diagnostics. */
   log?: (type: string, detail?: string) => void;
 }
@@ -19,7 +25,8 @@ const isReasoningModel = (model: string) => /^gpt-realtime-2/.test(model);
 
 /**
  * OpenAI Realtime API (GA interface) over WebSocket. Audio in and out is G.711 μ-law, so
- * Twilio frames are forwarded byte-for-byte with no transcoding.
+ * Twilio frames are forwarded byte-for-byte with no transcoding. With a `speaker`, the model
+ * still listens and decides what to say, but answers in text that the speaker voices.
  */
 export class OpenAIRealtimeAgent implements VoiceAgent {
   private ws: WebSocket | null = null;
@@ -31,8 +38,24 @@ export class OpenAIRealtimeAgent implements VoiceAgent {
   private closedByUs = false;
   /** Assistant transcript text per item, built from deltas, until its `.done` arrives. */
   private readonly partialTranscripts = new Map<string, string>();
+  /** Responses the model finished while the speaker is still voicing them (reported once it's done). */
+  private unspokenDone = 0;
 
-  constructor(private readonly opts: OpenAIRealtimeOptions) {}
+  constructor(private readonly opts: OpenAIRealtimeOptions) {
+    const speaker = opts.speaker;
+    if (!speaker) return;
+    speaker.on('audio', (itemId, payload) => this.emitter.emit('audio', itemId, payload));
+    speaker.on('failure', (message, fatal) => this.emitter.emit('failure', message, fatal));
+    speaker.on('idle', () => this.flushDone());
+  }
+
+  /** The call treats responseDone as "finished talking", so with a speaker it waits for the audio. */
+  private flushDone() {
+    while (this.unspokenDone > 0) {
+      this.unspokenDone--;
+      this.emitter.emit('responseDone');
+    }
+  }
 
   connect(config: VoiceAgentConfig): Promise<void> {
     const url = `wss://api.openai.com/v1/realtime?model=${encodeURIComponent(this.opts.model)}`;
@@ -114,7 +137,7 @@ export class OpenAIRealtimeAgent implements VoiceAgent {
       type: 'realtime',
       model: this.opts.model,
       instructions: config.instructions,
-      output_modalities: ['audio'],
+      output_modalities: [this.opts.speaker ? 'text' : 'audio'],
       audio: {
         input: {
           format: { type: 'audio/pcmu' },
@@ -122,10 +145,7 @@ export class OpenAIRealtimeAgent implements VoiceAgent {
           transcription: { model: this.opts.transcriptionModel, ...(config.transcriptionLanguage ? { language: config.transcriptionLanguage } : {}) },
           turn_detection: turnDetection,
         },
-        output: {
-          format: { type: 'audio/pcmu' },
-          voice: this.opts.voice,
-        },
+        ...(this.opts.speaker ? {} : { output: { format: { type: 'audio/pcmu' }, voice: this.opts.voice } }),
       },
       tools: config.tools.map((t) => ({ type: 'function', ...t })),
       tool_choice: 'auto',
@@ -148,7 +168,8 @@ export class OpenAIRealtimeAgent implements VoiceAgent {
         // A cancelled (interrupted) response may never send transcript.done; flush what we have.
         for (const [itemId, text] of this.partialTranscripts) this.emitter.emit('transcript', itemId, 'assistant', text);
         this.partialTranscripts.clear();
-        this.emitter.emit('responseDone');
+        if (this.opts.speaker?.busy()) this.unspokenDone++;
+        else this.emitter.emit('responseDone');
         if (this.responseQueued) {
           this.responseQueued = false;
           this.createResponse();
@@ -169,6 +190,16 @@ export class OpenAIRealtimeAgent implements VoiceAgent {
       case 'response.output_audio_transcript.done':
         this.partialTranscripts.delete(ev.item_id);
         this.emitter.emit('transcript', ev.item_id, 'assistant', ev.transcript ?? '');
+        break;
+      // Text replies (with a speaker): voice each sentence as soon as it's written.
+      case 'response.output_text.delta':
+        this.partialTranscripts.set(ev.item_id, (this.partialTranscripts.get(ev.item_id) ?? '') + (ev.delta ?? ''));
+        this.opts.speaker?.write(ev.item_id, ev.delta ?? '');
+        break;
+      case 'response.output_text.done':
+        this.partialTranscripts.delete(ev.item_id);
+        this.opts.speaker?.end(ev.item_id);
+        this.emitter.emit('transcript', ev.item_id, 'assistant', ev.text ?? '');
         break;
       case 'input_audio_buffer.speech_started':
         this.emitter.emit('speechStarted');
@@ -223,6 +254,17 @@ export class OpenAIRealtimeAgent implements VoiceAgent {
   }
 
   truncate(itemId: string, audioEndMs: number) {
+    const speaker = this.opts.speaker;
+    if (speaker) {
+      // A text reply can't be truncated; tell the model what the listener actually heard.
+      const heard = speaker.heardText(itemId, audioEndMs);
+      this.note(
+        heard
+          ? `You were interrupted. The other party heard only this much of your last reply: "${heard}…". The rest was not said.`
+          : 'You were interrupted before the other party heard any of your last reply.',
+      );
+      return;
+    }
     this.send({ type: 'conversation.item.truncate', item_id: itemId, content_index: 0, audio_end_ms: Math.max(0, Math.round(audioEndMs)) });
   }
 
@@ -257,6 +299,10 @@ export class OpenAIRealtimeAgent implements VoiceAgent {
   cancelResponse() {
     this.responseQueued = false;
     if (this.responseActive) this.send({ type: 'response.cancel' });
+    if (this.opts.speaker) {
+      this.opts.speaker.stop();
+      this.flushDone();
+    }
   }
 
   on<E extends keyof VoiceAgentEvents>(event: E, listener: VoiceAgentEvents[E]) {
@@ -265,6 +311,7 @@ export class OpenAIRealtimeAgent implements VoiceAgent {
 
   close() {
     this.closedByUs = true;
+    this.opts.speaker?.stop();
     this.ws?.close();
   }
 }

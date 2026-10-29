@@ -1,13 +1,17 @@
 import type { FastifyInstance } from 'fastify';
 import type { CallManager } from '../calls/callManager';
+import { isTranslatedCallId, type TranslatedCallManager } from '../calls/translatedCallManager';
 import type { AppConfig } from '../config';
 import { mapTwilioStatus, TwilioMediaTransport, TwilioTelephony } from '../providers/telephony/twilio';
 
 export function registerTwilioRoutes(
   app: FastifyInstance,
-  deps: { config: AppConfig; manager: CallManager; telephony: TwilioTelephony },
+  deps: { config: AppConfig; manager: CallManager; translated?: TranslatedCallManager; telephony: TwilioTelephony },
 ) {
-  const { config, manager, telephony } = deps;
+  const { config, telephony } = deps;
+  /** Translated calls (the user talks, with an interpreter) and assistant calls share these webhooks. */
+  const managerFor = (callId: string): Pick<CallManager, 'handleTelephonyState' | 'handleUserLegState' | 'streamTokenFor' | 'appJoinStream' | 'attachMedia' | 'attachUserMedia'> =>
+    deps.translated && isTranslatedCallId(callId) ? deps.translated : deps.manager;
 
   const signatureOk = (path: string, sig: string | string[] | undefined, body: Record<string, unknown> | undefined) =>
     !config.TWILIO_VALIDATE_SIGNATURES ||
@@ -22,7 +26,7 @@ export function registerTwilioRoutes(
     const callId = req.query.callId;
     const state = mapTwilioStatus(req.body?.CallStatus ?? '');
     // The user's own leg (take-over) has its own progress; the call's is the other party's.
-    if (callId && state) req.query.leg === 'user' ? manager.handleUserLegState(callId, state) : manager.handleTelephonyState(callId, state);
+    if (callId && state) req.query.leg === 'user' ? managerFor(callId).handleUserLegState(callId, state) : managerFor(callId).handleTelephonyState(callId, state);
     return reply.code(204).send();
   });
 
@@ -33,7 +37,7 @@ export function registerTwilioRoutes(
       return reply.code(403).send('invalid signature');
     }
     const callId = req.query.callId ?? '';
-    const token = manager.streamTokenFor(callId);
+    const token = managerFor(callId).streamTokenFor(callId);
     const twiml = token
       ? TwilioTelephony.streamTwiml(config.PUBLIC_BASE_URL!, callId, token)
       : '<Response><Hangup/></Response>';
@@ -50,7 +54,7 @@ export function registerTwilioRoutes(
       return reply.code(403).send('invalid signature');
     }
     const callId = req.body?.callId ?? '';
-    const token = manager.appJoinStream(callId, req.body?.code ?? '', req.body?.CallSid);
+    const token = managerFor(callId).appJoinStream(callId, req.body?.code ?? '', req.body?.CallSid);
     const twiml = token ? TwilioTelephony.userStreamTwiml(config.PUBLIC_BASE_URL!, callId, token) : '<Response><Say>This call has ended.</Say><Hangup/></Response>';
     return reply.type('text/xml').send(twiml);
   });
@@ -62,7 +66,8 @@ export function registerTwilioRoutes(
       .waitForStart()
       .then((start) => {
         const { callId = '', token = '', leg } = start.customParameters ?? {};
-        const attached = leg === 'user' ? manager.attachUserMedia(callId, token, transport) : manager.attachMedia(callId, token, transport);
+        const target = managerFor(callId);
+        const attached = leg === 'user' ? target.attachUserMedia(callId, token, transport) : target.attachMedia(callId, token, transport);
         if (!attached) {
           req.log.warn({ callId }, 'Media stream rejected: unknown call or bad token');
           transport.close();

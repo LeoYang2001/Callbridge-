@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import type { AuthResult, CallRecord, CallRequest, Me, PublicConfig } from '../../shared/types';
-import { addErrand, answerQuestion, endCall, getCall, getConfig, getMe, sendCallMessage, setSignedOutHandler, signOut, startCall, updateProfile, watchCall } from './api';
+import type { AuthResult, CallRecord, CallRequest, Contact, Me, PublicConfig, TranslatedCallRecord } from '../../shared/types';
+import { addErrand, answerQuestion, endCall, getCall, getConfig, getMe, sendCallMessage, setSignedOutHandler, signOut, startCall, updateProfile, watchCall, watchTranslatedCall } from './api';
+import { DialScreen, TranslatedCallScreen } from './Translator';
 import { primeAlerts } from './alerts';
 import { draftToRequest, requestToDraft } from '../../shared/intake';
 import type { IntakeDraft, RealtimeVoice } from '../../shared/types';
@@ -22,6 +23,9 @@ export function App() {
   const [config, setConfig] = useState<PublicConfig | null>(null);
   const [configError, setConfigError] = useState<string | null>(null);
   const [call, setCall] = useState<CallRecord | null>(null);
+  /** A call the user is making themselves, with translation (the app's main flow). */
+  const [tcall, setTcall] = useState<TranslatedCallRecord | null>(null);
+  const [dialContact, setDialContact] = useState<Contact | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const stopRef = useRef<(() => void) | null>(null);
@@ -197,6 +201,7 @@ export function App() {
     stopRef.current?.();
     stopRef.current = null;
     setCall(null);
+    setTcall(null);
     setError(null);
     setFollowUp(null);
     setFromIntake(null);
@@ -221,9 +226,6 @@ export function App() {
         <div className="topbar-right">
           {me && (
             <>
-              <button type="button" className="icon-btn" aria-label="Errands" onClick={() => setScreen('errands')}>
-                🗂
-              </button>
               <button type="button" className="icon-btn" aria-label="Phone book" onClick={() => setScreen('contacts')}>
                 📒
               </button>
@@ -279,19 +281,8 @@ export function App() {
             onClose={() => setScreen('home')}
             onCall={(c) => {
               reset();
-              const who = c.relationship ? `${c.name} (my ${c.relationship})` : c.name;
-              setCallSeed({
-                draft: {
-                  counterpartName: c.name,
-                  counterpartRelationship: c.relationship,
-                  phoneNumber: c.phone.replace(/^\+1(?=\d{10}$)/, ''),
-                  callLanguage: c.language,
-                },
-                text: `(Call ${who} at ${c.phone}${c.language ? `, in ${c.language}` : ''}.)`,
-                key: Date.now(),
-              });
+              setDialContact(c);
               setScreen('home');
-              setMode('talk');
             }}
           />
         ) : me && screen === 'errands' && !call ? (
@@ -321,6 +312,31 @@ export function App() {
             onVoiceChange={changeVoice}
             onReview={() => {}}
             onType={() => {}}
+          />
+        ) : tcall ? (
+          <TranslatedCallScreen
+            settings={settings}
+            call={tcall}
+            error={error}
+            onDone={() => {
+              reset();
+              setDialContact(null);
+            }}
+          />
+        ) : me && !demo && !call ? (
+          <DialScreen
+            key={dialContact?.id ?? 'new'}
+            settings={settings}
+            me={me}
+            contact={dialContact}
+            blockedReason={blockedReason}
+            onStarted={(r) => {
+              setTcall(r);
+              stopRef.current = watchTranslatedCall(settings, r.id, (next) => {
+                setTcall(next);
+                setError(null);
+              }, setError);
+            }}
           />
         ) : call ? (
           <CallScreen

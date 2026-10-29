@@ -42,11 +42,28 @@ const EnvSchema = z.object({
   /** Setting up a call in the app (simple questions and answers): the cheaper mini model. Phone calls use REALTIME_MODEL. */
   INTAKE_REALTIME_MODEL: z.string().default('gpt-realtime-2.1-mini'),
   REALTIME_VOICE: z.string().default('marin'),
+  /**
+   * Who speaks on calls. "openai": the realtime model's own voice (REALTIME_VOICE) in every
+   * language. "elevenlabs": the realtime model listens and decides what to say, and an
+   * ElevenLabs voice for the call's language speaks it, so each language can have a native
+   * speaker's voice and accent.
+   */
+  VOICE_ENGINE: z.enum(['openai', 'elevenlabs']).default('openai'),
+  ELEVENLABS_API_KEY: optionalString,
+  ELEVENLABS_MODEL: z.string().default('eleven_flash_v2_5'),
+  /** Voice per call language, by language code: "en=<voice id>,zh=<voice id>,ja=…" (yue for Cantonese). */
+  ELEVENLABS_VOICES: optionalString,
+  /** Voice for languages without their own entry. Empty: those calls use the OpenAI voice. */
+  ELEVENLABS_VOICE: optionalString,
   /** Only sent for reasoning-capable realtime models (gpt-realtime-2*). */
   REALTIME_REASONING_EFFORT: z.enum(['minimal', 'low', 'medium', 'high', 'xhigh']).default('low'),
   REALTIME_TURN_DETECTION: z.enum(['semantic_vad', 'server_vad']).default('semantic_vad'),
   TRANSCRIPTION_MODEL: z.string().default('gpt-4o-transcribe'),
   ANALYSIS_MODEL: z.string().default('gpt-5.4-mini'),
+  /** Translated calls: live speech-to-speech translation, both directions. */
+  TRANSLATE_MODEL: z.string().default('gpt-realtime-translate'),
+  /** The interpreter's spoken "I've joined" notice, made with text-to-speech. */
+  ANNOUNCE_TTS_MODEL: z.string().default('gpt-4o-mini-tts'),
   /** Translates the live transcript into the user's language, one line at a time. */
   TRANSLATION_MODEL: z.string().default('gpt-5.4-mini'),
 
@@ -95,6 +112,8 @@ export type AppConfig = z.infer<typeof EnvSchema> & {
   corsOrigins: string[] | null;
   telephonyConfigured: boolean;
   voiceConfigured: boolean;
+  /** ELEVENLABS_VOICES parsed: language code → voice id. */
+  elevenLabsVoices: Record<string, string>;
 };
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -104,7 +123,16 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     throw new Error(`Invalid environment configuration:\n${issues}`);
   }
   const c = parsed.data;
+  if (c.VOICE_ENGINE === 'elevenlabs' && !c.ELEVENLABS_API_KEY) {
+    throw new Error('Invalid environment configuration:\n  VOICE_ENGINE=elevenlabs needs ELEVENLABS_API_KEY');
+  }
+  const elevenLabsVoices: Record<string, string> = {};
+  for (const pair of (c.ELEVENLABS_VOICES ?? '').split(',')) {
+    const [lang, id] = pair.split('=').map((s) => s.trim());
+    if (lang && id) elevenLabsVoices[lang.toLowerCase()] = id;
+  }
   return {
+    elevenLabsVoices,
     ...c,
     // Accept "7475550123" or "(747) 555-0123" as well as E.164, so a hand-edited .env still matches.
     allowedDestinations: c.ALLOWED_DESTINATIONS
