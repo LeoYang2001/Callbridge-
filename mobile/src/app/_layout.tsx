@@ -44,6 +44,8 @@ function Routes() {
           </Stack.Protected>
           <Stack.Protected guard={onboarded}>
             <Stack.Screen name="index" />
+            <Stack.Screen name="translate/[id]" />
+            <Stack.Screen name="assistant" />
             <Stack.Screen name="intake" />
             <Stack.Screen name="call/[id]" />
             <Stack.Screen name="talk/[id]" />

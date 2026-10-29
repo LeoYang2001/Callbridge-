@@ -25,6 +25,13 @@ let current: VoiceCall | null = null;
 export async function joinFromApp(conn: Connection, callId: string, label: string, onEnded: (error?: string) => void): Promise<void> {
   if (!canJoinInApp()) throw new Error(Device.isDevice ? 'Joining from the app needs the latest version of CallBridge.' : "Joining from the app needs a real iPhone (the simulator can't place calls).");
   const { token, code } = await joinCallToken(conn, callId);
+  await connectFromApp({ token, callId, code }, label, onEnded);
+}
+
+/** Connects the app's voice leg with a token and one-time code the server already issued (a translated call's start). */
+export async function connectFromApp(join: { token: string; callId: string; code: string }, label: string, onEnded: (error?: string) => void): Promise<void> {
+  if (!canJoinInApp()) throw new Error("Calling from the app needs a real iPhone with the latest CallBridge.");
+  const { token, callId, code } = join;
   const sdk = require('@twilio/voice-react-native-sdk') as typeof import('@twilio/voice-react-native-sdk');
   voice ??= new sdk.Voice() as unknown as typeof voice;
   const call = await voice!.connect(token, { params: { callId, code }, contactHandle: label });

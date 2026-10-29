@@ -1,29 +1,37 @@
 import { Platform, type TextStyle } from 'react-native';
 
 /**
- * Design tokens from the designer's handoff (mobile/design/README.md). Reference frame 390×844
+ * Design tokens. Identity (2026-10 redesign): indigo is the user, teal the person they call; see
+ * the canvas "CallBridge translator redesign". Originally from the designer's handoff (mobile/design/README.md). Reference frame 390×844
  * pt. The "hold" state is amber everywhere (in-app and on the Dynamic Island), by decision.
  */
 
 export const color = {
-  ink: '#121418',
-  secondary: '#69707d',
+  ink: '#0e1726',
+  secondary: '#5b6576',
   tertiary: '#9aa1ad',
-  body: '#4a4f5a',
+  body: '#4a5468',
 
   white: '#ffffff',
-  surface: '#f4f5f7',
+  surface: '#f3f5f8',
   surface2: '#f7f8fa',
   surface3: '#fbfbfd',
   divider: '#eef0f3',
-  line: '#e1e4e9',
-  lineStrong: '#d5d9e0',
+  line: '#e2e6ec',
+  lineStrong: '#d5dae2',
 
-  blue: '#2557e8',
-  bluePressed: '#1a3fb0',
-  blueTint: '#e6edfd',
-  green: '#1a9e4b',
-  greenText: '#137a3a',
+  /** Indigo: the user (their captions, their actions). */
+  blue: '#3346d3',
+  bluePressed: '#2535a8',
+  blueTint: '#e7eafc',
+  /** Teal: the person they're calling. */
+  teal: '#0b6e63',
+  tealTint: '#e3f2ef',
+  /** The dark ground of the connecting screen and the interpreter banner. */
+  night: '#0e1726',
+  nightCard: '#172238',
+  green: '#12804a',
+  greenText: '#12804a',
   greenTint: '#e1f5e8',
   violet: '#5b3cc4',
   violetTint: '#eee9fc',
@@ -32,11 +40,11 @@ export const color = {
   amberGlow: '#f3c45c',
   /** "Someone is on hold for you": the accent for hold UI (buttons, countdown). */
   amber: '#d48a00',
-  red: '#e5402f',
-  redText: '#b42318',
+  red: '#c2352a',
+  redText: '#c2352a',
   redTint: '#fdeceb',
 
-  menuButton: 'rgba(18,20,24,0.05)',
+  menuButton: 'rgba(14,23,38,0.05)',
   overlay: 'rgba(255,255,255,0.97)',
 } as const;
 
@@ -99,9 +107,9 @@ export const shadow = {
 
 /** Edge-glow palettes ("brand" in the prototype). Each: light → dark. */
 export const glowPalette = {
-  assist: ['#c9f3ff', '#5cc8ff', '#2557e8', '#0a1a7a'],
+  assist: ['#e7eafc', '#8c9bff', '#3346d3', '#1a2280'],
   think: ['#efe6ff', '#b59cff', '#6a4bd6', '#2b1a78'],
-  call: ['#e3ffe9', '#7fe0a3', '#1a9e4b', '#0a4a2a'],
+  call: ['#e3f2ef', '#7fd8c6', '#0b6e63', '#06302b'],
   /** Hold is amber (decision); the prototype used violet here. */
   hold: ['#fff3d1', '#f3c45c', '#d48a00', '#855600'],
   fail: ['#fff3d1', '#f3c45c', '#d48a00', '#855600'],

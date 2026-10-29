@@ -60,7 +60,7 @@ export default function ContactScreen() {
         <Text style={[type.h2, { textAlign: 'center' }]}>{c.name}</Text>
         {c.relationship ? <Pill>{c.relationship}</Pill> : null}
       </View>
-      <PillButton title="Call with the assistant" kind="green" onPress={() => router.push({ pathname: '/', params: { contact: c.id } })} icon={<Icon name="phone" size={17} color={color.white} />} style={{ marginTop: 8 }} />
+      <PillButton title={`Call ${c.name}`} kind="green" onPress={() => router.push({ pathname: '/', params: { contact: c.id } })} icon={<Icon name="phone" size={17} color={color.white} />} style={{ marginTop: 8 }} />
       <Group>
         <Row label="Number" value={displayPhone(c.phone)} />
         <Row label="Speaks" value={c.language || 'English'} />
