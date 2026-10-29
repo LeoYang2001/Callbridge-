@@ -1,5 +1,4 @@
 import { useCallback } from 'react';
-import { displayPhone } from '@shared/phone';
 import type { Contact } from '@shared/types';
 import { deleteContact, saveContact } from '@/lib/api';
 import { pickContact, type PickedContact } from '@/lib/contacts';
@@ -40,10 +39,5 @@ export function usePhoneBook() {
     remove: (id: string) => run(() => deleteContact(conn, id)),
     /** Opens the phone's contact picker; the caller chooses a number if there are several. */
     pickFromDevice: (): Promise<PickedContact | null> => pickContact(),
-    /** What to say first when calling someone from the phone book, so the assistant only asks what for. */
-    callSeed: (c: Contact) => ({
-      draft: { counterpartName: c.name, counterpartRelationship: c.relationship, counterpartAddress: c.address, phoneNumber: c.phone.replace(/^\+1(?=\d{10}$)/, ''), callLanguage: c.language },
-      text: `Call ${c.name}${c.relationship ? ` (my ${c.relationship})` : ''} at ${displayPhone(c.phone)}.`,
-    }),
   };
 }

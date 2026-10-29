@@ -37,7 +37,7 @@ export function languageCode(language: string): string | undefined {
   return CODES.find(([re]) => re.test(language))?.[1];
 }
 
-/** The languages the app offers for talking to the assistant. */
+/** The languages the app offers. */
 export const LANGUAGES = ['Chinese (Mandarin)', 'Chinese (Cantonese)', 'Spanish', 'Vietnamese', 'Korean', 'Tagalog', 'Russian', 'Arabic', 'Hindi', 'Japanese', 'English'];
 
 /** The app language for a device locale (BCP 47, e.g. "zh-Hans-US"), or English if it isn't offered. */
@@ -50,7 +50,7 @@ export function languageFromLocale(tag: string): string {
 
 /**
  * The languages the mobile app offers at sign-up: the native name shown in the picker, and the
- * name saved in the profile (what the assistants are told to speak).
+ * name saved in the profile.
  */
 export const APP_LANGUAGES: { native: string; name: string }[] = [
   { native: '中文（普通话）', name: 'Chinese (Mandarin)' },

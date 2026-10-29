@@ -1,7 +1,7 @@
 import * as Updates from 'expo-updates';
 import { useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
-import { useActiveCall } from '@/call/ActiveCall';
+import { useLiveCall } from '@/lib/liveCall';
 
 /**
  * Over-the-air updates (EAS Update) for TestFlight and store builds. The app checks on launch
@@ -11,7 +11,7 @@ import { useActiveCall } from '@/call/ActiveCall';
  */
 export function useApplyUpdates() {
   const { isUpdatePending } = Updates.useUpdates();
-  const { live } = useActiveCall();
+  const live = useLiveCall() !== null;
   const liveRef = useRef(live);
   useEffect(() => {
     liveRef.current = live;

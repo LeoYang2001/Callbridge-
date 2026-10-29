@@ -14,7 +14,7 @@ import { Group, Row, SectionLabel } from '@/ui/Rows';
 import { Pill } from '@/ui/Text';
 import { Screen, TopBar } from '@/ui/Screen';
 
-/** One contact: call them, what the assistant knows, the last call, and what calls taught it. */
+/** One contact: call them, their language and number, and the last call. */
 export default function ContactScreen() {
   useGlow('none');
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -66,18 +66,15 @@ export default function ContactScreen() {
         <Row label="Speaks" value={c.language || 'English'} />
         <Row label="Address" value={c.address || '—'} last />
       </Group>
-      {c.lastOutcome ? (
+      {c.lastCalledAt ? (
         <>
           <SectionLabel>Last call</SectionLabel>
-          <View style={{ backgroundColor: color.greenTint, borderRadius: 18, padding: 14, gap: 4 }}>
-            <Text style={[type.callout, { color: color.greenText, fontWeight: '600' }]}>{c.lastOutcome}</Text>
-            {c.lastCalledAt ? <Text style={[type.caption, { color: color.greenText }]}>{new Date(c.lastCalledAt).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</Text> : null}
-          </View>
+          <Text style={[type.callout, { color: color.body }]}>{new Date(c.lastCalledAt).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}</Text>
         </>
       ) : null}
       {c.notes.length ? (
         <>
-          <SectionLabel>Learned on calls</SectionLabel>
+          <SectionLabel>Notes</SectionLabel>
           <Group>
             {c.notes.map((n, i) => (
               <Row key={n} label={n} last={i === c.notes.length - 1} />
@@ -89,7 +86,7 @@ export default function ContactScreen() {
       <Text
         style={[type.small, { color: color.redText, textAlign: 'center', marginTop: 12 }]}
         onPress={() =>
-          Alert.alert(`Delete ${c.name}?`, 'The assistant forgets this contact and what it learned on calls.', [
+          Alert.alert(`Delete ${c.name}?`, 'This removes them from your phone book. Past calls stay in Calls.', [
             { text: 'Cancel', style: 'cancel' },
             {
               text: 'Delete',
@@ -149,7 +146,7 @@ export function EditContact({ initial, id, onDone, title }: { initial: ContactIn
   );
 }
 
-/** Picks the call language from the languages the assistant speaks (no typing, no typos). */
+/** Picks the language they speak from the ones the app offers (no typing, no typos). */
 function LanguagePicker({ label, value, onChange }: { label: string; value?: string; onChange: (v: string) => void }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState('');

@@ -4,7 +4,6 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import type { AuthResult, Me } from '@shared/types';
 import { getMe, setSignedOutHandler, signOut as serverSignOut, type Connection } from './api';
 import { SERVER_URL } from './config';
-import { unregisterForPush } from './push';
 
 /**
  * The signed-in user. The session token lives in the iOS Keychain / Android Keystore (expo-secure-
@@ -72,7 +71,6 @@ export function SessionProvider({ children }: { children: ReactNode }) {
       },
       signOut: async () => {
         if (state.status === 'signedIn') {
-          await unregisterForPush(state.conn);
           await serverSignOut(state.conn).catch(() => {});
         }
         await clear();

@@ -1,20 +1,20 @@
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useState } from 'react';
-import type { CallSummary } from '@shared/types';
-import { deleteCall, listCalls } from '@/lib/api';
+import type { TranslatedCallSummary } from '@shared/types';
+import { deleteTranslatedCall, listTranslatedCalls } from '@/lib/api';
 import { useSignedIn } from '@/lib/session';
 
 /** The call history, newest first; refreshed whenever the screen comes into view. */
 export function useCalls() {
   const { conn } = useSignedIn();
-  const [calls, setCalls] = useState<CallSummary[] | null>(null);
+  const [calls, setCalls] = useState<TranslatedCallSummary[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
   const refresh = useCallback(async () => {
     setRefreshing(true);
     try {
-      setCalls(await listCalls(conn));
+      setCalls(await listTranslatedCalls(conn));
       setError(null);
     } catch (e) {
       setError((e as Error).message);
@@ -35,7 +35,7 @@ export function useCalls() {
       const before = calls;
       setCalls((list) => list?.filter((c) => c.id !== id) ?? list);
       try {
-        await deleteCall(conn, id);
+        await deleteTranslatedCall(conn, id);
         setError(null);
       } catch (e) {
         setCalls(before);

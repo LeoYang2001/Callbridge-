@@ -9,6 +9,7 @@ import { useGlow } from '@/glow/GlowContext';
 import { askConsent, getTranslatedCall, hangUpTranslatedCall, setCaptions, setInterpreter, startTranslatedCall } from '@/lib/api';
 import { connectFromApp, inAppJoinActive, leaveAppJoin, muteAppJoin } from '@/lib/appJoin';
 import { haptic } from '@/lib/haptics';
+import { setLiveCall } from '@/lib/liveCall';
 import { useSignedIn } from '@/lib/session';
 import { color, type } from '@/theme/tokens';
 import { PillButton } from '@/ui/Button';
@@ -63,9 +64,11 @@ export default function TranslatedCall() {
         setCall(r);
         setError(null);
         if (r.status === 'ended' || r.status === 'failed') {
+          setLiveCall(null);
           if (inAppJoinActive()) void leaveAppJoin();
           return;
         }
+        setLiveCall({ id: r.id, name: r.request.contactName || displayPhone(r.request.to), answeredAt: r.answeredAt });
       } catch (e) {
         if (!stopped) setError((e as Error).message);
       }

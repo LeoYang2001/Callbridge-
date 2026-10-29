@@ -1,13 +1,11 @@
 import * as Device from 'expo-device';
 import { NativeModules } from 'react-native';
-import { joinCallToken } from '@shared/client/api';
-import type { Connection } from './api';
 
 /**
- * Joining a call from inside the app (Twilio Voice SDK): the app connects to Twilio, and the
- * server puts that leg on the call in place of the assistant, the same relay as ringing the
- * user's phone. The SDK is a native module, so it's loaded only when needed: an app built
- * before it was added says so instead of crashing.
+ * Calling from inside the app (Twilio Voice SDK): the app connects to Twilio, and the server
+ * relays that leg to the person being called, the same as when it rings the user's phone. The
+ * SDK is a native module, so it's loaded only when needed: an app built before it was added
+ * says so instead of crashing.
  */
 
 type VoiceCall = { disconnect: () => Promise<void>; mute: (on: boolean) => Promise<boolean>; on: (event: string, fn: (...args: any[]) => void) => void };
@@ -20,13 +18,6 @@ export const canJoinInApp = () => NativeModules.TwilioVoiceReactNative != null &
 
 let voice: { connect: (token: string, opts: object) => Promise<VoiceCall> } | null = null;
 let current: VoiceCall | null = null;
-
-/** Connects; `onEnded` hears when the app's leg ends (with an error message if it failed). */
-export async function joinFromApp(conn: Connection, callId: string, label: string, onEnded: (error?: string) => void): Promise<void> {
-  if (!canJoinInApp()) throw new Error(Device.isDevice ? 'Joining from the app needs the latest version of CallBridge.' : "Joining from the app needs a real iPhone (the simulator can't place calls).");
-  const { token, code } = await joinCallToken(conn, callId);
-  await connectFromApp({ token, callId, code }, label, onEnded);
-}
 
 /** Connects the app's voice leg with a token and one-time code the server already issued (a translated call's start). */
 export async function connectFromApp(join: { token: string; callId: string; code: string }, label: string, onEnded: (error?: string) => void): Promise<void> {

@@ -9,7 +9,7 @@ export function normalizePhone(input: string): string | null {
 }
 
 /**
- * Numbers the assistant must never dial. Emergency short codes (911, 112, …) can't pass E.164
+ * Numbers CallBridge must never dial. Emergency short codes (911, 112, …) can't pass E.164
  * validation at all; this additionally blocks North American N11 and premium-rate area codes.
  */
 export function blockedReason(e164: string): string | null {

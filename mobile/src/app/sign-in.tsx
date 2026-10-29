@@ -31,7 +31,7 @@ function PhoneStep({ f }: { f: Form }) {
           <Text style={[type.h3, { fontSize: 18 }]}>CallBridge</Text>
         </View>
         <Text style={type.hero}>{'Call anyone,\nin your language.'}</Text>
-        <Text style={type.sub}>An AI assistant makes the call for you and checks with you before deciding anything. You'll pick your language next.</Text>
+        <Text style={type.sub}>Call anyone in any language: live captions, and an AI interpreter when both sides agree. You'll pick your language next.</Text>
       </View>
       <Text style={[type.caption, { fontWeight: '600', marginBottom: 8 }]}>Your phone number</Text>
       <View style={s.field}>

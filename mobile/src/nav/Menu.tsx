@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { FadeInUp, SlideInRight, SlideOutRight, useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { languageCode } from '@shared/languages';
-import { clock, useActiveCall, useCallSeconds } from '@/call/ActiveCall';
+import { useLiveCall } from '@/lib/liveCall';
 import { useHideGlow } from '@/glow/GlowContext';
 import { haptic } from '@/lib/haptics';
 import { useSession } from '@/lib/session';
@@ -55,8 +55,13 @@ function MenuOverlay({ onClose }: { onClose: () => void }) {
   const { state } = useSession();
   const me = state.status === 'signedIn' ? state.me : null;
   const code = me ? languageCode(me.profile.preferredLanguage) : undefined;
-  const { call, live } = useActiveCall();
-  const seconds = useCallSeconds(call);
+  const call = useLiveCall();
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const seconds = call?.answeredAt ? Math.floor((now - call.answeredAt) / 1000) : 0;
   // The menu isn't a voice screen: no glow while it's open.
   useHideGlow();
 
@@ -100,21 +105,19 @@ function MenuOverlay({ onClose }: { onClose: () => void }) {
         ))}
       </View>
 
-      {call && live && (
-        <Pressable onPress={() => go({ pathname: '/call/[id]', params: { id: call.id } })} style={s.live}>
+      {call && (
+        <Pressable onPress={() => go({ pathname: '/translate/[id]', params: { id: call.id } })} style={s.live}>
           <View style={s.liveDot} />
           <Text style={[type.small, { color: color.greenText, fontWeight: '600' }]}>Live</Text>
           <Text style={[type.small, { color: color.ink, flex: 1 }]} numberOfLines={1}>
-            {call.request.counterpartName || call.request.to} · {clock(seconds)}
+            {call.name}
+            {call.answeredAt ? ` · ${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}` : ''}
           </Text>
           <Text style={[type.small, { color: color.ink, fontWeight: '600' }]}>Open</Text>
         </Pressable>
       )}
 
       <View pointerEvents="box-none" style={[s.links, { paddingBottom: insets.bottom + 24 }]}>
-        <Text style={type.caption} onPress={() => go('/notifications')}>
-          Notifications
-        </Text>
         <Text style={type.caption} onPress={() => go('/contacts/import')}>
           Import contacts
         </Text>

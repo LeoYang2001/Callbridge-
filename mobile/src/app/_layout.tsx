@@ -1,12 +1,9 @@
-import { DefaultTheme, Stack, ThemeProvider, usePathname } from 'expo-router';
+import { DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { ActiveCallProvider } from '@/call/ActiveCall';
-import { CallCapsule } from '@/call/CallCapsule';
 import { GlowProvider } from '@/glow/GlowContext';
-import { useNotifications } from '@/hooks/useNotifications';
 import { useApplyUpdates } from '@/lib/updates';
 import { SessionProvider, useSession } from '@/lib/session';
 import { MenuProvider } from '@/nav/Menu';
@@ -25,18 +22,15 @@ function UpdateGate() {
 
 function Routes() {
   const { state } = useSession();
-  const path = usePathname();
-  useNotifications();
   useEffect(() => {
     if (state.status !== 'loading') void SplashScreen.hideAsync();
   }, [state.status]);
   if (state.status === 'loading') return null;
   const signedIn = state.status === 'signedIn';
-  // New accounts go through the profile interview first.
+  // New accounts set up their profile first.
   const onboarded = state.status === 'signedIn' && state.me.profile.onboarded;
   return (
-    <ActiveCallProvider>
-      <MenuProvider enabled={onboarded || (__DEV__ && path.startsWith('/dev/preview'))}>
+    <MenuProvider enabled={onboarded}>
         {/* No headers and no tab bar: screens are transparent over the edge glow. */}
         <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: 'transparent' }, animation: 'none' }}>
           <Stack.Protected guard={signedIn && !onboarded}>
@@ -45,28 +39,19 @@ function Routes() {
           <Stack.Protected guard={onboarded}>
             <Stack.Screen name="index" />
             <Stack.Screen name="translate/[id]" />
-            <Stack.Screen name="assistant" />
-            <Stack.Screen name="intake" />
-            <Stack.Screen name="call/[id]" />
-            <Stack.Screen name="talk/[id]" />
             <Stack.Screen name="calls" />
             <Stack.Screen name="contacts/index" />
             <Stack.Screen name="contacts/import" />
             <Stack.Screen name="contacts/[id]" />
             <Stack.Screen name="me" />
-            <Stack.Screen name="notifications" />
-            <Stack.Screen name="errands" />
           </Stack.Protected>
           <Stack.Screen name="dev/glow" />
-          <Stack.Screen name="dev/preview" />
           <Stack.Protected guard={!signedIn}>
             <Stack.Screen name="sign-in" />
           </Stack.Protected>
         </Stack>
-        <CallCapsule />
         <UpdateGate />
-      </MenuProvider>
-    </ActiveCallProvider>
+    </MenuProvider>
   );
 }
 

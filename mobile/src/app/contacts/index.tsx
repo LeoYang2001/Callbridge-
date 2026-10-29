@@ -84,11 +84,6 @@ function ContactRow({ c }: { c: Contact }) {
         <Text style={type.caption} numberOfLines={1}>
           {[displayPhone(c.phone), c.language, c.callCount ? `${c.callCount} call${c.callCount === 1 ? '' : 's'}` : null].filter(Boolean).join(' · ')}
         </Text>
-        {c.lastOutcome ? (
-          <Text style={[type.caption, { color: color.body }]} numberOfLines={1}>
-            {c.lastOutcome}
-          </Text>
-        ) : null}
       </View>
       <RoundButton label={`Call ${c.name}`} onPress={() => router.push({ pathname: '/', params: { contact: c.id } })} size={40} bg={color.green} ring={false}>
         <Icon name="phone" size={17} color={color.white} />
