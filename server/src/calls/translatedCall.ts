@@ -61,6 +61,23 @@ const ANNOUNCEMENTS: Record<string, (name: string) => string> = {
   vi: (n) => `Một phiên dịch viên AI đã tham gia cuộc gọi để dịch giữa bạn và ${n}. Có thể có độ trễ ngắn.`,
 };
 
+/** "Ask for me": the consent question, spoken to the other side in their language. */
+const CONSENT_QUESTIONS: Record<string, (name: string) => string> = {
+  en: (n) => `${n} would like an AI interpreter to join this call and translate. Is that OK with you?`,
+  zh: (n) => `${n}希望让 AI 翻译加入通话帮忙翻译，您同意吗？`,
+  ja: (n) => `${n}さんがAI通訳をこの通話に入れて通訳したいそうです。よろしいですか？`,
+  ko: (n) => `${n} 님이 AI 통역사를 통화에 참여시켜 통역하고 싶어 합니다. 괜찮으신가요?`,
+  es: (n) => `${n} quisiera que un intérprete de IA se una a la llamada para traducir. ¿Le parece bien?`,
+  pt: (n) => `${n} gostaria que um intérprete de IA entrasse na chamada para traduzir. Tudo bem para você?`,
+  fr: (n) => `${n} aimerait qu'un interprète IA rejoigne l'appel pour traduire. Êtes-vous d'accord ?`,
+  de: (n) => `${n} möchte, dass ein KI-Dolmetscher dem Anruf beitritt und übersetzt. Sind Sie einverstanden?`,
+  it: (n) => `${n} vorrebbe che un interprete IA si unisse alla chiamata per tradurre. Le va bene?`,
+  ru: (n) => `${n} хотел бы подключить к звонку ИИ-переводчика. Вы не против?`,
+  hi: (n) => `${n} चाहते हैं कि अनुवाद के लिए एक AI दुभाषिया कॉल में जुड़े। क्या यह ठीक है?`,
+  id: (n) => `${n} ingin penerjemah AI bergabung untuk menerjemahkan. Apakah Anda setuju?`,
+  vi: (n) => `${n} muốn một phiên dịch viên AI tham gia cuộc gọi để dịch. Bạn có đồng ý không?`,
+};
+
 /** US ringback (440 + 480 Hz, 2 s on, 4 s off) for the user while the other side rings. */
 function ringbackFrame(frame: number): Buffer {
   const samples = new Int16Array(FRAME_SAMPLES);
@@ -290,6 +307,24 @@ export class TranslatedCall {
     this.record.interpreter = 'on';
     this.log('interpreter.on');
     this.changed();
+    return null;
+  }
+
+  /**
+   * "Ask for me": the consent question, spoken into the call in their language (the user hears
+   * it too). Their answer shows in the captions; adding the interpreter is still the user's tap.
+   */
+  async askConsent(): Promise<string | null> {
+    if (this.finished) return 'The call has ended.';
+    if (!this.them || !this.you) return "The call isn't connected yet.";
+    const code = languageCode(this.record.request.theirLanguage) ?? 'en';
+    const text = (CONSENT_QUESTIONS[code] ?? CONSENT_QUESTIONS.en!)(this.deps.userName || 'The caller');
+    const audio = await this.deps.speak(text, code).catch(() => null);
+    if (!audio) return "Couldn't ask right now. Ask them yourself.";
+    if (this.finished) return null;
+    this.toThem.push(audio);
+    this.toYou.push(audio);
+    this.log('interpreter.asked', code);
     return null;
   }
 

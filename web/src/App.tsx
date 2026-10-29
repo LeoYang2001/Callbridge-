@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import type { AuthResult, CallRecord, CallRequest, Contact, Me, PublicConfig, TranslatedCallRecord } from '../../shared/types';
-import { addErrand, answerQuestion, endCall, getCall, getConfig, getMe, sendCallMessage, setSignedOutHandler, signOut, startCall, updateProfile, watchCall, watchTranslatedCall } from './api';
+import { addErrand, answerQuestion, endCall, getCall, getConfig, getMe, sendCallMessage, setSignedOutHandler, signOut, startCall, startTranslatedCall, updateProfile, watchCall, watchTranslatedCall } from './api';
 import { DialScreen, TranslatedCallScreen } from './Translator';
 import { primeAlerts } from './alerts';
 import { draftToRequest, requestToDraft } from '../../shared/intake';
@@ -197,6 +197,20 @@ export function App() {
     saveSettings(s);
   };
 
+  /** Shows a translated call and follows it until it ends. */
+  const openTranslated = (r: TranslatedCallRecord) => {
+    setTcall(r);
+    stopRef.current = watchTranslatedCall(
+      settings,
+      r.id,
+      (next) => {
+        setTcall(next);
+        setError(null);
+      },
+      setError,
+    );
+  };
+
   const reset = () => {
     stopRef.current?.();
     stopRef.current = null;
@@ -218,19 +232,28 @@ export function App() {
     <div className="app">
       <header className="topbar">
         <div className="brand">
-          <span className="brand-mark" aria-hidden>
-            📞
-          </span>
+          <svg className="brand-mark" width="28" height="28" viewBox="0 0 30 30" aria-hidden="true">
+            <rect x="1" y="5" width="18" height="14" rx="7" fill="#3346D3" />
+            <rect x="11" y="11" width="18" height="14" rx="7" fill="#0B6E63" />
+            <rect x="11" y="11" width="8" height="8" fill="#ffffff" opacity="0.35" />
+          </svg>
           CallBridge
         </div>
         <div className="topbar-right">
           {me && (
             <>
               <button type="button" className="icon-btn" aria-label="Phone book" onClick={() => setScreen('contacts')}>
-                📒
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <rect x="5" y="3" width="15" height="18" rx="2" />
+                  <circle cx="12.5" cy="10" r="2.5" />
+                  <path d="M8.5 16.5c.8-1.8 2.2-2.7 4-2.7s3.2.9 4 2.7M3 7h3M3 12h3M3 17h3" />
+                </svg>
               </button>
               <button type="button" className="icon-btn" aria-label="Profile" onClick={() => setScreen('profile')}>
-                👤
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="8" r="4" />
+                  <path d="M4 21c1.5-4 4.4-6 8-6s6.5 2 8 6" />
+                </svg>
               </button>
             </>
           )}
@@ -322,6 +345,10 @@ export function App() {
               reset();
               setDialContact(null);
             }}
+            onCallAgain={(request) => {
+              reset();
+              startTranslatedCall(settings, request).then(({ record }) => openTranslated(record), (e: Error) => setError(e.message));
+            }}
           />
         ) : me && !demo && !call ? (
           <DialScreen
@@ -330,13 +357,7 @@ export function App() {
             me={me}
             contact={dialContact}
             blockedReason={blockedReason}
-            onStarted={(r) => {
-              setTcall(r);
-              stopRef.current = watchTranslatedCall(settings, r.id, (next) => {
-                setTcall(next);
-                setError(null);
-              }, setError);
-            }}
+            onStarted={openTranslated}
           />
         ) : call ? (
           <CallScreen

@@ -81,6 +81,14 @@ export function registerTranslatedCallRoutes(app: FastifyInstance, deps: { confi
     return failed ? reply.code(409).send({ error: failed }) : { ok: true };
   });
 
+  /** "Ask for me": the app asks the other side, in their language, whether the interpreter may join. */
+  app.post<{ Params: { id: string } }>('/api/translated-calls/:id/ask', async (req, reply) => {
+    const call = ownLive(req);
+    if (!call) return reply.code(404).send({ error: 'That call is not in progress.' });
+    const failed = await call.askConsent();
+    return failed ? reply.code(409).send({ error: failed }) : { ok: true };
+  });
+
   app.post<{ Params: { id: string } }>('/api/translated-calls/:id/hangup', async (req, reply) => {
     const call = ownLive(req);
     if (!call) return reply.code(404).send({ error: 'That call is not in progress.' });

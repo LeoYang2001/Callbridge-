@@ -226,6 +226,14 @@ describe('translated call', () => {
     expect(them.sent).toEqual([silence]);
 
     const live = manager.live(record.id, 'u1')!;
+    // "Ask for me": the question plays to both sides.
+    await expect(live.askConsent()).resolves.toBeNull();
+    you.sent = [];
+    them.sent = [];
+    you.emit('audio', silence, 50);
+    them.emit('audio', silence, 50);
+    expect(them.sent[0]).not.toBe(silence);
+    expect(you.sent[0]).not.toBe(silence);
     await expect(live.setInterpreter(true)).resolves.toBeNull();
     expect(record.interpreter).toBe('on');
     them.sent = [];

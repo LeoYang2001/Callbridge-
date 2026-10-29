@@ -176,6 +176,7 @@ export const startTranslatedCall = (s: Connection, req: TranslatedCallRequest) =
 export const getTranslatedCall = (s: Connection, id: string) => request<TranslatedCallRecord>(s, `/api/translated-calls/${id}`);
 export const setCaptions = (s: Connection, id: string, on: boolean) => postJson<{ ok: boolean }>(s, `/api/translated-calls/${id}/captions`, { on });
 export const setInterpreter = (s: Connection, id: string, on: boolean) => postJson<{ ok: boolean }>(s, `/api/translated-calls/${id}/interpreter`, { on });
+export const askConsent = (s: Connection, id: string) => postJson<{ ok: boolean }>(s, `/api/translated-calls/${id}/ask`, {});
 export const hangUpTranslatedCall = (s: Connection, id: string) => postJson<{ ok: boolean }>(s, `/api/translated-calls/${id}/hangup`, {});
 
 /** Polls a translated call until it ends; captions change quickly, so it polls more often than assistant calls. */
