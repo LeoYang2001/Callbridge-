@@ -305,6 +305,7 @@ export class TranslatedCall {
     if (toThem) this.toThem.push(toThem);
     if (toYou) this.toYou.push(toYou);
     this.record.interpreter = 'on';
+    this.record.interpreterUsed = true;
     this.log('interpreter.on');
     this.changed();
     return null;

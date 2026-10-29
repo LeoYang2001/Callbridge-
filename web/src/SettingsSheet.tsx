@@ -25,7 +25,7 @@ export function SettingsSheet({ settings, onSave, onClose }: Props) {
       setTest(
         missing.length
           ? { ok: false, text: `Connected, but the server is missing ${missing.join(' and ')} configuration.` }
-          : { ok: true, text: `Connected. Voice model ${c.realtimeModel}${c.allowlistActive ? ', allowlist on' : ''}.` },
+          : { ok: true, text: `Connected${c.allowlistActive ? ' (allowlist on)' : ''}.` },
       );
     } catch (e) {
       setTest({ ok: false, text: (e as Error).message });
@@ -39,14 +39,6 @@ export function SettingsSheet({ settings, onSave, onClose }: Props) {
       <div className="sheet" role="dialog" aria-modal="true" aria-label="Settings" onClick={(e) => e.stopPropagation()}>
         <div className="sheet-handle" />
         <h2 className="sheet-title">Settings</h2>
-
-        <label className="toggle">
-          <span>
-            <b>Demo mode</b>
-            <span className="field-help">Simulates a call in your browser. Nothing is dialed.</span>
-          </span>
-          <input type="checkbox" checked={draft.demo} onChange={(e) => setDraft({ ...draft, demo: e.target.checked })} />
-        </label>
 
         <label className="field">
           <span className="field-label">Server URL</span>

@@ -3,10 +3,18 @@ import type { TranslatedCallRecord, TranslatedCallRequest } from '../../../share
 import { languageCode } from '../../../shared/languages';
 import type { MediaTransport, TelephonyCallState } from '../providers/telephony/types';
 import { blockedReason, normalizePhone } from '../util/phone';
-import { CallRejectedError } from './callManager';
 import { TranslatedCall, type TranslatedCallDeps } from './translatedCall';
 
-/** Translated calls' ids start with this, so Twilio webhooks reach the right manager. */
+export class CallRejectedError extends Error {
+  constructor(
+    message: string,
+    readonly statusCode = 400,
+  ) {
+    super(message);
+  }
+}
+
+/** Translated calls' ids start with this. */
 export const TRANSLATED_PREFIX = 'tc_';
 
 export const isTranslatedCallId = (id: string) => id.startsWith(TRANSLATED_PREFIX);
@@ -14,8 +22,10 @@ export const isTranslatedCallId = (id: string) => id.startsWith(TRANSLATED_PREFI
 export interface TranslatedCallManagerOptions {
   allowedDestinations: string[] | null;
   maxCallsPerHour: number;
-  /** Finished calls kept in memory for the app to show (newest first). */
-  keepFinished?: number;
+  /** A call finished: save it to the history, update the phone book. */
+  onFinished?: (record: TranslatedCallRecord) => void;
+  /** A finished call from the history (after it leaves memory). */
+  load?: (id: string) => TranslatedCallRecord | undefined;
 }
 
 type CallDeps = Omit<TranslatedCallDeps, 'onChange' | 'onFinished' | 'userPhone' | 'callerId' | 'userName'>;
@@ -30,7 +40,8 @@ export interface CallerInfo {
 
 export class TranslatedCallManager {
   private readonly calls = new Map<string, TranslatedCall>();
-  private readonly finished: TranslatedCallRecord[] = [];
+  /** Calls that just ended, until the app has seen them end (the history has them too). */
+  private readonly finished = new Map<string, TranslatedCallRecord>();
   private readonly recentStarts: number[] = [];
 
   constructor(
@@ -78,8 +89,13 @@ export class TranslatedCallManager {
       onChange: () => {},
       onFinished: (r) => {
         this.calls.delete(r.id);
-        this.finished.unshift(r);
-        this.finished.length = Math.min(this.finished.length, this.opts.keepFinished ?? 50);
+        this.finished.set(r.id, r);
+        setTimeout(() => this.finished.delete(r.id), 10 * 60_000).unref?.();
+        try {
+          this.opts.onFinished?.(r);
+        } catch {
+          /* saving must never break the call's wrap-up */
+        }
       },
     });
     this.calls.set(record.id, call);
@@ -89,7 +105,7 @@ export class TranslatedCallManager {
 
   /** A call the user placed (live or recently finished). */
   get(id: string, userId: string): TranslatedCallRecord | undefined {
-    const r = this.calls.get(id)?.record ?? this.finished.find((f) => f.id === id);
+    const r = this.calls.get(id)?.record ?? this.finished.get(id) ?? this.opts.load?.(id);
     return r && r.userId === userId ? r : undefined;
   }
 
@@ -128,6 +144,10 @@ export class TranslatedCallManager {
 
   handleUserLegState(id: string, state: TelephonyCallState) {
     this.calls.get(id)?.handleUserLegState(state);
+  }
+
+  isLive(id: string) {
+    return this.calls.has(id);
   }
 
   get activeCount() {

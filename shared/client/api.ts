@@ -1,20 +1,4 @@
-import type { IntakeContext } from '../intake';
-import type {
-  AuthResult,
-  CallRecord,
-  CallRequest,
-  CallSummary,
-  Errand,
-  IntakeCheckResult,
-  IntakeDraft,
-  IntakeSession,
-  Me,
-  PublicConfig,
-  TranslatedCallRecord,
-  TranslatedCallRequest,
-  ResearchResult,
-  UserAnswer,
-} from '../types';
+import type { AuthResult, Me, PublicConfig, TranslatedCallRecord, TranslatedCallRequest, TranslatedCallSummary } from '../types';
 
 /**
  * The CallBridge server API, shared by the web app and the mobile app. Nothing here touches the
@@ -90,85 +74,10 @@ export const updateProfile = (s: Connection, patch: Record<string, unknown>) => 
 export const saveContact = (s: Connection, contact: { name: string; phone: string; relationship?: string; language?: string; address?: string }, id?: string) =>
   send<Me>(s, id ? 'PATCH' : 'POST', id ? `/api/me/contacts/${id}` : '/api/me/contacts', contact);
 export const deleteContact = (s: Connection, id: string) => request<Me>(s, `/api/me/contacts/${id}`, { method: 'DELETE' });
-export const research = (s: Connection, body: { question: string; depth: 'quick' | 'thorough'; lat?: number; lng?: number; near?: string; userLanguage?: string }, signal?: AbortSignal) =>
-  request<ResearchResult>(s, '/api/research', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal });
-/** Deletes a finished call from the history. */
-export const deleteCall = (s: Connection, id: string) => request<{ ok: boolean }>(s, `/api/calls/${id}`, { method: 'DELETE' });
 export const deleteAccount = (s: Connection) => request<{ ok: boolean }>(s, '/api/me', { method: 'DELETE' });
-
-// ── push notifications (mobile app) ──
-export const registerPushToken = (s: Connection, token: string, platform: 'ios' | 'android') =>
-  postJson<{ ok: boolean }>(s, '/api/me/push-tokens', { token, platform });
-export const removePushToken = (s: Connection, token: string) => send<{ ok: boolean }>(s, 'DELETE', '/api/me/push-tokens', { token });
-
-// ── calls ──
-export const startCall = (s: Connection, req: CallRequest) => postJson<CallRecord>(s, '/api/calls', req);
-export const listCalls = (s: Connection) => request<CallSummary[]>(s, '/api/calls');
-export const getCall = (s: Connection, id: string) => request<CallRecord>(s, `/api/calls/${id}`);
-
-export const createIntakeSession = (s: Connection, context: IntakeContext & { followUpOf?: string; mode?: 'call' | 'profile'; pushToTalk?: boolean }) =>
-  postJson<IntakeSession>(s, '/api/intake/session', context);
-
-export const checkIntake = (s: Connection, context: IntakeContext, draft: IntakeDraft) =>
-  postJson<IntakeCheckResult>(s, '/api/intake/check', { context, draft });
-
-export const answerQuestion = (s: Connection, callId: string, questionId: string, answer: UserAnswer) =>
-  postJson<{ ok: boolean }>(s, `/api/calls/${callId}/questions/${questionId}`, answer);
-
-export const sendCallMessage = (s: Connection, callId: string, text: string) =>
-  postJson<{ ok: boolean }>(s, `/api/calls/${callId}/messages`, { text });
-
-export const listenTicket = (s: Connection, callId: string) => postJson<{ ticket: string }>(s, `/api/calls/${callId}/listen`, {});
-
-export const endCall = (s: Connection, id: string) => postJson<{ ok: boolean }>(s, `/api/calls/${id}/hangup`, {});
 
 /** One poll may take at most this long; a request frozen while the app was in the background is dropped. */
 const POLL_TIMEOUT_MS = 8000;
-
-/**
- * Polls the call until it finishes. Polling (rather than server-sent events) survives tunnels,
- * proxies and phones backgrounding the app. Answering the call on the same phone backgrounds the
- * app, so polls time out instead of hanging, and `onResume` (the page became visible, the app
- * came to the foreground) polls again right away.
- */
-export function watchCall(
-  s: Connection,
-  id: string,
-  onUpdate: (r: CallRecord) => void,
-  onError: (msg: string) => void,
-  onResume?: (poll: () => void) => () => void,
-) {
-  let stopped = false;
-  let done = false;
-  let inFlight = false;
-  let failures = 0;
-  let next: ReturnType<typeof setTimeout> | undefined;
-  const tick = async () => {
-    if (stopped || done || inFlight) return;
-    clearTimeout(next);
-    inFlight = true;
-    try {
-      const r = await request<CallRecord>(s, `/api/calls/${id}`, { signal: timeoutSignal(POLL_TIMEOUT_MS) });
-      failures = 0;
-      if (stopped) return;
-      onUpdate(r);
-      if (r.status === 'completed' || r.status === 'failed') done = true;
-    } catch (e) {
-      // Keep trying while the call may still be going; only report a lasting problem.
-      if (++failures === 5) onError((e as Error).message);
-    } finally {
-      inFlight = false;
-    }
-    if (!stopped && !done) next = setTimeout(tick, failures ? 3000 : 1000);
-  };
-  const unsubscribe = onResume?.(() => void tick());
-  void tick();
-  return () => {
-    stopped = true;
-    clearTimeout(next);
-    unsubscribe?.();
-  };
-}
 
 // ── translated calls: the user talks; captions and an optional AI interpreter ──
 export const startTranslatedCall = (s: Connection, req: TranslatedCallRequest) =>
@@ -204,45 +113,8 @@ export function watchTranslatedCall(s: Connection, id: string, onUpdate: (r: Tra
   };
 }
 
-// ── errands: calls the server places later, on its own, one at a time ──
-export const listErrands = (s: Connection) => request<Errand[]>(s, '/api/errands');
-/** notBefore: don't call before this (ms since epoch); omit for as soon as calling hours allow. */
-export const addErrand = (s: Connection, req: CallRequest, notBefore?: number) => postJson<Errand>(s, '/api/errands', { request: req, notBefore });
-export const cancelErrand = (s: Connection, id: string) => postJson<Errand>(s, `/api/errands/${id}/cancel`, {});
-export const retryErrand = (s: Connection, id: string) => postJson<Errand>(s, `/api/errands/${id}/retry`, {});
-
-/** A few seconds of an assistant voice, in the user's language (WAV), to hear before picking it. */
-export async function voiceSample(s: Connection, voice: string, language?: string): Promise<ArrayBuffer> {
-  const q = language ? `?language=${encodeURIComponent(language)}` : '';
-  const res = await fetch(endpoint(s, `/api/voices/${encodeURIComponent(voice)}/sample${q}`), { headers: headers(s), signal: timeoutSignal(20_000) });
-  if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(body.error ?? `Request failed (${res.status})`);
-  }
-  return res.arrayBuffer();
-}
-
-/** A finished call's recording (WAV), for replay with the transcript. */
-export async function callRecording(s: Connection, id: string): Promise<ArrayBuffer> {
-  const res = await fetch(endpoint(s, `/api/calls/${encodeURIComponent(id)}/recording`), { headers: headers(s), signal: timeoutSignal(30_000) });
-  if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(body.error ?? `Request failed (${res.status})`);
-  }
-  return res.arrayBuffer();
-}
-
-/** Forwards a conversation's OpenAI usage to the server for the usage report (best effort). */
-export const reportIntakeUsage = (s: Connection, body: { usage?: unknown; transcriptionTokens?: number }) =>
-  postJson<{ ok: boolean }>(s, '/api/usage/intake', body).catch(() => undefined);
-
-/** Take-over: ring the user's own phone into the call. */
-export const takeOverCall = (s: Connection, id: string) => postJson<{ ok: boolean }>(s, `/api/calls/${encodeURIComponent(id)}/takeover`, {});
-/** Take-over: hand the call back to the assistant. */
-export const handBackCall = (s: Connection, id: string) => postJson<{ ok: boolean }>(s, `/api/calls/${encodeURIComponent(id)}/handback`, {});
-
-/** Join from the app: a short-lived Twilio Voice token and the call's one-time join code. */
-export const joinCallToken = (s: Connection, id: string) => postJson<{ token: string; callId: string; code: string }>(s, `/api/calls/${encodeURIComponent(id)}/join`, {});
+export const listTranslatedCalls = (s: Connection) => request<TranslatedCallSummary[]>(s, '/api/translated-calls');
+export const deleteTranslatedCall = (s: Connection, id: string) => request<{ ok: boolean }>(s, `/api/translated-calls/${id}`, { method: 'DELETE' });
 
 /** Calling from your own number: start verifying it (Twilio calls you; type the code shown). */
 export const startCallerId = (s: Connection) => postJson<{ verified: boolean; enabled?: boolean; validationCode?: string }>(s, '/api/me/caller-id', {});

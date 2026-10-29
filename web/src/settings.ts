@@ -5,8 +5,6 @@ export interface Settings {
   serverUrl: string;
   /** Sign-in session from verifying a code sent to the user's phone. Empty when signed out. */
   sessionToken: string;
-  /** Simulate calls in the browser instead of dialing. */
-  demo: boolean;
 }
 
 /** Set at build time for hosted deployments (Cloudflare Pages, GitHub Pages). */
@@ -20,11 +18,14 @@ export const isStaticHost = () => DEFAULT_SERVER_URL !== '' || /\.(github\.io|pa
 export const isValidServerUrl = (url: string) => url.trim() === '' || /^https?:\/\/[^\s/]+/i.test(url.trim());
 
 export function loadSettings(): Settings {
-  const fallback: Settings = { serverUrl: DEFAULT_SERVER_URL, sessionToken: '', demo: isStaticHost() && !DEFAULT_SERVER_URL };
+  const fallback: Settings = { serverUrl: DEFAULT_SERVER_URL, sessionToken: '' };
   let settings = fallback;
   try {
     const raw = localStorage.getItem(KEY);
-    if (raw) settings = { ...fallback, ...(JSON.parse(raw) as Partial<Settings>) };
+    if (raw) {
+      const { serverUrl, sessionToken } = JSON.parse(raw) as Partial<Settings>;
+      settings = { serverUrl: serverUrl ?? fallback.serverUrl, sessionToken: sessionToken ?? '' };
+    }
   } catch {
     /* storage unavailable */
   }
@@ -32,7 +33,7 @@ export function loadSettings(): Settings {
 
   // Old links carried an access key as #key=…; sign-in replaced it. Connect to this same server.
   if (new URLSearchParams(location.hash.slice(1)).has('key')) {
-    settings = { ...settings, serverUrl: '', demo: false };
+    settings = { ...settings, serverUrl: '' };
     saveSettings(settings);
     history.replaceState(null, '', location.pathname + location.search);
   }
@@ -47,5 +48,3 @@ export function saveSettings(s: Settings) {
   }
 }
 
-/** Demo mode is forced when hosted statically without a server configured. */
-export const effectiveDemo = (s: Settings) => s.demo || (isStaticHost() && !s.serverUrl.trim());

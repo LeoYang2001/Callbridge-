@@ -3,8 +3,6 @@ import { z } from 'zod';
 import type { AuthResult, Me } from '../../../shared/types';
 import type { OtpRateLimit, OtpSender } from '../auth/otp';
 import type { Database, UserRow } from '../db/database';
-import { removeRecording } from '../calls/recordings';
-import { isExpoPushToken } from '../push/push';
 import { applyProfilePatch, ContactInputSchema, emptyProfile, ProfilePatchSchema, saveContact } from '../profile/profile';
 import { blockedReason, normalizePhone } from '../util/phone';
 import { isValidTimeZone } from '../util/time';
@@ -28,8 +26,6 @@ export function registerAuthRoutes(
     perAddress: OtpRateLimit;
     /** When set, only these numbers can create an account (existing users can always sign in). */
     signupAllowlist: string[] | null;
-    /** Call recordings, deleted with the account. */
-    recordingsDir?: string | null;
   },
 ) {
   const { db, otp, perPhone, perAddress, signupAllowlist } = deps;
@@ -92,7 +88,6 @@ export function registerAuthRoutes(
     const parsed = ProfilePatchSchema.safeParse(req.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ') });
     const result = applyProfilePatch(req.user!.profile, parsed.data);
-    if ('error' in result) return reply.code(422).send({ error: result.error });
     db.saveProfile(req.user!.id, result.profile);
     return toMe({ ...req.user!, profile: result.profile });
   });
@@ -122,27 +117,8 @@ export function registerAuthRoutes(
     return toMe({ ...req.user!, profile });
   });
 
-  // ── push notifications ── (the mobile app registers its Expo push token after sign-in)
-  const PushTokenSchema = z.object({ token: z.string().max(200), platform: z.enum(['ios', 'android']).default('ios') });
-  app.post('/api/me/push-tokens', async (req, reply) => {
-    const parsed = PushTokenSchema.safeParse(req.body);
-    if (!parsed.success || !isExpoPushToken(parsed.data.token)) return reply.code(400).send({ error: 'Not an Expo push token.' });
-    db.addPushToken(req.user!.id, parsed.data.token, parsed.data.platform);
-    return { ok: true };
-  });
-
-  /** Called before signing out, so this phone stops getting the account's notifications. */
-  app.delete('/api/me/push-tokens', async (req, reply) => {
-    const parsed = z.object({ token: z.string().max(200) }).safeParse(req.body);
-    if (!parsed.success) return reply.code(400).send({ error: 'Missing token.' });
-    db.removePushToken(parsed.data.token, req.user!.id);
-    return { ok: true };
-  });
-
   /** Deletes the account, its profile, and its call history. */
   app.delete('/api/me', async (req) => {
-    // Recordings live on disk, outside the database: they go first.
-    await Promise.all(db.callsForUser(req.user!.id, 100_000).map((c) => removeRecording(deps.recordingsDir, c.id)));
     db.deleteUser(req.user!.id);
     return { ok: true };
   });

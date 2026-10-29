@@ -1,9 +1,10 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import twilio from 'twilio';
 import { z } from 'zod';
-import { CallRejectedError } from '../calls/callManager';
-import type { TranslatedCallManager } from '../calls/translatedCallManager';
+import { CallRejectedError, type TranslatedCallManager } from '../calls/translatedCallManager';
+import type { TranslatedCallSummary } from '../../../shared/types';
 import type { AppConfig } from '../config';
+import type { Database } from '../db/database';
 
 const StartSchema = z.object({
   to: z.string().trim().min(3).max(32),
@@ -17,8 +18,8 @@ const StartSchema = z.object({
  * Translated calls: the user calls someone themselves; captions translate both sides, and an AI
  * interpreter can join to speak the translations.
  */
-export function registerTranslatedCallRoutes(app: FastifyInstance, deps: { config: AppConfig; manager: TranslatedCallManager }) {
-  const { config, manager } = deps;
+export function registerTranslatedCallRoutes(app: FastifyInstance, deps: { config: AppConfig; manager: TranslatedCallManager; db: Database }) {
+  const { config, manager, db } = deps;
 
   /** Starts the call. Joining from the app returns a Twilio Voice token and the leg's one-time code. */
   app.post('/api/translated-calls', async (req, reply) => {
@@ -56,6 +57,28 @@ export function registerTranslatedCallRoutes(app: FastifyInstance, deps: { confi
   });
 
   const ownLive = (req: FastifyRequest<{ Params: { id: string } }>) => manager.live(req.params.id, req.user!.id);
+
+  /** The user's call history, newest first (a call in progress is first). */
+  app.get('/api/translated-calls', async (req): Promise<TranslatedCallSummary[]> =>
+    db.callsForUser(req.user!.id).map((r) => ({
+      id: r.id,
+      createdAt: r.createdAt,
+      status: r.status,
+      to: r.request.to,
+      contactName: r.request.contactName,
+      theirLanguage: r.request.theirLanguage,
+      durationSeconds: r.answeredAt && r.endedAt ? Math.round((r.endedAt - r.answeredAt) / 1000) : undefined,
+      interpreterUsed: r.interpreterUsed === true,
+      preview: r.lines.find((l) => l.speaker === 'them')?.translation || undefined,
+    })),
+  );
+
+  /** Deletes a finished call (captions included) from the history. */
+  app.delete<{ Params: { id: string } }>('/api/translated-calls/:id', async (req, reply) => {
+    if (manager.isLive(req.params.id)) return reply.code(409).send({ error: 'That call is still going. End it first.' });
+    if (!db.deleteCall(req.user!.id, req.params.id)) return reply.code(404).send({ error: 'Not found' });
+    return { ok: true };
+  });
 
   app.get<{ Params: { id: string } }>('/api/translated-calls/:id', async (req, reply) => {
     const record = manager.get(req.params.id, req.user!.id);

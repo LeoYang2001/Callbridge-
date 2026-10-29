@@ -1,97 +1,39 @@
 import { useEffect, useRef, useState } from 'react';
-import type { AuthResult, CallRecord, CallRequest, Contact, Me, PublicConfig, TranslatedCallRecord } from '../../shared/types';
-import { addErrand, answerQuestion, endCall, getCall, getConfig, getMe, sendCallMessage, setSignedOutHandler, signOut, startCall, startTranslatedCall, updateProfile, watchCall, watchTranslatedCall } from './api';
-import { DialScreen, TranslatedCallScreen } from './Translator';
-import { primeAlerts } from './alerts';
-import { draftToRequest, requestToDraft } from '../../shared/intake';
-import type { IntakeDraft, RealtimeVoice } from '../../shared/types';
-import { CallScreen } from './CallScreen';
-import { simulateCall } from './demo';
-import { Intake } from './Intake';
-import { Errands } from './Errands';
-import { LANGUAGES, loadSaved, NewCall, type Involvement } from './NewCall';
+import { LANGUAGES, languageFromLocale } from '../../shared/languages';
+import type { AuthResult, Contact, Me, PublicConfig, TranslatedCallRecord } from '../../shared/types';
+import { getConfig, getMe, setSignedOutHandler, signOut, startTranslatedCall, watchTranslatedCall } from './api';
 import { PhoneBook } from './PhoneBook';
 import { ProfileScreen } from './ProfileScreen';
-import { SignIn } from './SignIn';
-import { effectiveDemo, isStaticHost, loadSettings, saveSettings, type Settings } from './settings';
+import { loadSettings, saveSettings, type Settings } from './settings';
 import { SettingsSheet } from './SettingsSheet';
-import { loadVoice, saveVoice } from './VoicePicker';
+import { SignIn } from './SignIn';
+import { DialScreen, TranslatedCallScreen } from './Translator';
 
 export function App() {
   const [settings, setSettings] = useState<Settings>(loadSettings);
   const [showSettings, setShowSettings] = useState(false);
   const [config, setConfig] = useState<PublicConfig | null>(null);
   const [configError, setConfigError] = useState<string | null>(null);
-  const [call, setCall] = useState<CallRecord | null>(null);
-  /** A call the user is making themselves, with translation (the app's main flow). */
-  const [tcall, setTcall] = useState<TranslatedCallRecord | null>(null);
-  const [dialContact, setDialContact] = useState<Contact | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const stopRef = useRef<(() => void) | null>(null);
-  const [mode, setMode] = useState<'talk' | 'type'>('talk');
-  const [userLanguage, setUserLanguage] = useState(() => loadSaved().user.preferredLanguage);
   /** Signed-in user; undefined while checking the saved session, null when signed out. */
   const [me, setMe] = useState<Me | null | undefined>(undefined);
-  const [screen, setScreen] = useState<'home' | 'profile' | 'profileTalk' | 'contacts' | 'errands'>('home');
-  /** Calling someone from the phone book. */
-  const [callSeed, setCallSeed] = useState<{ draft: IntakeDraft; text: string; key: number } | null>(null);
-  const [pickedVoice, setPickedVoice] = useState<RealtimeVoice | null>(loadVoice);
-  /** Stay in the loop or hand the call off; the last choice is the default. */
-  const [involvement, setInvolvement] = useState<Involvement>(() => {
-    try {
-      return localStorage.getItem('callbridge.involvement') === 'handoff' ? 'handoff' : 'supervised';
-    } catch {
-      return 'supervised';
-    }
-  });
-  const changeInvolvement = (v: Involvement) => {
-    setInvolvement(v);
-    try {
-      localStorage.setItem('callbridge.involvement', v);
-    } catch {
-      /* storage unavailable */
-    }
-  };
-  const voice = pickedVoice ?? me?.profile.voice ?? ((config?.defaultVoice as RealtimeVoice | undefined) || 'marin');
-  const changeVoice = (v: RealtimeVoice) => {
-    setPickedVoice(v);
-    saveVoice(v);
-  };
-  /** The form prefilled from the voice intake, opened at the review step. */
-  /** The finished call the voice assistant reports on and can follow up. */
-  const [followUp, setFollowUp] = useState<{ callId: string; draft: IntakeDraft; headline?: string } | null>(null);
-  const [fromIntake, setFromIntake] = useState<{ request: CallRequest; step: number; key: number } | null>(null);
+  /** The language picked on the sign-in screen (the browser's, if the app offers it). */
+  const [language, setLanguage] = useState(() => languageFromLocale(navigator.language || 'en'));
+  const [screen, setScreen] = useState<'home' | 'profile' | 'contacts'>('home');
+  const [call, setCall] = useState<TranslatedCallRecord | null>(null);
+  const [dialContact, setDialContact] = useState<Contact | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const stopRef = useRef<(() => void) | null>(null);
 
-  const demo = effectiveDemo(settings);
-  // The voice intake needs the live server (it mints the OpenAI session key).
-  const canTalk = !demo && Boolean(config?.voiceConfigured);
-  const saved = loadSaved();
-  const profile = me?.profile;
-  const intakeContext = {
-    userName: profile?.name || saved.user.name || '',
-    userLanguage,
-    timezone: profile?.timezone ?? saved.timezone,
-    voice,
+  const updateSettings = (s: Settings) => {
+    setSettings(s);
+    saveSettings(s);
   };
-  /** The user section of a call request comes from the profile when signed in. */
-  const userFromProfile = (u: CallRequest['user']): CallRequest['user'] =>
-    profile ? { ...u, name: profile.name || u.name, pronouns: profile.pronouns ?? u.pronouns, preferredLanguage: userLanguage } : u;
-
-  /** Opens the form prefilled from the intake: at the review step, or at the start to keep editing. */
-  const openForm = (draft: IntakeDraft, step: number) => {
-    const request = draftToRequest(draft, intakeContext);
-    setFromIntake({ request: { ...request, user: userFromProfile({ ...saved.user, ...request.user }) }, step, key: Date.now() });
-    setMode('type');
-  };
-  const reviewDraft = (draft: IntakeDraft) => openForm(draft, 2);
 
   useEffect(() => {
     setConfig(null);
     setConfigError(null);
-    if (demo) return;
     getConfig(settings).then(setConfig, (e: Error) => setConfigError(e.message));
-  }, [demo, settings]);
+  }, [settings]);
 
   useEffect(() => () => stopRef.current?.(), []);
 
@@ -107,104 +49,28 @@ export function App() {
   };
   useEffect(() => setSignedOutHandler(signedOut), []);
   useEffect(() => {
-    if (demo) return;
     if (!settings.sessionToken) return setMe(null);
-    getMe(settings).then(
-      (m) => {
-        setMe(m);
-        setUserLanguage(m.profile.preferredLanguage);
-      },
-      () => setMe((current) => current ?? null),
-    );
+    getMe(settings).then(setMe, () => setMe((current) => current ?? null));
     // Only on start and when the session changes, not on every settings edit.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [demo, settings.sessionToken]);
+  }, [settings.sessionToken]);
 
   const onSignedIn = (r: AuthResult) => {
-    updateSettings({ ...settings, sessionToken: r.token, serverUrl: settings.serverUrl, demo: false });
+    updateSettings({ ...settings, sessionToken: r.token });
     setMe(r.me);
-    setUserLanguage(r.me.profile.preferredLanguage);
   };
 
-  const finishOnboarding = async () => {
-    if (me && !me.profile.onboarded) setMe(await updateProfile(settings, { onboarded: true }).catch(() => me));
-    setScreen('home');
-  };
+  const blockedReason = configError ?? (config && !(config.telephonyConfigured && config.voiceConfigured) ? 'The server is missing Twilio or OpenAI configuration.' : null);
 
-  const blockedReason = demo
-    ? null
-    : configError
-      ? configError
-      : config && !(config.telephonyConfigured && config.voiceConfigured)
-        ? 'The server is missing Twilio or OpenAI configuration.'
-        : null;
-
-  const onSubmit = async (req: CallRequest) => {
-    setError(null);
-    primeAlerts(); // this tap is the gesture browsers require before the hold chime can play
-    if (demo) {
-      stopRef.current = simulateCall(req, setCall);
-      return;
-    }
-    setSubmitting(true);
-    try {
-      const created = await startCall(settings, req);
-      setCall(created);
-      stopRef.current = watchCall(
-        settings,
-        created.id,
-        (r) => {
-          setCall(r);
-          setError(null);
-        },
-        setError,
-      );
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  /** Queue the call as an errand; the server places it later on its own. */
-  const onQueue = async (req: CallRequest, notBefore?: number) => {
-    setError(null);
-    setSubmitting(true);
-    try {
-      await addErrand(settings, req, notBefore);
-      reset();
-      setScreen('errands');
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  /** Opens a call from its id (an errand's call): live calls keep updating. */
-  const openCall = async (id: string) => {
-    reset();
-    try {
-      setCall(await getCall(settings, id));
-      stopRef.current = watchCall(settings, id, setCall, setError);
-    } catch (e) {
-      setError((e as Error).message);
-    }
-  };
-
-  const updateSettings = (s: Settings) => {
-    setSettings(s);
-    saveSettings(s);
-  };
-
-  /** Shows a translated call and follows it until it ends. */
-  const openTranslated = (r: TranslatedCallRecord) => {
-    setTcall(r);
+  /** Shows a call and follows it until it ends. */
+  const openCall = (r: TranslatedCallRecord) => {
+    stopRef.current?.();
+    setCall(r);
     stopRef.current = watchTranslatedCall(
       settings,
       r.id,
       (next) => {
-        setTcall(next);
+        setCall(next);
         setError(null);
       },
       setError,
@@ -215,17 +81,7 @@ export function App() {
     stopRef.current?.();
     stopRef.current = null;
     setCall(null);
-    setTcall(null);
     setError(null);
-    setFollowUp(null);
-    setFromIntake(null);
-    setCallSeed(null);
-  };
-
-  const followUpOn = (finished: CallRecord) => {
-    reset();
-    setFollowUp({ callId: finished.id, draft: requestToDraft(finished.request), headline: finished.result?.headlineInUserLanguage });
-    setMode('talk');
   };
 
   return (
@@ -240,7 +96,7 @@ export function App() {
           CallBridge
         </div>
         <div className="topbar-right">
-          {me && (
+          {me?.profile.onboarded && (
             <>
               <button type="button" className="icon-btn" aria-label="Phone book" onClick={() => setScreen('contacts')}>
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -257,8 +113,8 @@ export function App() {
               </button>
             </>
           )}
-          <button type="button" className={`mode-pill ${demo ? 'demo' : config ? 'live' : ''}`} onClick={() => setShowSettings(true)}>
-            {demo ? 'Demo' : config ? 'Live' : configError ? 'Not connected' : '…'}
+          <button type="button" className={`mode-pill ${config ? 'live' : ''}`} onClick={() => setShowSettings(true)}>
+            {config ? 'Live' : configError ? 'Not connected' : '…'}
           </button>
           <button type="button" className="icon-btn" aria-label="Settings" onClick={() => setShowSettings(true)}>
             ⚙︎
@@ -267,35 +123,39 @@ export function App() {
       </header>
 
       <main className="content">
-        {!call && demo && isStaticHost() && !settings.serverUrl && (
+        {!call && configError && (
           <div className="notice">
-            You're in <b>demo mode</b>: calls are simulated so you can try the app. To place real calls, run the server and add its URL in{' '}
-            <button type="button" className="inline-link" onClick={() => setShowSettings(true)}>
-              Settings
-            </button>
-            .
-          </div>
-        )}
-
-        {!call && !demo && configError && (
-          <div className="notice">
-            <b>Can't use the call server.</b> {configError}
+            <b>Can't reach the call server.</b> {configError}
             <div className="notice-actions">
               <button type="button" className="secondary-btn small" onClick={() => setShowSettings(true)}>
                 Settings
-              </button>
-              <button type="button" className="secondary-btn small" onClick={() => updateSettings({ ...settings, demo: true })}>
-                Try demo instead
               </button>
             </div>
           </div>
         )}
 
-        {!demo && me === undefined ? (
+        {me === undefined ? (
           <div className="muted">Loading…</div>
-        ) : !demo && me === null ? (
-          <SignIn settings={settings} languages={LANGUAGES} language={userLanguage} onLanguageChange={setUserLanguage} onSignedIn={onSignedIn} />
-        ) : me && screen === 'contacts' && !call ? (
+        ) : me === null ? (
+          <SignIn settings={settings} languages={LANGUAGES} language={language} onLanguageChange={setLanguage} onSignedIn={onSignedIn} />
+        ) : !me.profile.onboarded ? (
+          <ProfileScreen settings={settings} me={me} onChange={setMe} setup onClose={() => setScreen('home')} onSignOut={() => {}} onDeleted={signedOut} />
+        ) : call ? (
+          <TranslatedCallScreen
+            settings={settings}
+            call={call}
+            error={error}
+            onDone={() => {
+              reset();
+              setDialContact(null);
+              void getMe(settings).then(setMe, () => {}); // the call updated the phone book
+            }}
+            onCallAgain={(request) => {
+              reset();
+              startTranslatedCall(settings, request).then(({ record }) => openCall(record), (e: Error) => setError(e.message));
+            }}
+          />
+        ) : screen === 'contacts' ? (
           <PhoneBook
             settings={settings}
             me={me}
@@ -303,19 +163,15 @@ export function App() {
             onChange={setMe}
             onClose={() => setScreen('home')}
             onCall={(c) => {
-              reset();
               setDialContact(c);
               setScreen('home');
             }}
           />
-        ) : me && screen === 'errands' && !call ? (
-          <Errands settings={settings} onClose={() => setScreen('home')} onOpenCall={(id) => void openCall(id).then(() => setScreen('home'))} />
-        ) : me && screen === 'profile' && !call ? (
+        ) : screen === 'profile' ? (
           <ProfileScreen
             settings={settings}
             me={me}
             onChange={setMe}
-            onTalk={() => setScreen('profileTalk')}
             onClose={() => setScreen('home')}
             onSignOut={() => {
               void signOut(settings).catch(() => {});
@@ -323,116 +179,12 @@ export function App() {
             }}
             onDeleted={signedOut}
           />
-        ) : me && !call && canTalk && (screen === 'profileTalk' || !me.profile.onboarded) ? (
-          <Intake
-            key="profile"
-            profile={{ me, onSaved: setMe, onDone: () => void finishOnboarding(), onSkip: () => void finishOnboarding() }}
-            settings={settings}
-            context={intakeContext}
-            languages={LANGUAGES}
-            onLanguageChange={setUserLanguage}
-            voice={voice}
-            onVoiceChange={changeVoice}
-            onReview={() => {}}
-            onType={() => {}}
-          />
-        ) : tcall ? (
-          <TranslatedCallScreen
-            settings={settings}
-            call={tcall}
-            error={error}
-            onDone={() => {
-              reset();
-              setDialContact(null);
-            }}
-            onCallAgain={(request) => {
-              reset();
-              startTranslatedCall(settings, request).then(({ record }) => openTranslated(record), (e: Error) => setError(e.message));
-            }}
-          />
-        ) : me && !demo && !call ? (
-          <DialScreen
-            key={dialContact?.id ?? 'new'}
-            settings={settings}
-            me={me}
-            contact={dialContact}
-            blockedReason={blockedReason}
-            onStarted={openTranslated}
-          />
-        ) : call ? (
-          <CallScreen
-            call={call}
-            demo={call.id.startsWith('demo-')}
-            error={error}
-            onDone={reset}
-            onFollowUp={canTalk && !call.id.startsWith('demo-') ? () => followUpOn(call) : undefined}
-            settings={settings}
-            onMessage={async (text) => {
-              await sendCallMessage(settings, call.id, text);
-            }}
-            onAnswer={async (questionId, answer) => {
-              await answerQuestion(settings, call.id, questionId, answer);
-            }}
-            onEnd={async () => {
-              try {
-                await endCall(settings, call.id);
-              } catch (e) {
-                setError((e as Error).message);
-                throw e;
-              }
-            }}
-          />
         ) : (
-          canTalk && mode === 'talk' ? (
-            <Intake
-              key={followUp?.callId ?? (callSeed ? `seed-${callSeed.key}` : 'new')}
-              followUp={followUp ?? undefined}
-              seed={callSeed ?? undefined}
-              settings={settings}
-              context={intakeContext}
-              languages={LANGUAGES}
-              onLanguageChange={setUserLanguage}
-              voice={voice}
-              onVoiceChange={changeVoice}
-              onReview={reviewDraft}
-              onType={(draft) => {
-                const hasDraft = Object.values(draft).some((v) => v !== undefined && v !== '');
-                if (hasDraft) openForm(draft, 0);
-                else {
-                  setFromIntake(null);
-                  setMode('type');
-                }
-              }}
-            />
-          ) : (
-            <NewCall
-              key={fromIntake?.key ?? 'saved'}
-              demo={demo}
-              blockedReason={blockedReason}
-              submitting={submitting}
-              error={error}
-              onSubmit={onSubmit}
-              initial={fromIntake?.request}
-              initialStep={fromIntake?.step ?? 0}
-              onTalk={canTalk ? () => setMode('talk') : undefined}
-              userDefaults={me ? userFromProfile : undefined}
-              involvement={involvement}
-              onInvolvementChange={changeInvolvement}
-              onQueue={me && !demo ? onQueue : undefined}
-              voice={voice}
-              onVoiceChange={changeVoice}
-            />
-          )
+          <DialScreen key={dialContact?.id ?? 'new'} settings={settings} me={me} contact={dialContact} blockedReason={blockedReason} onStarted={openCall} />
         )}
       </main>
 
-      {showSettings && (
-        <SettingsSheet
-          settings={settings}
-          onClose={() => setShowSettings(false)}
-          onSave={updateSettings}
-        />
-      )}
+      {showSettings && <SettingsSheet settings={settings} onClose={() => setShowSettings(false)} onSave={updateSettings} />}
     </div>
   );
 }

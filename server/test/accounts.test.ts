@@ -1,14 +1,26 @@
 import Fastify from 'fastify';
 import { describe, expect, it } from 'vitest';
-import type { AuthResult, Me } from '../../shared/types';
+import type { AuthResult, Me, TranslatedCallRecord } from '../../shared/types';
 import { LogOtp, OtpRateLimit } from '../src/auth/otp';
-import { newCallRecord } from '../src/calls/callSession';
 import { Database } from '../src/db/database';
-import { emptyProfile, learnFromCall, profileForPrompt } from '../src/profile/profile';
+import { emptyProfile, learnFromCall } from '../src/profile/profile';
 import { registerAuthRoutes } from '../src/routes/auth';
-import { dentistRequest } from './fixtures';
 
 const ME = '+19014553148';
+
+/** A finished translated call to the dentist. */
+const finishedCall = (id: string, overrides: Partial<TranslatedCallRecord['request']> = {}, answered = true): TranslatedCallRecord => ({
+  id,
+  request: { to: '+14155550123', contactName: 'Smile Dental', theirLanguage: 'English', join: 'phone', ...overrides },
+  userLanguage: 'Chinese (Mandarin)',
+  status: answered ? 'ended' : 'failed',
+  createdAt: 1000,
+  ...(answered ? { answeredAt: 1500 } : {}),
+  endedAt: 90_000,
+  captions: true,
+  interpreter: 'off',
+  lines: [],
+});
 
 function app(opts: { signupAllowlist?: string[] | null } = {}) {
   const db = new Database(':memory:');
@@ -71,21 +83,19 @@ describe('phone sign-in', () => {
     expect((await server.inject({ method: 'POST', url: '/api/auth/start', payload: { phone: ME } })).statusCode).toBe(429);
   });
 
-  it('saves profile edits but never card numbers, SSNs, or passwords', async () => {
+  it('saves profile edits', async () => {
     const { server, signIn } = app();
     const { body } = await signIn();
     const auth = { authorization: `Bearer ${body.token}` };
-    const ok = await server.inject({ method: 'PATCH', url: '/api/me/profile', headers: auth, payload: { name: 'Leo', shareable: [{ label: 'Date of birth', value: 'March 3, 1990' }], onboarded: true } });
-    expect((ok.json() as Me).profile).toMatchObject({ name: 'Leo', onboarded: true, shareable: [{ label: 'Date of birth' }] });
-    const bad = await server.inject({ method: 'PATCH', url: '/api/me/profile', headers: auth, payload: { shareable: [{ label: 'SSN', value: '123-45-6789' }] } });
-    expect(bad.statusCode).toBe(422);
-    expect(((await server.inject({ method: 'GET', url: '/api/me', headers: auth })).json() as Me).profile.shareable).toHaveLength(1);
+    const ok = await server.inject({ method: 'PATCH', url: '/api/me/profile', headers: auth, payload: { name: 'Leo', defaultCallLanguage: 'English', onboarded: true } });
+    expect((ok.json() as Me).profile).toMatchObject({ name: 'Leo', defaultCallLanguage: 'English', onboarded: true });
+    expect((await server.inject({ method: 'PATCH', url: '/api/me/profile', headers: auth, payload: { timezone: 'Mars/Olympus' } })).statusCode).toBe(400);
   });
 
   it('deletes the account and its call history', async () => {
     const { server, db, signIn } = app();
     const { body } = await signIn();
-    db.saveCall({ ...newCallRecord('5e6ca169-0903-45cc-b724-e253756f3726', dentistRequest()), userId: body.me.id });
+    db.saveCall({ ...finishedCall('tc_one'), userId: body.me.id });
     expect(db.callsForUser(body.me.id)).toHaveLength(1);
     await server.inject({ method: 'DELETE', url: '/api/me', headers: { authorization: `Bearer ${body.token}` } });
     expect(db.userById(body.me.id)).toBeUndefined();
@@ -95,8 +105,8 @@ describe('phone sign-in', () => {
   it("deletes one call from the user's history, and only their own", async () => {
     const { db, signIn } = app();
     const { body } = await signIn();
-    const id = '6a1d0b7e-1c2f-4b8e-9f0a-2d3c4b5a6f70';
-    db.saveCall({ ...newCallRecord(id, dentistRequest()), userId: body.me.id });
+    const id = 'tc_two';
+    db.saveCall({ ...finishedCall(id), userId: body.me.id });
     expect(db.deleteCall('someone-else', id)).toBe(false);
     expect(db.call(id)).toBeDefined();
     expect(db.deleteCall(body.me.id, id)).toBe(true);
@@ -104,52 +114,28 @@ describe('phone sign-in', () => {
   });
 });
 
-describe('the phone book is the authority on numbers', () => {
-  it("doesn't add a contact from a call that never connected", () => {
-    const r = newCallRecord('0d3c2b1a-1111-4222-8333-944455556666', dentistRequest({ counterpartName: 'Leo', to: '+15014553148' }));
-    expect(learnFromCall({ ...emptyProfile(), timezone: 'America/Chicago' }, r).contacts).toEqual([]);
-  });
-
-  it('refuses a phone-book name at a number that is not theirs', async () => {
-    const { phoneBookMismatch } = await import('../src/routes/api');
-    const contacts = [{ name: 'Leo', phone: '+19014553148' }, { name: 'Tabito', phone: '+15024222655' }];
-    expect(phoneBookMismatch({ counterpartName: 'Leo', to: '+15014553148' } as never, contacts)).toMatch(/901\)-455-3148.*501\)-455-3148/);
-    expect(phoneBookMismatch({ counterpartName: 'leo', to: '+19014553148' } as never, contacts)).toBeNull();
-    expect(phoneBookMismatch({ counterpartName: 'Smile Dental', to: '+19015550100' } as never, contacts)).toBeNull();
-  });
-});
-
 describe('learning from calls', () => {
-  const finished = () => {
-    const r = newCallRecord('9f98a5d1-2777-498d-a7e3-e92672d0482c', dentistRequest({ counterpartName: 'Smile Dental', category: 'healthcare_appointment' }));
-    r.metrics.answeredAt = 1;
-    r.result = {
-      status: 'completed', success: true, objective: 'cleaning', appointment: { date: '2099-10-08', time: '15:30', notes: 'Cleaning' }, commitments: [],
-      additionalChargesAuthorized: false, unresolvedQuestions: [], refusedDecisions: [], followUpsForUser: [], summary: '', summaryInUserLanguage: '',
-      headlineInUserLanguage: '已预约 10月8日 15:30', counterpartNotes: ['Bring the insurance card.'], policyWarnings: [],
-    };
-    r.questions = [{ id: 'q1', askedAt: 1, expiresAt: 2, category: 'additional_cost', question: 'Add an $80 X-ray?', amountUsd: 80, status: 'answered', answer: { decision: 'decline', at: 3 } }];
-    return r;
-  };
-
-  it('adds the contact, the appointment, and the decisions; a second call updates the same contact', () => {
-    const once = learnFromCall({ ...emptyProfile(), timezone: 'America/Chicago' }, finished());
-    expect(once.contacts).toMatchObject([{ name: 'Smile Dental', phone: '+14155550123', kind: 'clinic', language: 'English', notes: ['Bring the insurance card.'], callCount: 1, lastOutcome: '已预约 10月8日 15:30' }]);
-    expect(once.appointments).toMatchObject([{ date: '2099-10-08', time: '15:30', with: 'Smile Dental' }]);
-    expect(once.history.map((h) => h.text)).toEqual(['Smile Dental: declined "Add an $80 X-ray?"']);
-
-    const twice = learnFromCall(once, { ...finished(), id: 'another' });
+  it('adds a named number that connected, and updates the same contact on the next call', () => {
+    const once = learnFromCall(emptyProfile(), finishedCall('a'));
+    expect(once.contacts).toMatchObject([{ name: 'Smile Dental', phone: '+14155550123', language: 'English', callCount: 1, lastCalledAt: 1000 }]);
+    const twice = learnFromCall(once, { ...finishedCall('b', { theirLanguage: 'Spanish' }), createdAt: 2000 });
     expect(twice.contacts).toHaveLength(1);
-    expect(twice.contacts[0]).toMatchObject({ callCount: 2, notes: ['Bring the insurance card.'] });
+    expect(twice.contacts[0]).toMatchObject({ callCount: 2, language: 'Spanish', lastCalledAt: 2000 });
+  });
 
-    const summary = profileForPrompt(twice);
-    expect(summary).toContain('Smile Dental (clinic): +1 (415)-555-0123');
-    expect(summary).toContain('2099-10-08 15:30 with Smile Dental');
+  it("doesn't add a number nobody answered, or one without a name", () => {
+    expect(learnFromCall(emptyProfile(), finishedCall('c', {}, false)).contacts).toEqual([]);
+    expect(learnFromCall(emptyProfile(), finishedCall('d', { contactName: undefined })).contacts).toEqual([]);
+  });
+
+  it("keeps the user's name for a contact", () => {
+    const profile = { ...emptyProfile(), contacts: [{ id: 'm', name: 'Maria', phone: '+14155550123', notes: [], callCount: 1 }] };
+    expect(learnFromCall(profile, finishedCall('e', { contactName: 'someone else', theirLanguage: 'Tagalog' })).contacts).toMatchObject([{ id: 'm', name: 'Maria', language: 'Tagalog', callCount: 2 }]);
   });
 });
 
 describe('phone book', () => {
-  it('adds, edits, and deletes contacts; rejects bad numbers, duplicates, and sensitive notes', async () => {
+  it('adds, edits, and deletes contacts; rejects bad numbers and duplicates', async () => {
     const { server, signIn } = app();
     const { body } = await signIn();
     const auth = { authorization: `Bearer ${body.token}` };
@@ -159,7 +145,6 @@ describe('phone book', () => {
 
     expect((await server.inject({ method: 'POST', url: '/api/me/contacts', headers: auth, payload: { name: 'Dup', phone: '+1 (747) 283-6440' } })).statusCode).toBe(422);
     expect((await server.inject({ method: 'POST', url: '/api/me/contacts', headers: auth, payload: { name: 'Bad', phone: '911' } })).statusCode).toBe(422);
-    expect((await server.inject({ method: 'POST', url: '/api/me/contacts', headers: auth, payload: { name: 'X', phone: '4155550100', notes: ['card 4111 1111 1111 1111'] } })).statusCode).toBe(422);
 
     const edited = await server.inject({ method: 'PATCH', url: `/api/me/contacts/${maria.id}`, headers: auth, payload: { name: 'Maria Santos', phone: '7472836440', relationship: 'girlfriend' } });
     const after = (edited.json() as Me).profile.contacts[0]!;
@@ -169,33 +154,4 @@ describe('phone book', () => {
     const del = await server.inject({ method: 'DELETE', url: `/api/me/contacts/${maria.id}`, headers: auth });
     expect((del.json() as Me).profile.contacts).toHaveLength(0);
   });
-
-  it("keeps the user's name for a contact and fills in the relationship from calls", () => {
-    const profile = { ...emptyProfile(), contacts: [{ id: 'm', name: 'Maria', phone: '+14155550123', notes: [], callCount: 1 }] };
-    const r = newCallRecord('11111111-2222-3333-4444-555555555555', dentistRequest({ counterpartName: 'my girlfriend', counterpartRelationship: 'girlfriend', callLanguage: 'Tagalog' }));
-    const next = learnFromCall(profile, r);
-    expect(next.contacts).toMatchObject([{ id: 'm', name: 'Maria', relationship: 'girlfriend', language: 'Tagalog', callCount: 2 }]);
-    expect(profileForPrompt(next)).toContain('Maria (girlfriend): +1 (415)-555-0123; calls in Tagalog');
-  });
 });
-
-describe('push tokens', () => {
-  it('registers this phone for notifications, moves it between accounts, and forgets it on request', async () => {
-    const { db, server, signIn } = app();
-    const { body } = await signIn();
-    const auth = { authorization: `Bearer ${body.token}` };
-    const token = 'ExponentPushToken[abc123]';
-    expect((await server.inject({ method: 'POST', url: '/api/me/push-tokens', headers: auth, payload: { token: 'not-a-token' } })).statusCode).toBe(400);
-    expect((await server.inject({ method: 'POST', url: '/api/me/push-tokens', headers: auth, payload: { token, platform: 'ios' } })).statusCode).toBe(200);
-    expect(db.pushTokensFor(body.me.id)).toEqual([token]);
-
-    const other = db.createUser('+19015550199', emptyProfile());
-    db.addPushToken(other.id, token, 'ios');
-    expect(db.pushTokensFor(body.me.id)).toEqual([]);
-    db.addPushToken(body.me.id, token, 'ios');
-
-    expect((await server.inject({ method: 'DELETE', url: '/api/me/push-tokens', headers: auth, payload: { token } })).statusCode).toBe(200);
-    expect(db.pushTokensFor(body.me.id)).toEqual([]);
-  });
-});
-

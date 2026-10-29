@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, type FormEvent } from 'react';
+import { languageCode, LANGUAGES } from '../../shared/languages';
 import { displayPhone } from '../../shared/phone';
 import type { Me } from '../../shared/types';
 import { deleteAccount, updateProfile } from './api';
@@ -8,108 +9,73 @@ interface Props {
   settings: Settings;
   me: Me;
   onChange: (me: Me) => void;
-  onTalk: () => void;
+  /** First-time setup: one Continue button, no Back, no account actions. */
+  setup?: boolean;
   onClose: () => void;
   onSignOut: () => void;
   onDeleted: () => void;
 }
 
-/** Everything CallBridge has saved about the user, with a way to delete each piece. */
-export function ProfileScreen({ settings, me, onChange, onTalk, onClose, onSignOut, onDeleted }: Props) {
+/** Who the user is and which languages they speak; also the first screen after signing up. */
+export function ProfileScreen({ settings, me, onChange, setup, onClose, onSignOut, onDeleted }: Props) {
   const p = me.profile;
+  const [name, setName] = useState(p.name);
+  const [language, setLanguage] = useState(p.preferredLanguage);
+  const [usual, setUsual] = useState(p.defaultCallLanguage ?? 'English');
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const changed = name.trim() !== p.name || language !== p.preferredLanguage || usual !== (p.defaultCallLanguage ?? 'English');
 
-  const save = async (patch: Record<string, unknown>) => {
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
     setError(null);
     try {
-      onChange(await updateProfile(settings, patch));
-    } catch (e) {
-      setError((e as Error).message);
+      onChange(await updateProfile(settings, { name: name.trim(), preferredLanguage: language, defaultCallLanguage: usual, onboarded: true }));
+      if (setup) onClose();
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
     }
   };
-  const removeAt = <T,>(list: T[], i: number) => list.filter((_, j) => j !== i);
 
   return (
-    <>
-      <div className="screen profile">
-        <h1 className="title">{p.name || 'Your profile'}</h1>
-        <p className="lede">
-          +1 {displayPhone(me.phone).replace(/^\+1 /, '')} · {[p.preferredLanguage, ...p.otherLanguages].join(', ')} · {p.timezone}
-        </p>
-        <button type="button" className="ghost-btn" onClick={onTalk}>
-          🎙 Update by talking
-        </button>
-        {error && <div className="alert">{error}</div>}
+    <form className="screen profile" onSubmit={submit}>
+      <h1 className="title">{setup ? 'Welcome to CallBridge' : 'Your profile'}</h1>
+      <p className="lede">{setup ? 'Tell us your name and languages. Captions show up in your language.' : `${displayPhone(me.phone)}`}</p>
 
-        <Group title="Usually free" empty="Not set">
-          {p.usualAvailability.map((w, i) => (
-            <Item key={i} onDelete={() => void save({ usualAvailability: removeAt(p.usualAvailability, i) })}>
-              {w.days.join('/')} {w.start}–{w.end}
-            </Item>
+      <label className="field">
+        <span className="field-label">Your name</span>
+        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="So the interpreter can introduce you" autoComplete="given-name" />
+      </label>
+      <label className="field">
+        <span className="field-label">You speak</span>
+        <select value={language} onChange={(e) => setLanguage(e.target.value)}>
+          {LANGUAGES.map((l) => (
+            <option key={l}>{l}</option>
           ))}
-        </Group>
-
-        <Group title="May be shared on calls (you confirm per call)" empty="Nothing">
-          {p.shareable.map((f, i) => (
-            <Item key={i} onDelete={() => void save({ shareable: removeAt(p.shareable, i) })}>
-              <b>{f.label}:</b> {f.value}
-            </Item>
+        </select>
+      </label>
+      <label className="field">
+        <span className="field-label">People you call usually speak</span>
+        <select value={usual} onChange={(e) => setUsual(e.target.value)}>
+          {LANGUAGES.filter((l) => languageCode(l) !== languageCode(language)).map((l) => (
+            <option key={l}>{l}</option>
           ))}
-        </Group>
+        </select>
+      </label>
+      {error && <div className="alert">{error}</div>}
 
-        <Group title="Preferences" empty="None">
-          {p.preferences.map((x, i) => (
-            <Item key={i} onDelete={() => void save({ preferences: removeAt(p.preferences, i) })}>
-              {x}
-            </Item>
-          ))}
-        </Group>
-
-        <Group title="Upcoming appointments" empty="None">
-          {p.appointments.map((a, i) => (
-            <Item key={a.id} onDelete={() => void save({ appointments: removeAt(p.appointments, i).map(({ id }) => ({ id })) })}>
-              <b>
-                {a.date} {a.time}
-              </b>{' '}
-              · {a.with}
-              {a.needsConfirmation && <span className="muted"> · needs confirming</span>}
-            </Item>
-          ))}
-        </Group>
-
-        <Group title="Contacts from your calls" empty="None yet">
-          {p.contacts.map((c, i) => (
-            <Item key={c.id} onDelete={() => void save({ contacts: removeAt(p.contacts, i).map(({ id }) => ({ id })) })}>
-              <b>{c.name}</b> · {displayPhone(c.phone)}
-              {c.lastOutcome && <div className="muted">{c.lastOutcome}</div>}
-              {c.notes.length > 0 && <div className="muted">{c.notes.join(' ')}</div>}
-            </Item>
-          ))}
-        </Group>
-
-        <Group title="Decisions from calls" empty="None yet">
-          {[...p.history].reverse().map((h, i) => (
-            <Item
-              key={`${h.callId}:${h.at}`}
-              onDelete={() =>
-                void save({
-                  history: p.history.filter((_, j) => j !== p.history.length - 1 - i).map(({ callId, at }) => ({ callId, at })),
-                })
-              }
-            >
-              {h.text}
-            </Item>
-          ))}
-        </Group>
-
+      {!setup && (
         <div className="profile-danger">
           <button type="button" className="text-btn" onClick={onSignOut}>
             Sign out
           </button>
           {confirmDelete ? (
             <span>
-              Delete your account, profile, and call history?{' '}
+              Delete your account, phone book, and call history?{' '}
               <button
                 type="button"
                 className="text-btn danger"
@@ -130,35 +96,20 @@ export function ProfileScreen({ settings, me, onChange, onTalk, onClose, onSignO
             </button>
           )}
         </div>
-      </div>
+      )}
 
       <div className="bottom-bar">
         <div className="bar-row">
-          <button type="button" className="secondary-btn" onClick={onClose}>
-            Back
+          {!setup && (
+            <button type="button" className="secondary-btn" onClick={onClose}>
+              Back
+            </button>
+          )}
+          <button type="submit" className="primary-btn" disabled={busy || !name.trim() || (!setup && !changed)}>
+            {setup ? 'Continue' : 'Save'}
           </button>
         </div>
       </div>
-    </>
-  );
-}
-
-function Group({ title, empty, children }: { title: string; empty: string; children: React.ReactNode[] }) {
-  return (
-    <div className="rsection">
-      <div className="rsection-title">{title}</div>
-      {children.length ? <ul className="profile-list">{children}</ul> : <div className="muted">{empty}</div>}
-    </div>
-  );
-}
-
-function Item({ children, onDelete }: { children: React.ReactNode; onDelete: () => void }) {
-  return (
-    <li className="profile-item">
-      <div>{children}</div>
-      <button type="button" className="icon-btn" aria-label="Delete" onClick={onDelete}>
-        ×
-      </button>
-    </li>
+    </form>
   );
 }

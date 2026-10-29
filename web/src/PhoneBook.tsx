@@ -9,7 +9,7 @@ interface Props {
   me: Me;
   languages: string[];
   onChange: (me: Me) => void;
-  /** Start a call to this contact (opens the assistant with them filled in). */
+  /** Call this contact (opens the dialer with them picked). */
   onCall: (contact: Contact) => void;
   onClose: () => void;
 }
@@ -136,7 +136,6 @@ export function PhoneBook({ settings, me, languages, onChange, onCall, onClose }
                   {c.callCount ? ` · ${c.callCount} call${c.callCount > 1 ? 's' : ''}` : ''}
                 </div>
                 {c.address && <div className="muted contact-last">{c.address}</div>}
-                {c.lastOutcome && <div className="muted contact-last">{c.lastOutcome}</div>}
                 {confirmDelete === c.id && (
                   <div className="contact-confirm">
                     Delete {c.name}?{' '}
